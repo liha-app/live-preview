@@ -15,7 +15,7 @@
     "dev:api": "pnpm build:libs && pnpm --filter @liha/api dev",
     "dev:web": "pnpm build:libs && pnpm --filter @liha/web dev",
     "build": "pnpm build:libs && pnpm --filter @liha/live-preview build && pnpm --filter @liha/web build && pnpm --filter @liha/api build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm build:libs && pnpm -r typecheck",
     "test": "pnpm build:libs && pnpm -r --sequential test",
     "test:e2e": "pnpm --filter @liha/web test:e2e",
     "lint": "pnpm -r --sequential lint",
