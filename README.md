@@ -207,6 +207,12 @@ pnpm db:migrate  # apply D1 migrations locally
 Full runbook, including the wildcard content origin and the WebMCP origin
 trial: **[docs/deployment.md](docs/deployment.md)**.
 
+After deploying, check it from the outside:
+
+```bash
+pnpm verify:deployment --api https://api.example.com --app https://liha.example.com
+```
+
 ```bash
 # 1. Create the resources
 npx wrangler d1 create liha-live-preview

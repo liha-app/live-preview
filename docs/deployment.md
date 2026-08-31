@@ -80,6 +80,19 @@ Then update `apps/web/public/_headers` so `connect-src` names your API host and
 ## 6. Smoke test the deployment
 
 ```bash
+pnpm verify:deployment --api https://api.liha.example.com --app https://liha.example.com
+```
+
+Fourteen checks against the live instance: CORS, that preview content really is
+on a separate origin, that the wildcard host resolves and serves the artifact
+with its sandbox headers, that root-absolute assets resolve, that path traversal
+is refused, and the whole comment/reply/resolve loop. It creates a sample
+preview and deletes it again, and exits non-zero on any failure, so it can gate
+a deploy.
+
+Then, by hand:
+
+```bash
 LIHA_API_URL=https://api.liha.example.com liha-preview deploy ./some-site
 ```
 

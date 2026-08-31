@@ -168,6 +168,12 @@ pnpm db:migrate  # ローカルD1にマイグレーション適用
 ワイルドカードのコンテンツオリジンや WebMCP オリジントライアルを含む詳細な手順は
 **[docs/deployment.md](docs/deployment.md)** にあります。
 
+デプロイ後は外側から検証できます。
+
+```bash
+pnpm verify:deployment --api https://api.example.com --app https://liha.example.com
+```
+
 ```bash
 # 1. リソース作成
 npx wrangler d1 create liha-live-preview
