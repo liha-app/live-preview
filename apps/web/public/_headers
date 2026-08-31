@@ -1,0 +1,13 @@
+# Security headers for the app origin, in Cloudflare Pages / Netlify format.
+# Preview content is served by the Worker from a *different* origin and carries
+# its own, far stricter, sandbox headers — see apps/api/src/content.ts.
+#
+# Update connect-src and frame-src to match your deployed API and content
+# origins before going live.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.liha.example.com; frame-src https://*.preview.example.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

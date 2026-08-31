@@ -1,0 +1,30 @@
+name = "liha-live-preview"
+main = "src/index.ts"
+compatibility_date = "2024-12-05"
+compatibility_flags = ["nodejs_compat"]
+
+[dev]
+port = 8787
+ip = "127.0.0.1"
+
+# Local development uses wildcard `*.localhost` hostnames so each preview version
+# is served from its own origin, exactly as in production.
+[vars]
+APP_ORIGIN = "http://localhost:5173"
+CONTENT_ORIGIN_TEMPLATE = "http://{label}.localhost:8787"
+MAX_VERSION_BYTES = "52428800"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "liha-live-preview"
+database_id = "local-dev-placeholder"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "liha-live-preview"
+
+# Production deployments should set CONTENT_SIGNING_KEY as a secret:
+#   wrangler secret put CONTENT_SIGNING_KEY
+# and point CONTENT_ORIGIN_TEMPLATE at a wildcard subdomain you control:
+#   CONTENT_ORIGIN_TEMPLATE = "https://{label}.preview.example.com"

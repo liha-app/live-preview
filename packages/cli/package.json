@@ -1,0 +1,42 @@
+{
+  "name": "@liha/live-preview",
+  "version": "0.1.0",
+  "description": "Share build artifacts for review and close the feedback loop from your terminal or your coding agent.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "liha-preview": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "preview",
+    "review",
+    "mcp",
+    "webmcp",
+    "cloudflare",
+    "cli"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@liha/mcp": "workspace:*",
+    "@liha/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5",
+    "@liha/api": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

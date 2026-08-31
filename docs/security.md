@@ -1,0 +1,182 @@
+# Security
+
+Liha Live Preview hosts arbitrary uploaded HTML and serves it to browsers. That
+single fact drives most of the design below.
+
+## Threat model
+
+| Adversary                            | Wants                                                     | Held off by                                                                                                                    |
+| ------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Someone who uploads a malicious site | To reach the app origin, owner tokens, or other previews  | Separate content origin, iframe `sandbox` without `allow-same-origin`, `CSP: sandbox` header, no cookies on the content origin |
+| Someone with a share link            | To publish versions, resolve comments, delete the preview | Owner token required on every mutating route                                                                                   |
+| Someone guessing                     | To find unlisted previews, or a preview password          | 60-bit random slugs, PBKDF2 password hashing, per-preview rate limiting                                                        |
+| A malicious archive                  | To write outside its storage prefix                       | Path sanitizing before decompression, expansion-ratio and count checks                                                         |
+| A crafted URL import                 | To reach internal services                                | Address and hostname blocklists, scheme and port allowlists, per-hop redirect re-validation                                    |
+| A comment author                     | To hijack an agent reading the review                     | `untrustedContentHint`, delimiters, explicit framing as data                                                                   |
+
+## Isolating uploaded content
+
+Preview files are served from `https://<slug>--<version>.preview.example.com`,
+never from the app origin. Three independent layers apply:
+
+1. **Different origin.** The same-origin policy prevents uploaded script from
+   reading the app's `localStorage`, where owner tokens live.
+2. **Iframe sandbox.** The app embeds content with
+   `sandbox="allow-scripts allow-forms allow-popups allow-modals"` — note the
+   absence of `allow-same-origin`, which gives the document an opaque origin with
+   no storage access at all.
+3. **Response headers.** Every content response carries:
+
+   ```
+   Content-Security-Policy: sandbox allow-scripts allow-forms allow-popups
+                            allow-popups-to-escape-sandbox allow-modals
+   X-Content-Type-Options: nosniff
+   Referrer-Policy: no-referrer
+   Cross-Origin-Resource-Policy: cross-origin
+   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+   ```
+
+   The CSP header means the document is sandboxed even when opened directly in a
+   tab, not only when framed.
+
+No cookies are ever set on the content origin. All API authentication uses
+headers, so there is nothing for the browser to attach to a content request.
+
+### Content types
+
+Content types come from the version manifest, recorded at upload time by
+**sniffing magic numbers**, not by trusting the client-supplied MIME type or the
+file extension. A file named `photo.png` containing HTML is refused as an image
+preview.
+
+**SVG is deliberately not a supported image type.** SVG can carry script, and
+serving it as `image/svg+xml` would execute it on the content origin. SVG files
+inside a static site upload are stored and served as
+`application/octet-stream` with `nosniff`.
+
+### The path-mounted fallback
+
+If `CONTENT_ORIGIN_TEMPLATE` is unset, content is served from
+`/content/:slug/:version/*` on the API origin. The sandbox headers and iframe
+attributes still apply, but the app and the content share an origin, so layer 1
+is gone. **Always configure a wildcard content origin in production.** The
+worker logs a warning at startup when it is missing.
+
+## Path traversal
+
+`packages/shared/src/paths.ts` is the single implementation, used by uploads,
+archive extraction and request handling alike. It **rejects** rather than
+repairs:
+
+- `..` segments, at any depth
+- absolute paths and leading `/`
+- backslashes, Windows drive letters, UNC prefixes
+- NUL and other control characters
+- paths or segments over the length limits
+- `.git`, `.env`, `.DS_Store`, `__MACOSX` segments
+
+Request paths go through `decodeAndSanitizePath`, which decodes percent-encoding
+**exactly once** and then refuses anything that still contains encoded
+separators — so `..%2f..%2f` and `%252e%252e%252f` are both blocked.
+
+Archive entries are validated inside fflate's `filter` callback, which runs
+_before_ decompression, so a hostile zip is rejected without being expanded.
+
+## Owner tokens
+
+- 32 bytes from `crypto.getRandomValues`, prefixed `liha_ot_`.
+- Stored only as a SHA-256 digest. A single hash pass is correct here: the token
+  is not guessable, so a slow KDF would buy nothing.
+- Compared in constant time.
+- Delivered in the **URL fragment** of owner links (`#owner=…`), which browsers
+  never send to a server, and stripped from the address bar on load.
+- Accepted as `X-Liha-Owner-Token` or `Authorization: Bearer`.
+
+The CLI and MCP server store them in `~/.config/liha/config.json`, created with
+mode `0600` in a directory created with mode `0700`. The project-local
+`.liha.json` contains only the preview id, slug and API URL — never the token —
+so it is safe to commit.
+
+## Passwords
+
+- PBKDF2-SHA256, 100,000 iterations, 16-byte random salt, via Web Crypto. This is
+  the strongest KDF available on Workers; there is no scrypt or Argon2.
+- Encoded as `pbkdf2-sha256$<iterations>$<salt>$<hash>` so the cost can be raised
+  later without invalidating existing previews.
+- Verified in constant time. Malformed records return `false` rather than
+  throwing.
+- Failures are counted per preview and per hashed client address in a sliding
+  window (10 attempts / 10 minutes) and answered with `429` beyond that.
+- Changing or removing a password deletes every existing review session.
+
+### Serving protected content to an iframe
+
+An `<iframe src>` cannot carry an `Authorization` header. After a correct
+password, the API issues a **signed content grant**: an HMAC-SHA256 token naming
+one preview, one version and an expiry, appended to the content URL as `?t=`.
+
+It is deliberately narrow:
+
+- valid only for the exact preview and version it names,
+- valid for one hour,
+- accepted **only** by the content route — the JSON API ignores it entirely,
+- and protected responses are served `Cache-Control: private, no-store`.
+
+## URL import (SSRF)
+
+`assertPublicHttpUrl` rejects, before any request is made:
+
+- schemes other than `http`/`https` (`file:`, `gopher:`, `data:`, `javascript:`)
+- URLs with embedded credentials
+- ports outside `80, 443, 8080, 8443`
+- `localhost`, `*.localhost`, `*.local`, `*.internal`, `*.home.arpa`,
+  `metadata.google.internal`, `instance-data`
+- hostnames with no dot (bare internal names)
+- IPv4 in `0/8`, `10/8`, `127/8`, `100.64/10`, `169.254/16` (cloud metadata),
+  `172.16/12`, `192.0.0/24`, `192.0.2/24`, `192.168/16`, `198.18/15`,
+  `198.51.100/24`, `203.0.113/24`, and everything from `224/4` up
+- IPv6 loopback, unspecified, unique-local (`fc00::/7`), link-local
+  (`fe80::/10`), multicast, NAT64, Teredo, and IPv4-mapped or 6to4 addresses
+  whose embedded IPv4 is private
+
+Alternative IPv4 encodings (`http://2130706433/`, `http://0x7f000001/`) are
+normalized by the WHATWG URL parser before the checks run, and are covered by
+tests.
+
+`safeFetch` follows redirects manually and re-validates **every hop**, because a
+public URL says nothing about where its `302` points.
+
+### Known limitation: DNS rebinding
+
+A Worker cannot see the IP a hostname resolves to, so a hostname that passes
+validation and then resolves to `169.254.169.254` is not caught here. Mitigate
+at the network layer for deployments that care. This is stated in
+[SECURITY.md](../SECURITY.md) rather than quietly ignored.
+
+## Denial of service
+
+- 50 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).
+- 25 MB per individual file.
+- `Content-Length` is checked before the multipart body is parsed.
+- Zip expansion size and entry count are checked before decompression.
+- Comment bodies are capped at 10,000 characters; every string in a comment
+  target has a length bound in its Zod schema, so a hostile page cannot inflate
+  a comment through the bridge.
+
+## Agent-facing safety
+
+Review comments are written by whoever has the share link, and they end up in an
+agent's context. Every tool that returns them:
+
+- sets `untrustedContentHint` (WebMCP) so the client can mark it,
+- wraps the payload in `<reviewer_comments>` / `<reviewer_comment>` delimiters,
+- prefixes it with an explicit note that the content describes requested changes
+  and is not addressed to the agent.
+
+The local MCP server adds a filesystem boundary: it resolves every path through
+`realpath` and refuses anything outside `--root`, so `..`, absolute paths and
+symlinks pointing out of the project are all rejected. Owner tokens are read
+from the credential store and never returned in a tool result.
+
+`get_share_info` is the tool designed for "send this to the team", and it
+returns the share URL and a summary — never the owner token.

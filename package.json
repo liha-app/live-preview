@@ -1,0 +1,43 @@
+{
+  "name": "liha-live-preview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Share build artifacts, review them visually, and let AI agents close the loop.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build:libs": "pnpm --filter @liha/shared --filter @liha/webmcp --filter @liha/mcp build",
+    "dev": "pnpm build:libs && pnpm db:migrate && pnpm --parallel --filter @liha/api --filter @liha/web dev",
+    "dev:api": "pnpm build:libs && pnpm --filter @liha/api dev",
+    "dev:web": "pnpm build:libs && pnpm --filter @liha/web dev",
+    "build": "pnpm build:libs && pnpm --filter @liha/live-preview build && pnpm --filter @liha/web build && pnpm --filter @liha/api build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm build:libs && pnpm -r --sequential test",
+    "test:e2e": "pnpm --filter @liha/web test:e2e",
+    "lint": "pnpm -r --sequential lint",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css,html}\"",
+    "db:migrate": "pnpm --filter @liha/api db:migrate",
+    "clean": "pnpm -r exec rm -rf dist .wrangler node_modules/.vite"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd",
+      "sharp",
+      "@cloudflare/workerd-darwin-64",
+      "@cloudflare/workerd-darwin-arm64",
+      "@cloudflare/workerd-linux-64",
+      "@cloudflare/workerd-linux-arm64",
+      "@cloudflare/workerd-windows-64"
+    ]
+  }
+}

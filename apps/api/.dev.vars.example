@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local development. Never commit the real file.
+#
+# HMAC key for the short-lived tokens that unlock password-protected preview
+# content in an iframe. A built-in development key is used when this is unset,
+# which is fine locally and unacceptable in production.
+CONTENT_SIGNING_KEY="generate-with-openssl-rand-base64-32"

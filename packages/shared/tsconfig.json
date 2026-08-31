@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // Runs on Workers, Node and in the browser: the DOM lib is the common
+    // denominator that types fetch/URL/crypto/TextEncoder without pulling in a
+    // runtime-specific @types package.
+    "lib": ["ES2023", "DOM"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

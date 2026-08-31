@@ -1,0 +1,195 @@
+import type { Messages } from './en.js';
+
+/**
+ * Japanese. Typed against the English catalogue, so a missing key will not
+ * compile.
+ *
+ * Japanese has no grammatical plural, so `singular|plural` keys carry the same
+ * text on both sides of the separator.
+ */
+export const ja: Messages = {
+  'app.name': 'Liha',
+  'app.tagline':
+    'ビルド成果物・デザイン・ドキュメントを固定URLで共有。レビュアーが見たままに指摘を書き込み、AIエージェントがその文脈を構造化データとして読み取って、同じURLに修正版を届けます。',
+
+  'common.cancel': 'キャンセル',
+  'common.done': '完了',
+  'common.close': '閉じる',
+  'common.copy': 'コピー',
+  'common.copied': 'コピーしました',
+  'common.clear': 'クリア',
+  'common.loading': '読み込み中',
+  'common.somethingWrong': '問題が発生しました。',
+
+  'lang.label': '言語',
+  'lang.en': 'English',
+  'lang.ja': '日本語',
+
+  'theme.label': 'テーマ',
+  'theme.light': 'ライト',
+  'theme.dark': 'ダーク',
+  'theme.system': 'システム',
+  'theme.switchTo': 'テーマ: {current} — {next}に切り替え',
+
+  'topbar.version': 'バージョン',
+  'topbar.versionCurrent': '公開中',
+  'topbar.share': '共有',
+  'topbar.update': '更新',
+  'topbar.ownerSettings': 'オーナー設定',
+  'topbar.shortcuts': 'キーボードショートカット',
+  'topbar.passwordProtected': 'パスワード保護',
+  'topbar.agentConnected': 'WebMCP 経由でエージェントがこのページを操作できます',
+
+  'tool.inspect': '要素を選択',
+  'tool.inspect.hint': '要素をクリックしてコメントを付けます',
+  'tool.pin': 'ピン',
+  'tool.pin.hint': '番号付きのピンを置きます',
+  'tool.rect': '矩形',
+  'tool.rect.hint': '範囲を四角で囲みます',
+  'tool.freehand': '手描き',
+  'tool.freehand.hint': '赤ペンで自由に描きます',
+  'tool.arrow': '矢印',
+  'tool.arrow.hint': '対象を指し示します',
+  'viewport.fit': 'ウィンドウに合わせる',
+  'viewport.width': '幅 {width}px で表示',
+
+  'filter.open': '未解決',
+  'filter.resolved': '解決済み',
+  'filter.all': 'すべて',
+  'filter.label': 'コメントの絞り込み',
+
+  'comments.title': 'レビューコメント',
+  'comments.emptyOpen': '未解決のコメントはありません。',
+  'comments.emptyResolved': '解決済みのコメントはまだありません。',
+  'comments.emptyAll': 'コメントはまだありません。',
+  'comments.emptyHint': 'プレビューをクリックするか、{key} キーでコメントを追加できます。',
+  'comments.reply': '返信',
+  'comments.replyTo': '{name} さんに返信…',
+  'comments.resolve': '解決',
+  'comments.reopen': '再オープン',
+  'comments.outdated': '旧バージョン',
+  'comments.showEarlier': '以前の返信 {count} 件を表示|以前の返信 {count} 件を表示',
+  'comments.byAuthor': 'コメント {index}（{author}）: {body}',
+  'comments.added': 'コメントを追加しました。',
+  'comments.replyAdded': '返信を追加しました。',
+  'comments.resolved': 'コメントを解決しました。',
+
+  'composer.placeholder': 'どこをどう直しますか？',
+  'composer.placeholderVersion': 'このバージョン全体へのコメント…',
+  'composer.submit': 'コメント',
+  'composer.submitReply': '返信',
+  'composer.yourName': '名前',
+  'composer.changeName': 'コメントに表示される名前を変更',
+  'composer.removeTarget': '対象を解除',
+  'composer.clearTargetHint': '対象を解除（Esc）',
+  'composer.submitHint': '送信（⌘↵）',
+  'composer.writing': 'プレビュー上でコメントを作成中…',
+  'composer.dialogLabel': 'コメントを書く',
+
+  'version.viewingOld': 'v{number} を表示中です。共有URLでは別のバージョンが配信されています。',
+  'version.backToCurrent': '公開中に戻る',
+
+  'share.title': '共有',
+  'share.url': '共有URL — バージョンが変わっても同じ',
+  'share.previewId': 'プレビューID',
+  'share.ownerToken': 'オーナートークン — 他人に渡さないでください',
+  'share.summary': 'チャット貼り付け用のまとめ',
+
+  'upload.title': '新しいバージョン',
+  'upload.explain':
+    '共有URLは変わりません。既存のコメントは、書かれた時点のバージョンに紐づいたまま残ります。',
+  'upload.drop': 'ファイルまたはフォルダをドロップ',
+  'upload.files': 'ファイル',
+  'upload.folder': 'フォルダ',
+  'upload.label': 'ラベル（任意）',
+  'upload.publish': '公開',
+  'upload.fileCount': '{count} ファイル|{count} ファイル',
+
+  'owner.title': 'オーナー設定',
+  'owner.currentVersion': '共有URLで配信するバージョン',
+  'owner.password': 'パスワード',
+  'owner.passwordSet': '設定済み',
+  'owner.passwordOff': '未設定',
+  'owner.newPassword': '新しいパスワード（6文字以上）',
+  'owner.set': '設定',
+  'owner.remove': '解除',
+  'owner.delete': 'プレビューを削除',
+  'owner.deleteConfirm': '完全に削除する',
+
+  'password.protected': 'このプレビューはパスワードで保護されています。',
+  'password.placeholder': 'パスワード',
+  'password.unlock': '開く',
+
+  'offline.title': 'サーバーに接続できません',
+  'offline.body':
+    'Liha API から応答がなかったため、プレビューを読み込めませんでした。ネットワークが切れているか、サーバーが再起動中の可能性があります。',
+  'offline.retry': '再試行',
+  'notFound.title': 'プレビューが見つかりません',
+  'notFound.body': 'リンクの有効期限が切れたか、プレビューが削除された可能性があります。',
+  'notFound.create': '新しいプレビューを作成',
+
+  'error.title': '問題が発生しました',
+  'error.body':
+    'ページの描画に失敗しました。再読み込みで直ることがほとんどです。コメントはサーバーに保存されており、未送信の下書きもこのブラウザに残っています。',
+  'error.reload': '再読み込み',
+  'error.startOver': '最初から',
+
+  'agent.title': 'このページがエージェントに公開しているツール',
+  'agent.available':
+    'このブラウザは WebMCP に対応しています。{count} 個のツールをエージェントに公開しています。',
+  'agent.unavailable':
+    'このブラウザは WebMCP を公開していないため、ツールは登録されていません。レビュー自体は通常どおり使えます。',
+  'agent.howto':
+    '試すには、このURLを ChatGPT のアプリ内ブラウザで開くか、WebMCP のオリジントライアル、または chrome://flags/#enable-webmcp-testing を有効にした Chrome で開いてください。',
+  'agent.tryAsking': 'エージェントに聞いてみる',
+  'agent.prompt1': 'このプレビューで未解決のフィードバックは何で、どこを指していますか？',
+  'agent.prompt2': 'ボタンについてのコメントを画面に出して、その CSS を読んでください。',
+  'agent.prompt3': 'プレビューをモバイル幅に切り替えて、崩れている箇所を教えてください。',
+  'agent.toolsHeading': '公開中のツール',
+  'agent.detected': '{source} 上で {style} 形式を検出しました。',
+  'agent.readOnly': '読み取り',
+  'agent.writes': '操作',
+  'agent.open': 'エージェントツール',
+
+  'shortcuts.title': 'キーボードショートカット',
+  'shortcuts.tools': 'ツール',
+  'shortcuts.comments': 'コメント',
+  'shortcuts.view': '表示',
+  'shortcuts.startComment': 'コメントを書き始める',
+  'shortcuts.submit': '送信',
+  'shortcuts.nextPrev': '次 / 前のコメント',
+  'shortcuts.resolve': '選択中のコメントを解決（オーナーのみ）',
+  'shortcuts.escape': '下書きを破棄 / 選択を解除',
+  'shortcuts.viewports': '表示幅: 全体, 1280, 768, 390',
+  'shortcuts.theme': 'テーマを切り替え',
+  'shortcuts.thisList': 'この一覧',
+
+  'home.dropTitle': 'ファイル・フォルダ・zip化したサイトをドロップ',
+  'home.dropHint': 'HTML / 静的サイト・PNG, JPEG, WebP・PDF',
+  'home.ready': '{count} ファイルを選択中|{count} ファイルを選択中',
+  'home.title': 'タイトル（任意）',
+  'home.titlePlaceholder': '購入フローのリニューアル',
+  'home.password': 'パスワード（任意）',
+  'home.passwordPlaceholder': '6文字以上',
+  'home.create': 'プレビューを作成',
+  'home.urlHeading': 'すでに公開されているURLをレビューする',
+  'home.urlPlaceholder': 'https://example.com/landing',
+  'home.import': '読み込む',
+  'home.urlHint':
+    'ページのHTMLをスナップショットして、その上に指摘を書き込めるようにします。プライベートIPや内部アドレスは拒否されます。',
+  'home.terminalHeading': 'ターミナルから',
+  'home.demoHeading': 'はじめての方はこちら',
+  'home.demoBody':
+    'サンプルのランディングページを、レビューコメント付きの本物のプレビューとして開きます。特定のボタンに紐づいたコメントも入っています。アップロード不要で、オーナートークンも渡されるのでそのまま解決まで試せます。',
+  'home.demoCta': 'サンプルのレビューを開く',
+
+  'created.title': 'プレビューを作成しました',
+  'created.body':
+    '下記のURLを共有してください。今後どのバージョンを公開しても同じURLのままなので、レビュアーに新しいリンクを送り直す必要はありません。',
+  'created.ownerLink': 'オーナー用リンク（トークンを含む）',
+  'created.ownerNote':
+    'オーナートークンはこのブラウザに保存されます。新しいバージョンの公開、コメントの解決、パスワード変更、削除に必要です。表示は一度きりで、再発行はできません。',
+  'created.open': 'プレビューを開く',
+  'created.another': 'もう一つ作成',
+  'created.agentHeading': 'コーディングエージェントと接続',
+};
