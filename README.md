@@ -2,6 +2,9 @@
 
 _English · [日本語](README.ja.md)_
 
+[![CI](https://github.com/liha-app/live-preview/actions/workflows/ci.yml/badge.svg)](https://github.com/liha-app/live-preview/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Share a build, a mockup or a document at a stable URL. People mark up what they
 see. An AI agent reads that feedback **with structured context** — the CSS
 selector, the DOM snippet, the page, the viewport — fixes the source, and ships

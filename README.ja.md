@@ -2,6 +2,9 @@
 
 _[English](README.md) · 日本語_
 
+[![CI](https://github.com/liha-app/live-preview/actions/workflows/ci.yml/badge.svg)](https://github.com/liha-app/live-preview/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 ビルド成果物・デザイン・ドキュメントを、変わらないURLで共有する。人が見たままに指摘を書き込み、AIエージェントがその**構造化された文脈**——CSSセレクタ、DOMスニペット、表示幅、バージョン——を読み取って、同じURLに修正版を届ける。
 
 面白いのはファイル共有の部分ではありません。**人がボタンを指差した行為が、そのままエージェントが実行できる情報になる**ことです。コピー&ペーストは一度も発生しません。
