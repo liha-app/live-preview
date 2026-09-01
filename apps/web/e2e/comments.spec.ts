@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { asNewClient } from './clients.js';
 
 const API = 'http://localhost:8787';
 
@@ -20,7 +21,11 @@ async function createPreview(): Promise<Created> {
   form.append('title', 'Acme');
   form.append('files', new File([SITE['index.html']], 'f'));
   form.append('paths', JSON.stringify(['index.html']));
-  const response = await fetch(`${API}/api/previews`, { method: 'POST', body: form });
+  const response = await fetch(`${API}/api/previews`, {
+    method: 'POST',
+    headers: asNewClient(),
+    body: form,
+  });
   expect(response.status).toBe(201);
   return (await response.json()) as Created;
 }

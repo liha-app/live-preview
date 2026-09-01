@@ -135,6 +135,24 @@ export async function nextVersionNumber(db: Database, previewId: string): Promis
   return (row?.max_number ?? 0) + 1;
 }
 
+/**
+ * Bytes held in R2 by every preview that still exists.
+ *
+ * Deleting a preview removes its objects, so soft-deleted rows are excluded.
+ * This runs on writes only, and the versions table stays small for the size of
+ * instance the ceiling is meant to protect.
+ */
+export async function totalStoredBytes(db: Database): Promise<number> {
+  const row = await db
+    .prepare(
+      `SELECT SUM(versions.byte_size) AS total FROM versions
+         JOIN previews ON previews.id = versions.preview_id
+        WHERE previews.deleted_at IS NULL`,
+    )
+    .first<{ total: number | null }>();
+  return Number(row?.total ?? 0);
+}
+
 export async function listVersions(db: Database, previewId: string): Promise<VersionRow[]> {
   const { results } = await db
     .prepare('SELECT * FROM versions WHERE preview_id = ? ORDER BY number DESC')

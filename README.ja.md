@@ -193,7 +193,8 @@ pnpm verify:deployment --api https://api.example.com --app https://liha.example.
 | `CONTENT_ORIGIN_TEMPLATE` | プレビュー配信のワイルドカードパターン。`{label}` が `<slug>--<version>` になります。未設定時はパス配下にフォールバック（オリジン分離なし）。 |
 | `CONTENT_SIGNING_KEY`     | 秘密情報。パスワード保護プレビューの短期トークンのHMAC鍵。                                                                                    |
 | `ALLOWED_ORIGINS`         | APIを呼べる追加オリジン（カンマ区切り）。                                                                                                     |
-| `MAX_VERSION_BYTES`       | バージョンあたりのアップロード上限。既定50MB。                                                                                                |
+| `MAX_VERSION_BYTES`       | バージョンあたりのアップロード上限。既定30MB。                                                                                                |
+| `MAX_TOTAL_BYTES`         | インスタンス全体の保存容量の上限。既定5GB。`0` で無制限。                                                                                     |
 
 ---
 
@@ -318,7 +319,7 @@ liha-preview mcp --root .
 pnpm test
 ```
 
-ネットワーク不要で 173 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 43 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
+ネットワーク不要で 188 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 43 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
 
 ```bash
 npx playwright install chromium

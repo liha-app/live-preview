@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { asNewClient } from './clients.js';
 
 const API = 'http://localhost:8787';
 
@@ -23,7 +24,11 @@ async function createPreview(files: Record<string, string>, title = 'Acme'): Pro
     form.append('files', new File([content], 'file'));
   }
   form.append('paths', JSON.stringify(Object.keys(files)));
-  const response = await fetch(`${API}/api/previews`, { method: 'POST', body: form });
+  const response = await fetch(`${API}/api/previews`, {
+    method: 'POST',
+    headers: asNewClient(),
+    body: form,
+  });
   expect(response.status).toBe(201);
   return (await response.json()) as Created;
 }
@@ -177,9 +182,11 @@ test.describe('the review loop in a real browser', () => {
     form.append('password', 'open-sesame');
     form.append('files', new File(['<html><body><h1>Secret plans</h1></body></html>'], 'f'));
     form.append('paths', JSON.stringify(['index.html']));
-    const created = (await fetch(`${API}/api/previews`, { method: 'POST', body: form }).then((r) =>
-      r.json(),
-    )) as Created;
+    const created = (await fetch(`${API}/api/previews`, {
+      method: 'POST',
+      headers: asNewClient(),
+      body: form,
+    }).then((r) => r.json())) as Created;
 
     await page.goto(`/p/${created.preview.slug}`);
     await expect(page.getByText('This preview is password protected.')).toBeVisible();

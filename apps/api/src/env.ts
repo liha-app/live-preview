@@ -1,3 +1,4 @@
+import { LIMITS } from '@liha/shared';
 import type { Database, ObjectStore } from './ports.js';
 
 export interface Env {
@@ -20,6 +21,12 @@ export interface Env {
   /** Comma-separated list of extra origins allowed to call the API. */
   ALLOWED_ORIGINS?: string;
   MAX_VERSION_BYTES?: string;
+  /**
+   * Ceiling on everything this instance stores, across all previews. The
+   * per-client rate limit slows an abuser down; this is what bounds the bill.
+   * Set to `0` to remove the ceiling.
+   */
+  MAX_TOTAL_BYTES?: string;
   /** Optional Cloudflare Browser Rendering binding used for URL screenshots. */
   BROWSER?: unknown;
 }
@@ -30,9 +37,19 @@ export interface ResolvedConfig {
   contentSigningKey: string;
   allowedOrigins: string[];
   maxVersionBytes: number;
+  /** Null when the deployment has opted out of a global ceiling. */
+  maxTotalBytes: number | null;
 }
 
 const DEV_SIGNING_KEY = 'liha-development-signing-key-do-not-use-in-production';
+
+/** `0` means "no ceiling"; anything unparseable falls back to the default. */
+function parseCeiling(value: string | undefined): number | null | undefined {
+  if (value === undefined) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+  return parsed === 0 ? null : parsed;
+}
 
 export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
   const appOrigin = env.APP_ORIGIN?.replace(/\/$/, '') ?? 'http://localhost:5173';
@@ -46,7 +63,8 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
     contentOriginTemplate: env.CONTENT_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     contentSigningKey: env.CONTENT_SIGNING_KEY ?? DEV_SIGNING_KEY,
     allowedOrigins: [appOrigin, requestUrl.origin, ...extra],
-    maxVersionBytes: Number.parseInt(env.MAX_VERSION_BYTES ?? '', 10) || 50 * 1024 * 1024,
+    maxVersionBytes: Number.parseInt(env.MAX_VERSION_BYTES ?? '', 10) || LIMITS.maxVersionBytes,
+    maxTotalBytes: parseCeiling(env.MAX_TOTAL_BYTES) ?? LIMITS.maxTotalBytes,
   };
 }
 

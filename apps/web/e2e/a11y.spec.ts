@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { asNewClient } from './clients.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const API = 'http://localhost:8787';
@@ -19,7 +20,11 @@ async function createPreview(): Promise<Created> {
     ),
   );
   form.append('paths', JSON.stringify(['index.html']));
-  const response = await fetch(`${API}/api/previews`, { method: 'POST', body: form });
+  const response = await fetch(`${API}/api/previews`, {
+    method: 'POST',
+    headers: asNewClient(),
+    body: form,
+  });
   return (await response.json()) as Created;
 }
 
@@ -104,9 +109,11 @@ test.describe('accessibility', () => {
     form.append('password', 'open-sesame');
     form.append('files', new File(['<html><body>x</body></html>'], 'f'));
     form.append('paths', JSON.stringify(['index.html']));
-    const created = (await fetch(`${API}/api/previews`, { method: 'POST', body: form }).then((r) =>
-      r.json(),
-    )) as Created;
+    const created = (await fetch(`${API}/api/previews`, {
+      method: 'POST',
+      headers: asNewClient(),
+      body: form,
+    }).then((r) => r.json())) as Created;
 
     await page.goto(`/p/${created.preview.slug}`);
     await expect(page.getByPlaceholder('Password')).toBeVisible();

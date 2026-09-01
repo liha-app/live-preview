@@ -12,7 +12,7 @@ ip = "127.0.0.1"
 [vars]
 APP_ORIGIN = "http://localhost:5173"
 CONTENT_ORIGIN_TEMPLATE = "http://{label}.localhost:8787"
-MAX_VERSION_BYTES = "52428800"
+MAX_VERSION_BYTES = "31457280"
 
 [[d1_databases]]
 binding = "DB"

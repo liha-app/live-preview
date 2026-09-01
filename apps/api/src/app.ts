@@ -12,6 +12,7 @@ import {
   UpdatePreviewInputSchema,
   UrlValidationError,
   assertPasswordPolicy,
+  formatBytes,
   generateId,
   generateOwnerToken,
   generateReviewToken,
@@ -32,7 +33,8 @@ import { matchContentHost } from './content-origin.js';
 import { matchContentPath, resolveViaReferer, serveVersionFile } from './content.js';
 import { DEMO_TITLE, demoComments, demoFiles } from './demo.js';
 import { resolveConfig, type Env, type ResolvedConfig } from './env.js';
-import { ApiError, badRequest, notFound } from './errors.js';
+import { ApiError, badRequest, notFound, tooLarge } from './errors.js';
+import type { Database } from './ports.js';
 import { importUrlPreview } from './url-import.js';
 import {
   countComments,
@@ -48,6 +50,7 @@ import {
   insertVersion,
   listComments,
   listVersions,
+  totalStoredBytes,
   nextVersionNumber,
   nowIso,
   pruneExpired,
@@ -207,6 +210,17 @@ export function createApp() {
 
   app.post('/api/previews', async (c) => {
     const config = c.get('config');
+
+    // Creating a preview needs no credential, so this is checked before the
+    // body is read: an abusive client should not get to stream 30 MB first.
+    const rateKey = await clientKey(c.req.raw);
+    if (
+      (await countRateEvents(c.env.DB, 'preview', rateKey, LIMITS.commentWindowMs)) >=
+      LIMITS.previewsPerWindow
+    ) {
+      throw new ApiError('rate_limited', 'Too many new previews. Try again in a few minutes.');
+    }
+
     assertBodySize(c.req.raw, config);
     const form = await readFormData(c.req.raw);
 
@@ -215,6 +229,7 @@ export function createApp() {
     const source = readString(form.get('source')) ?? 'api';
     const entries = await entriesFromFormData(form);
     const upload = prepareUpload(entries, { maxVersionBytes: config.maxVersionBytes });
+    await assertRoomToStore(c.env.DB, config, upload.totalBytes);
 
     if (password) assertPasswordPolicy(password);
 
@@ -237,6 +252,7 @@ export function createApp() {
       updated_at: timestamp,
       deleted_at: null,
     });
+    await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
       id: versionId,
       preview_id: previewId,
@@ -381,10 +397,23 @@ export function createApp() {
 
   app.post('/api/previews/url', async (c) => {
     const config = c.get('config');
+
+    // The same budget as an upload, and for a stronger reason: this endpoint
+    // needs no credential and makes an outbound request on the caller's behalf.
+    const rateKey = await clientKey(c.req.raw);
+    if (
+      (await countRateEvents(c.env.DB, 'preview', rateKey, LIMITS.commentWindowMs)) >=
+      LIMITS.previewsPerWindow
+    ) {
+      throw new ApiError('rate_limited', 'Too many new previews. Try again in a few minutes.');
+    }
+
     const input = CreateUrlPreviewInputSchema.parse(await c.req.json());
     if (input.password) assertPasswordPolicy(input.password);
 
     const imported = await importUrlPreview(input.url);
+    await assertRoomToStore(c.env.DB, config, imported.manifest.totalBytes);
+
     const previewId = generateId('preview');
     const versionId = generateId('version');
     const ownerToken = generateOwnerToken();
@@ -416,6 +445,7 @@ export function createApp() {
       updated_at: timestamp,
       deleted_at: null,
     });
+    await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
       id: versionId,
       preview_id: previewId,
@@ -530,6 +560,24 @@ export function createApp() {
       // reviewers should not have the renderer change under them.
       declaredKind: preview.type as 'image' | 'html' | 'pdf' | 'url',
     });
+
+    // The per-version cap alone leaves a preview unbounded, since an owner can
+    // push versions forever. Checked before anything reaches R2.
+    const existingVersions = await listVersions(c.env.DB, preview.id);
+    if (existingVersions.length >= LIMITS.maxVersionsPerPreview) {
+      throw tooLarge(
+        `This preview already has ${LIMITS.maxVersionsPerPreview} versions. ` +
+          'Create a new preview for further builds.',
+      );
+    }
+    const storedBytes = existingVersions.reduce((total, row) => total + row.byte_size, 0);
+    if (storedBytes + upload.totalBytes > LIMITS.maxPreviewBytes) {
+      throw tooLarge(
+        `This preview holds ${formatBytes(storedBytes)} across ${existingVersions.length} ` +
+          `versions, and the limit is ${formatBytes(LIMITS.maxPreviewBytes)}.`,
+      );
+    }
+    await assertRoomToStore(c.env.DB, config, upload.totalBytes);
 
     const versionId = generateId('version');
     const manifest = await storeVersionFiles(c.env.BUCKET, preview.id, versionId, upload);
@@ -757,6 +805,27 @@ async function uniqueSlug(db: Env['DB']): Promise<string> {
     if (!(await findPreviewBySlug(db, slug))) return slug;
   }
   throw new ApiError('internal_error', 'Could not allocate a preview slug.');
+}
+
+/**
+ * Refuses an upload that would take the instance past its storage ceiling.
+ *
+ * Rate limiting only slows an abuser down. This is the limit that stops, and it
+ * is checked before anything is written to R2.
+ */
+async function assertRoomToStore(
+  db: Database,
+  config: ResolvedConfig,
+  incomingBytes: number,
+): Promise<void> {
+  if (config.maxTotalBytes === null) return;
+  const stored = await totalStoredBytes(db);
+  if (stored + incomingBytes > config.maxTotalBytes) {
+    throw tooLarge(
+      `This instance is full: it holds ${formatBytes(stored)} of its ` +
+        `${formatBytes(config.maxTotalBytes)} limit. Delete a preview, or raise MAX_TOTAL_BYTES.`,
+    );
+  }
 }
 
 function assertBodySize(request: Request, config: ResolvedConfig): void {

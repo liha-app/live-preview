@@ -119,7 +119,8 @@ In `apps/api/wrangler.toml`:
 [vars]
 APP_ORIGIN = "https://liha.example.com"
 CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
-MAX_VERSION_BYTES = "52428800"
+MAX_VERSION_BYTES = "31457280"
+MAX_TOTAL_BYTES = "5368709120"
 ```
 
 Add the routes so the Worker answers on both the API host and every preview

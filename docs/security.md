@@ -155,8 +155,22 @@ at the network layer for deployments that care. This is stated in
 
 ## Denial of service
 
-- 50 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).
+- 30 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).
+  The ceiling is the runtime's: a Worker isolate has 128 MB of memory, and the
+  upload path holds the multipart body and the expanded entries at once.
 - 25 MB per individual file.
+- 50 versions and 300 MB per preview, so one share URL cannot grow without
+  bound even though its owner holds a valid token.
+- 20 new previews per client per five minutes, checked before the body is read.
+  Creating a preview — by upload or by URL import — needs no credential.
+- A ceiling on everything the instance stores, 5 GB by default and configurable
+  with `MAX_TOTAL_BYTES`. Rate limiting only slows an abuser down; twenty
+  uploads every five minutes is still hundreds of gigabytes a day, and an
+  attacker with addresses to spare is not rate limited at all. The ceiling is
+  what actually stops, and it is checked before anything reaches R2. Deleting a
+  preview frees its space. For a public instance, put a Cloudflare WAF rate
+  limiting rule in front as well: it sheds load at the edge, before a request
+  costs you a Worker invocation.
 - `Content-Length` is checked before the multipart body is parsed.
 - Zip expansion size and entry count are checked before decompression.
 - Comment bodies are capped at 10,000 characters; every string in a comment

@@ -244,7 +244,8 @@ Configuration reference:
 | `CONTENT_ORIGIN_TEMPLATE` | Wildcard pattern for preview content, `{label}` → `<slug>--<version>`. Unset falls back to a path mount (not origin-isolated). |
 | `CONTENT_SIGNING_KEY`     | Secret. HMAC key for short-lived content grants on password-protected previews.                                                |
 | `ALLOWED_ORIGINS`         | Extra comma-separated origins allowed to call the API.                                                                         |
-| `MAX_VERSION_BYTES`       | Upload cap per version. Default 50 MB.                                                                                         |
+| `MAX_VERSION_BYTES`       | Upload cap per version. Default 30 MB.                                                                                         |
+| `MAX_TOTAL_BYTES`         | Ceiling on everything the instance stores. Default 5 GB; `0` removes it.                                                       |
 
 ---
 
@@ -444,8 +445,10 @@ sandbox` header so it stays contained even when opened directly. It cannot read
   re-validates **every redirect hop**.
 - **SVG uploads are not served as images.** They can carry script, so they are
   returned as `application/octet-stream` with `nosniff`.
-- **Uploads are capped** (50 MB and 2000 files per version by default), and zip
-  expansion is checked _before_ decompression to refuse zip bombs.
+- **Uploads are capped**: 30 MB and 2,000 files per version, 50 versions and
+  300 MB per preview, 20 new previews per client per five minutes, and a 5 GB
+  ceiling on everything the instance stores. Zip expansion is checked _before_
+  decompression to refuse zip bombs.
 
 Found something? See [SECURITY.md](SECURITY.md).
 
@@ -457,7 +460,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-173 tests, no network access required:
+188 tests, no network access required:
 
 | Suite                | Covers                                                                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |

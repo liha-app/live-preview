@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { asNewClient } from './clients.js';
 import { expect, test } from '@playwright/test';
 
 const API = 'http://localhost:8787';
@@ -16,7 +17,11 @@ async function createPreview(): Promise<Created> {
     new File(['<!doctype html><html><body><button id="cta">Go</button></body></html>'], 'f'),
   );
   form.append('paths', JSON.stringify(['index.html']));
-  const response = await fetch(`${API}/api/previews`, { method: 'POST', body: form });
+  const response = await fetch(`${API}/api/previews`, {
+    method: 'POST',
+    headers: asNewClient(),
+    body: form,
+  });
   return (await response.json()) as Created;
 }
 

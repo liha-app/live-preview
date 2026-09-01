@@ -197,7 +197,7 @@ actually holds — once the composer is on screen, it holds the caret.
 
 |                          |                                                             |
 | ------------------------ | ----------------------------------------------------------- |
-| Unit + integration tests | 173, `pnpm test`, no network needed                         |
+| Unit + integration tests | 188, `pnpm test`, no network needed                         |
 | End-to-end tests         | 43, `pnpm test:e2e`, real Chromium, incl. WCAG 2.1 AA audit |
 | Packages                 | 6                                                           |
 | Migrations               | 2                                                           |
