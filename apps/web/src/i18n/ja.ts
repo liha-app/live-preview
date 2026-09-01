@@ -64,6 +64,7 @@ export const ja: Messages = {
   'comments.emptyAll': 'コメントはまだありません。',
   'comments.emptyHint': 'プレビューをクリックするか、{key} キーでコメントを追加できます。',
   'comments.reply': '返信',
+  'comments.byAgent': 'エージェントによる投稿',
   'comments.replyTo': '{name} さんに返信…',
   'comments.resolve': '解決',
   'comments.reopen': '再オープン',

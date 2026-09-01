@@ -62,6 +62,7 @@ export const en = {
   'comments.emptyAll': 'No comments yet.',
   'comments.emptyHint': 'Click anywhere on the preview to leave one, or press {key}.',
   'comments.reply': 'Reply',
+  'comments.byAgent': 'written by an agent',
   'comments.replyTo': 'Reply to {name}…',
   'comments.resolve': 'Resolve',
   'comments.reopen': 'Reopen',

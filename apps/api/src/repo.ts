@@ -32,6 +32,7 @@ export interface CommentRow {
   version_id: string;
   parent_id: string | null;
   author_name: string;
+  author_kind: string;
   body: string;
   target: string;
   status: string;
@@ -178,9 +179,9 @@ export function findVersionByNumber(db: Database, previewId: string, number: num
 export async function insertComment(db: Database, row: CommentRow): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO comments (id, preview_id, version_id, parent_id, author_name, body,
-        target, status, created_at, resolved_at, resolved_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      `INSERT INTO comments (id, preview_id, version_id, parent_id, author_name, author_kind,
+        body, target, status, created_at, resolved_at, resolved_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     )
     .bind(
       row.id,
@@ -188,6 +189,7 @@ export async function insertComment(db: Database, row: CommentRow): Promise<void
       row.version_id,
       row.parent_id,
       row.author_name,
+      row.author_kind,
       row.body,
       row.target,
       row.status,

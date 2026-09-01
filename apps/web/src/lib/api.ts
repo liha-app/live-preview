@@ -186,6 +186,8 @@ export const api = {
     input: {
       body: string;
       authorName?: string;
+      /** Set by the tool layer, so an agent's contribution reads as one. */
+      authorKind?: 'human' | 'agent';
       target?: CommentTarget;
       versionId?: string;
       /** Reply into this thread instead of starting a new one. */

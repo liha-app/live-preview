@@ -139,7 +139,15 @@ export class LihaApi {
     return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments/${commentId}`);
   }
 
-  addComment(slug: string, input: { body: string; authorName?: string; parentId?: string }) {
+  addComment(
+    slug: string,
+    input: {
+      body: string;
+      authorName?: string;
+      parentId?: string;
+      authorKind?: 'human' | 'agent';
+    },
+  ) {
     return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments`, {
       method: 'POST',
       json: input,

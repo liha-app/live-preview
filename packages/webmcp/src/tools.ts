@@ -268,6 +268,7 @@ export function buildTools(host: LihaWebMcpHost): ToolDescriptor[] {
         const comment = await host.addComment({
           body: String(args.body ?? ''),
           authorName: (args.authorName as string | undefined) ?? 'AI agent',
+          authorKind: 'agent',
           ...(replyTo ? { parentId: replyTo } : {}),
           target: {
             annotation: point ? { type: 'pin', point } : null,

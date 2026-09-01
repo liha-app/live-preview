@@ -10,6 +10,12 @@ import type {
 export interface AddCommentInput {
   body: string;
   authorName?: string;
+  /**
+   * Always `'agent'` from here. Everything that reaches this interface is a
+   * tool call, and the point of the product is that an agent's contribution to
+   * a review reads as one rather than as another name in the list.
+   */
+  authorKind?: 'human' | 'agent';
   target?: CommentTarget;
   /** Reply to this comment instead of starting a new thread. */
   parentId?: string;

@@ -20,6 +20,8 @@
   --mark: #e5484d;
   --ok: #30a46c;
   --focus: #3b82f6;
+  /* Text, so it has to clear AA — --focus does not, at 3.5:1 on white. */
+  --agent: #1d63d2;
   --overlay: rgb(0 0 0 / 45%);
   --elevate: 0 4px 16px rgb(0 0 0 / 8%);
   --radius: 8px;
@@ -53,6 +55,7 @@
     --mark: #ff6369;
     --ok: #3dd68c;
     --focus: #5b9bf8;
+    --agent: #8ab4f8;
     --overlay: rgb(0 0 0 / 60%);
     --elevate: 0 4px 20px rgb(0 0 0 / 45%);
     color-scheme: dark;
@@ -72,6 +75,7 @@
   --mark: #ff6369;
   --ok: #3dd68c;
   --focus: #5b9bf8;
+  --agent: #8ab4f8;
   --overlay: rgb(0 0 0 / 60%);
   --elevate: 0 4px 20px rgb(0 0 0 / 45%);
   color-scheme: dark;
@@ -737,6 +741,22 @@ kbd {
   cursor: pointer;
   box-shadow: 0 0 0 2px var(--bg);
 }
+/*
+ * An agent's byline. A mark, not a badge: the review screen belongs to the
+ * artifact, and this only has to be noticeable enough that you never mistake an
+ * agent's reply for a colleague's.
+ */
+.comment__author[data-agent='true'] {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--agent);
+}
+
+.comment__author[data-agent='true'] svg {
+  flex: 0 0 auto;
+}
+
 .annotation-pin[data-status='resolved'] {
   background: var(--ok);
 }

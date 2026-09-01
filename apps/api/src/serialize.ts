@@ -112,6 +112,7 @@ export function toComment(
     replyCount: row.parent_id ? 0 : (replyCounts?.get(row.id) ?? 0),
     versionNumber: versionNumbers.get(row.version_id) ?? null,
     authorName: row.author_name,
+    authorKind: row.author_kind === 'agent' ? 'agent' : 'human',
     body: row.body,
     target,
     targetDescription: describeTarget(target),

@@ -349,6 +349,7 @@ export async function createMcpServer(options: McpServerOptions = {}): Promise<M
         const { comment } = await target.api.addComment(target.slug, {
           body,
           authorName: author_name ?? 'AI agent',
+          authorKind: 'agent',
           parentId: comment_id,
         });
         return jsonResult({

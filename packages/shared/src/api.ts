@@ -5,6 +5,9 @@ import { LIMITS } from './limits.js';
 export const ARTIFACT_KINDS = ['image', 'html', 'pdf', 'url'] as const;
 export const ArtifactKindSchema = z.enum(ARTIFACT_KINDS);
 
+export const CommentAuthorKindSchema = z.enum(['human', 'agent']);
+export type CommentAuthorKind = z.infer<typeof CommentAuthorKindSchema>;
+
 export const CommentStatusSchema = z.enum(['open', 'resolved']);
 export type CommentStatus = z.infer<typeof CommentStatusSchema>;
 
@@ -74,6 +77,8 @@ export const CommentSchema = z.object({
   replyCount: z.number().int().min(0),
   versionNumber: z.number().int().nullable(),
   authorName: z.string(),
+  /** Whether a person wrote this or an agent did, as declared by the caller. */
+  authorKind: CommentAuthorKindSchema,
   body: z.string(),
   target: CommentTargetSchema,
   targetDescription: z.string(),
@@ -97,6 +102,12 @@ export type CreatePreviewResult = z.infer<typeof CreatePreviewResultSchema>;
 export const CreateCommentInputSchema = z.object({
   body: z.string().trim().min(1).max(LIMITS.maxCommentBodyLength),
   authorName: z.string().trim().min(1).max(LIMITS.maxAuthorNameLength).default('Anonymous'),
+  /**
+   * Set by the tool layers — WebMCP and the MCP server — so an agent's
+   * contribution reads as one. A label the caller supplies, like the name
+   * beside it, and shown on that footing.
+   */
+  authorKind: CommentAuthorKindSchema.default('human'),
   target: CommentTargetSchema.optional(),
   versionId: z.string().optional(),
   /** Reply to this comment instead of starting a new thread. */

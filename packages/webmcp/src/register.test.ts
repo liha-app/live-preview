@@ -35,6 +35,7 @@ const OPEN_COMMENT: Comment = {
   replyCount: 1,
   versionNumber: 2,
   authorName: 'Reviewer',
+  authorKind: 'human' as const,
   body: 'Make this button smaller.',
   target: {
     annotation: { type: 'pin', point: { x: 0.5, y: 0.25 } },
@@ -59,6 +60,7 @@ const REPLY: Comment = {
   parentId: 'cm_open',
   replyCount: 0,
   authorName: 'Alex',
+  authorKind: 'human' as const,
   body: 'Agreed — 14px would do.',
   target: {},
   targetDescription: 'whole artifact',
@@ -548,6 +550,8 @@ describe('write tools', () => {
     expect(host.addComment).toHaveBeenCalledWith({
       body: 'The hero button overflows at 390px.',
       authorName: 'AI agent',
+      // Everything reaching this interface is a tool call, so it says so.
+      authorKind: 'agent',
       target: {
         annotation: { type: 'pin', point: { x: 0.5, y: 0.2 } },
         page: null,

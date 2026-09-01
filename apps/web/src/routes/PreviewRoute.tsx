@@ -332,6 +332,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
         const { comment } = await api.addComment(slug, {
           body: input.body,
           authorName: input.authorName ?? 'AI agent',
+          authorKind: input.authorKind ?? 'agent',
           target: input.target,
           // A reply joins an existing thread; the API derives its version from
           // the parent, so versionId is only meaningful for a new thread.

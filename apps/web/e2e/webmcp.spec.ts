@@ -148,6 +148,16 @@ test.describe('WebMCP, driven end to end', () => {
     await expect(newest).toContainText('Reduced the padding to 16px');
     await expect(newest).toContainText('AI agent');
     await expect(threadEl.locator('.reply')).toHaveCount(2);
+
+    /*
+     * And it is marked as an agent's, not merely signed with a different name.
+     * The claim is that an agent joined the review; without a mark, that looks
+     * on screen like a colleague with an unusual name.
+     */
+    await expect(newest.locator('.comment__author[data-agent="true"]')).toBeVisible();
+    await expect(
+      threadEl.locator('.reply').first().locator('.comment__author[data-agent="true"]'),
+    ).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Open 2' })).toBeVisible();
 
     // And it can close the thread out.

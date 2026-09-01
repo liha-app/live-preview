@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Check, CornerDownRight, MessageSquare, RotateCcw } from 'lucide-react';
+import { Check, CornerDownRight, MessageSquare, RotateCcw, Sparkles } from 'lucide-react';
 import type { Comment } from '@liha/shared';
 import { CommentComposer } from './CommentComposer.js';
-import { formatRelativeTime, useI18n } from '../i18n/index.js';
+import { formatRelativeTime, useI18n, useT } from '../i18n/index.js';
 
 interface Props {
   root: Comment;
@@ -23,6 +23,29 @@ interface Props {
   onSubmitReply(input: { body: string; authorName: string }): void;
   onResolve(): void;
   onReopen(): void;
+}
+
+/**
+ * Who wrote this.
+ *
+ * An agent's contribution is marked, because the whole claim of the product is
+ * that an agent joined the review rather than read a transcript of it — and
+ * without a mark that claim looks, on screen, like a differently-spelled name.
+ * The mark is quiet: this is still a review screen, and the artifact is what
+ * should hold the eye.
+ */
+function Byline({ comment }: { comment: Comment }) {
+  const t = useT();
+  if (comment.authorKind !== 'agent') {
+    return <span className="comment__author">{comment.authorName}</span>;
+  }
+  return (
+    <span className="comment__author" data-agent="true">
+      <Sparkles size={11} strokeWidth={2} aria-hidden="true" />
+      {comment.authorName}
+      <span className="visually-hidden"> — {t('comments.byAgent')}</span>
+    </span>
+  );
 }
 
 export function CommentThread({
@@ -82,7 +105,7 @@ export function CommentThread({
           <span className="comment__num" aria-hidden="true">
             {index}
           </span>
-          <span className="comment__author">{root.authorName}</span>
+          <Byline comment={root} />
           <span className="spacer" />
           <time
             className="faint"
@@ -129,7 +152,7 @@ export function CommentThread({
                   className="faint"
                   aria-hidden="true"
                 />
-                <span className="comment__author">{reply.authorName}</span>
+                <Byline comment={reply} />
                 <span className="spacer" />
                 <time
                   className="faint"

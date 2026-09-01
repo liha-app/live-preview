@@ -375,6 +375,7 @@ export function createApp() {
         version_id: versionId,
         parent_id: parentId,
         author_name: seed.authorName,
+        author_kind: 'human',
         body: seed.body,
         target: serializeTarget(
           parentId ? undefined : CommentTargetSchema.parse(seed.target ?? {}),
@@ -708,6 +709,7 @@ export function createApp() {
       version_id: versionId,
       parent_id: parentId,
       author_name: input.authorName,
+      author_kind: input.authorKind,
       body: input.body,
       target: serializeTarget(target),
       status: 'open',
