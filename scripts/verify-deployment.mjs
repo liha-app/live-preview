@@ -260,7 +260,7 @@ await check('the share URL is somewhere a reviewer can be sent', async () => {
    * cross-origin from here.
    */
   if (contentUrl) {
-    const artifact = await fetchContent(new URL(contentUrl), { origin });
+    const artifact = await fetchContent(new URL(contentUrl), { headers: { origin } });
     assert(
       artifact.headers.get('access-control-allow-origin') === origin,
       `the artifact does not allow ${origin} to read it, so PDF previews stay blank and ` +
