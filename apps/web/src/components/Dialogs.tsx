@@ -27,9 +27,23 @@ export function Modal({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   /*
+   * Held in a ref so the effect below can depend on nothing.
+   *
+   * `onClose` is usually written inline at the call site, which makes it a new
+   * function on every render. With it in the dependency list the whole trap
+   * tore down and set itself up again on every keystroke — including the line
+   * that moves focus to the first field — so typing a password sent the caret
+   * back to the title after the first character.
+   */
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  /*
    * A modal has to own the keyboard while it is open: focus moves inside on
    * open, Tab cycles within it, and focus returns to whatever opened it on
    * close. Without this a keyboard user tabs straight out into the page behind.
+   *
+   * Mount and unmount only. Everything it does is a one-time arrangement.
    */
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
@@ -39,7 +53,7 @@ export function Modal({
     const handler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !dialog) return;
@@ -65,7 +79,7 @@ export function Modal({
       window.removeEventListener('keydown', handler, true);
       previouslyFocused?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="scrim" onClick={onClose} role="presentation">
