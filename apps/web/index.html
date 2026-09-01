@@ -10,12 +10,20 @@
       content="Share build artifacts for review, and let AI agents close the feedback loop."
     />
     <!--
-      Chrome WebMCP origin trial. Register the deployed app origin at
-      https://developer.chrome.com/origintrials and paste the token here, so the
-      site publishes its tools in stock Chrome without chrome://flags. Harmless
-      when absent or expired; ChatGPT's in-app browser does not need it.
+      Chrome WebMCP origin trial, so the site publishes its tools in stock
+      Chrome without chrome://flags. Issued for https://livepreview.liha.dev,
+      valid to 2026-11-17, Chrome 149-156. Origin trial tokens are public by
+      design and only work on the origin they name.
+
+      Deploying this repo somewhere else? Register your own origin at
+      https://developer.chrome.com/origintrials and replace the token. A wrong
+      or expired one is ignored, and the app falls back to reporting WebMCP as
+      unavailable in the Agent tools panel.
     -->
-    <!-- <meta http-equiv="origin-trial" content="REPLACE_WITH_ORIGIN_TRIAL_TOKEN" /> -->
+    <meta
+      http-equiv="origin-trial"
+      content="Ao9TYcPWsKjwJyIH3H6hhgC/TO3endPfrZRu1/PilTymNIpO23H6mWkG08QCfl9IclUOxUqhH7LJcMCTEuboWgAAAABUeyJvcmlnaW4iOiJodHRwczovL2xpdmVwcmV2aWV3LmxpaGEuZGV2OjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE3OTQ4NzM2MDB9"
+    />
     <title>Liha Live Preview</title>
   </head>
   <body>
