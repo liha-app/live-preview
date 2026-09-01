@@ -227,7 +227,21 @@ await check('the share URL is somewhere a reviewer can be sent', async () => {
     new URL(share).origin !== new URL(contentUrl ?? 'https://x.invalid').origin,
     'the review screen and the artifact share an origin, so uploaded HTML can read the owner token',
   );
-  return `${share} serves the app for ${slug}`;
+
+  /*
+   * And it has to be allowed to talk to the API. A review screen is its own
+   * origin, so it is not the app origin CORS was configured for — miss this and
+   * the page loads perfectly and then says it cannot reach the server.
+   */
+  const origin = new URL(share).origin;
+  const cors = await fetch(`${API}/api/health`, { headers: { origin } });
+  assert(
+    cors.headers.get('access-control-allow-origin') === origin,
+    `the API does not allow ${origin}, so the review screen will load and then fail every call. ` +
+      `It answered "${cors.headers.get('access-control-allow-origin')}".`,
+  );
+
+  return `${share} serves the app for ${slug}, and may call the API`;
 });
 
 // -------------------------------------------------------- content isolation

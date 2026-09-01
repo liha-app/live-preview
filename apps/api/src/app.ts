@@ -79,8 +79,21 @@ type App = { Bindings: Env; Variables: Variables };
 const NO_STORE = { 'cache-control': 'no-store' } as const;
 
 function corsHeaders(origin: string | null, config: ResolvedConfig): Record<string, string> {
+  /*
+   * Review screens are their own origins, one per preview, so they cannot be
+   * listed — they are recognised by the same template that builds them. Only a
+   * host this deployment would itself have produced is allowed; a lookalike on
+   * a domain shared with other services is not.
+   */
+  const isReviewScreen =
+    origin !== null &&
+    matchReviewHost(config.reviewOriginTemplate, new URL(origin).hostname) !== null;
+
   const allowed =
-    origin && (config.allowedOrigins.includes(origin) || config.allowedOrigins.includes('*'));
+    origin &&
+    (config.allowedOrigins.includes(origin) ||
+      config.allowedOrigins.includes('*') ||
+      isReviewScreen);
   return {
     // Non-browser clients (CLI, MCP server) send no Origin and are unaffected.
     'access-control-allow-origin': allowed ? origin : config.appOrigin,

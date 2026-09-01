@@ -119,6 +119,36 @@ describe('a preview on its own hostname', () => {
     expect(await response.text()).toContain('Hi');
   });
 
+  /*
+   * The review screen is its own origin, so without this the browser refuses
+   * every call the app makes and the screen renders "cannot reach the server"
+   * on a hostname that loaded perfectly.
+   */
+  it('is allowed to call the API from its own origin', async () => {
+    const { server } = serverWithAssets();
+    const created = await createPreview(server);
+    const origin = `https://lp-${created.preview.slug}.liha.review`;
+
+    const response = await server.fetch(`/api/previews/${created.preview.slug}`, {
+      headers: { origin },
+    });
+    expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+  });
+
+  it('does not hand CORS to a lookalike on the shared domain', async () => {
+    const { server } = serverWithAssets();
+    await createPreview(server);
+
+    for (const origin of [
+      'https://cms-abc123.liha.review',
+      'https://lp-abc.example.com',
+      'https://lp-abc--1.liha.review',
+    ]) {
+      const response = await server.fetch('/api/health', { headers: { origin } });
+      expect(response.headers.get('access-control-allow-origin'), origin).not.toBe(origin);
+    }
+  });
+
   it('leaves the old path-based link working', async () => {
     const { server } = serverWithAssets();
     const created = await createPreview(server);
