@@ -109,6 +109,10 @@ export class CloudflareApi {
     return this.request('GET', '/accounts?per_page=50');
   }
 
+  zones() {
+    return this.request('GET', '/zones?per_page=50');
+  }
+
   async zone(name) {
     const zones = await this.request('GET', `/zones?name=${encodeURIComponent(name)}`);
     return zones[0] ?? null;

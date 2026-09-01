@@ -258,9 +258,20 @@ async function resolveZones({ api }, config) {
   ]) {
     const zone = await findZone(api, hostname);
     if (!zone) {
+      // Listing what the account does have turns "wrong domain" from a guessing
+      // game into a choice.
+      const available = await api.zones().catch(() => []);
       fail(
         `No zone on this Cloudflare account covers ${hostname}.`,
-        'Add the domain to Cloudflare and point its nameservers there first.\n' +
+        (available.length
+          ? `This account has:\n${available
+              .map(
+                (entry) =>
+                  `  ${entry.name}${entry.status === 'active' ? '' : ` (${entry.status})`}`,
+              )
+              .join('\n')}\n\n`
+          : '') +
+          'Add the domain to Cloudflare and point its nameservers there first.\n' +
           'That part cannot be scripted — it happens at your registrar.',
       );
     }
