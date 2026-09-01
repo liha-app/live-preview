@@ -162,6 +162,42 @@ test.describe('the review loop in a real browser', () => {
   });
 
   /*
+   * "Did it get fixed?" is the question a reviewer actually has, and the answer
+   * is one glance away — but only while getting there is one action. Through
+   * the version dropdown it is three, which is enough not to bother.
+   */
+  test('flips between this version and the one before it in a click', async ({ page }) => {
+    const created = await createPreview(SITE);
+
+    const form = new FormData();
+    form.append('files', new File([SITE['index.html'].replace('Get started now', 'Start')], 'f'));
+    form.append('files', new File(['.cta{padding:8px 14px;font-size:14px}'], 'f'));
+    form.append('paths', JSON.stringify(['index.html', 'assets/app.css']));
+    await fetch(`${API}/api/previews/${created.preview.slug}/versions`, {
+      method: 'POST',
+      headers: { 'x-liha-owner-token': created.ownerToken },
+      body: form,
+    });
+
+    await openAsOwner(page, created);
+    const content = page.frameLocator('iframe[title="Preview content"]');
+    await expect(content.locator('button.cta')).toHaveText('Start');
+
+    // The button says where it takes you, so you know before you press it.
+    const back = page.getByRole('button', { name: 'v1', exact: true });
+    await expect(back).toBeVisible();
+    await back.click();
+
+    await expect(content.locator('button.cta')).toHaveText('Get started now');
+
+    // And back again, without hunting for the current one in a list.
+    const forward = page.getByRole('button', { name: 'v2', exact: true });
+    await expect(forward).toBeVisible();
+    await forward.click();
+    await expect(content.locator('button.cta')).toHaveText('Start');
+  });
+
+  /*
    * Two marks in the same red, one a pixel thicker, are hard to tell apart at a
    * glance. Selecting one should make the difference obvious without being
    * looked for — and with nothing selected every mark is equally the subject,

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Lock, Settings2, Share2, Sparkles, Upload } from 'lucide-react';
+import { ArrowLeftRight, Lock, Settings2, Share2, Sparkles, Upload } from 'lucide-react';
 import type { Preview, Version } from '@liha/shared';
 import { useT } from '../i18n/index.js';
 
@@ -10,6 +10,8 @@ interface Props {
   activeVersionId: string | null;
   isOwner: boolean;
   agentActive: boolean;
+  /** The version the compare button flips to, if there is one to flip to. */
+  compareWith: Version | null;
   onVersionChange(versionId: string): void;
   onShare(): void;
   onUpload(): void;
@@ -24,6 +26,7 @@ export function TopBar({
   activeVersionId,
   isOwner,
   agentActive,
+  compareWith,
   onVersionChange,
   onShare,
   onUpload,
@@ -61,6 +64,22 @@ export function TopBar({
       <span className="spacer" />
 
       {children}
+
+      {compareWith && (
+        /*
+         * The question a reviewer actually has is "did it get fixed?", and the
+         * answer is one glance away — but only if getting there is one action.
+         * Through the dropdown it is three, which is enough to not bother.
+         */
+        <button
+          type="button"
+          className="btn"
+          onClick={() => onVersionChange(compareWith.id)}
+          title={t('topbar.compareWith', { version: `v${compareWith.number}` })}
+        >
+          <ArrowLeftRight size={14} strokeWidth={1.75} aria-hidden="true" />v{compareWith.number}
+        </button>
+      )}
 
       <select
         className="select"

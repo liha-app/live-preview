@@ -128,6 +128,17 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const activeVersionId = pinnedVersionId ?? preview?.currentVersionId ?? null;
   const activeVersion = versions.find((version) => version.id === activeVersionId) ?? null;
 
+  /*
+   * What the compare button flips to: the version before this one, or — when
+   * you are already looking at the oldest — the one after, so the button is
+   * never a dead end wherever you have got to.
+   */
+  const compareWith = useMemo(() => {
+    if (versions.length < 2 || !activeVersion) return null;
+    const older = versions.find((version) => version.number === activeVersion.number - 1);
+    return older ?? versions.find((version) => version.number === activeVersion.number + 1) ?? null;
+  }, [versions, activeVersion]);
+
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['preview', slug] });
     void queryClient.invalidateQueries({ queryKey: ['versions', slug] });
@@ -547,6 +558,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
         activeVersionId={activeVersionId}
         isOwner={isOwner}
         agentActive={registration?.available ?? false}
+        compareWith={compareWith}
         onAgentPanel={() => setDialog('agent')}
         onVersionChange={setPinnedVersionId}
         onShare={() => setDialog('share')}

@@ -31,6 +31,7 @@ export const en = {
 
   'topbar.version': 'Version',
   'topbar.versionCurrent': 'current',
+  'topbar.compareWith': 'Compare with {version}',
   'topbar.share': 'Share',
   'topbar.update': 'Update',
   'topbar.ownerSettings': 'Owner settings',

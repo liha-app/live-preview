@@ -33,6 +33,7 @@ export const ja: Messages = {
 
   'topbar.version': 'バージョン',
   'topbar.versionCurrent': '公開中',
+  'topbar.compareWith': '{version} と見比べる',
   'topbar.share': '共有',
   'topbar.update': '更新',
   'topbar.ownerSettings': 'オーナー設定',
