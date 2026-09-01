@@ -20,9 +20,13 @@ export function buildHeaders({ apiOrigin, contentDomain }) {
     // Google Fonts serves the handwriting faces the interface is drawn in. Two
     // hostnames, both Google's own, on an otherwise self-only policy.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob: https://*.${contentDomain}`,
     "font-src 'self' data: https://fonts.gstatic.com",
-    `connect-src 'self' ${apiOrigin}`,
+    // The app reaches the content origin three ways, and each needs saying:
+    // pdf.js fetches the PDF and read_artifact_file fetches source (connect),
+    // an image preview is an <img> (img), an HTML preview is an iframe (frame).
+    // Miss one and that artifact type is silently blank.
+    `connect-src 'self' ${apiOrigin} https://*.${contentDomain}`,
     `frame-src https://*.${contentDomain}`,
     "worker-src 'self' blob:",
     "object-src 'none'",

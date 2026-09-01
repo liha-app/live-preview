@@ -964,6 +964,10 @@
   background: color-mix(in srgb, var(--paper-fill) 80%, var(--paper-card));
   border-radius: 4px;
   padding: 6px 8px;
+  /* The host comes from the deployment, and some are long. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ob-arrow {

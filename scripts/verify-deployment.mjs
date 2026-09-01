@@ -237,21 +237,34 @@ if (APP) {
     }
 
     const directives = parseCsp(header);
-    const connect = directives['connect-src'] ?? directives['default-src'] ?? [];
-    assert(
-      cspAllows(connect, API),
-      `connect-src does not permit ${API}, so the app cannot call its own API. It reads ` +
-        `"${connect.join(' ') || '(empty)'}" — edit connect-src in apps/web/public/_headers.`,
-    );
+    const of = (name) => directives[name] ?? directives['default-src'] ?? [];
 
-    const frame = directives['frame-src'] ?? directives['default-src'] ?? [];
-    assert(
-      cspAllows(frame, contentOrigin),
-      `frame-src does not permit ${contentOrigin}, so no preview will render. It reads ` +
-        `"${frame.join(' ') || '(empty)'}" — edit frame-src in apps/web/public/_headers.`,
-    );
+    /*
+     * Every way the app reaches something, and what breaks when a directive
+     * forgets it. Each artifact type takes a different route to the same
+     * origin, so a policy can be right for one and blank for another — an
+     * image preview showed its filename and nothing else for exactly this
+     * reason, while HTML previews were fine.
+     */
+    for (const [directive, origin, consequence] of [
+      ['connect-src', API, 'the app cannot call its own API'],
+      [
+        'connect-src',
+        contentOrigin,
+        'PDF previews stay blank and agents cannot read artifact source',
+      ],
+      ['img-src', contentOrigin, 'image previews render as nothing'],
+      ['frame-src', contentOrigin, 'HTML previews render as nothing'],
+    ]) {
+      const sources = of(directive);
+      assert(
+        cspAllows(sources, origin),
+        `${directive} does not permit ${origin}, so ${consequence}. It reads ` +
+          `"${sources.join(' ') || '(empty)'}" — edit ${directive} in apps/web/public/_headers.`,
+      );
+    }
 
-    return 'connect-src reaches the API, frame-src reaches the content host';
+    return 'connect-src, img-src and frame-src all reach what the app loads';
   });
 }
 

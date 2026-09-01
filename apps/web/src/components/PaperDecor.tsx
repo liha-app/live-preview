@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { sampleShareUrl } from '../lib/sampleUrl.js';
 import { useT } from '../i18n/index.js';
 
 /**
@@ -204,7 +205,7 @@ export function PaperDecor({ targetRef }: { targetRef: React.RefObject<HTMLEleme
           >
             {t('decor.password')}
           </div>
-          <div className="decor-path">liha.dev/p/8fa2c1</div>
+          <div className="decor-path">{sampleShareUrl()}</div>
           <div className="decor-pencil" />
         </>
       )}

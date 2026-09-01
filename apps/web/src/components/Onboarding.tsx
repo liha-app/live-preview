@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Dialogs.js';
+import { sampleShareUrl } from '../lib/sampleUrl.js';
 import { useT, type Translate } from '../i18n/index.js';
 
 /**
@@ -53,7 +54,7 @@ function StepOne({ t }: { t: Translate }) {
           <i />
           <i />
         </div>
-        <div className="ob-url">liha.dev/p/8fa2c1</div>
+        <div className="ob-url">{sampleShareUrl()}</div>
       </div>
     </div>
   );
