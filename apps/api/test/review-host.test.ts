@@ -21,6 +21,7 @@ function serverWithAssets(overrides: Record<string, unknown> = {}) {
     REVIEW_ORIGIN_TEMPLATE: REVIEW,
     CONTENT_ORIGIN_TEMPLATE: CONTENT,
     APP_ORIGIN: 'https://livepreview.liha.dev',
+    API_ORIGIN: 'https://api-livepreview.liha.dev',
     ASSETS: {
       fetch: (request: Request) => {
         const path = new URL(request.url).pathname;
@@ -92,7 +93,9 @@ describe('a preview on its own hostname', () => {
     expect(csp).toContain('frame-src https://*.liha.review');
     expect(csp).toContain('img-src ');
     expect(csp).toMatch(/img-src[^;]*https:\/\/\*\.liha\.review/);
-    expect(csp).toMatch(/connect-src[^;]*https:\/\/livepreview\.liha\.dev/);
+    // The API, not the landing page. Naming the wrong one loads the screen and
+    // then fails every call it makes.
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/api-livepreview\.liha\.dev/);
     expect(csp).toMatch(/connect-src[^;]*https:\/\/\*\.liha\.review/);
     expect(response.headers.get('x-frame-options')).toBe('DENY');
   });

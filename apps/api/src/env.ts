@@ -8,6 +8,12 @@ export interface Env {
   /** Origin of the web app, used to build share URLs. */
   APP_ORIGIN?: string;
   /**
+   * Where this API answers, when that is not where the app is served from.
+   * The review screen has to name it in its own Content-Security-Policy, and
+   * it cannot infer it from a hostname that belongs to a preview.
+   */
+  API_ORIGIN?: string;
+  /**
    * Where preview content is served from. `{label}` is replaced with
    * `<slug>--<versionNumber>`, giving every preview version its own origin so
    * uploaded HTML is isolated from the app by the browser's same-origin policy.
@@ -46,6 +52,7 @@ export interface Env {
 
 export interface ResolvedConfig {
   appOrigin: string;
+  apiOrigin: string;
   contentOriginTemplate: string | null;
   reviewOriginTemplate: string | null;
   contentSigningKey: string;
@@ -74,6 +81,9 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
 
   return {
     appOrigin,
+    // Same origin as the app unless said otherwise, which is the shape of a
+    // deployment that serves both from one place.
+    apiOrigin: env.API_ORIGIN?.replace(/\/$/, '') ?? appOrigin,
     contentOriginTemplate: env.CONTENT_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     reviewOriginTemplate: env.REVIEW_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     contentSigningKey: env.CONTENT_SIGNING_KEY ?? DEV_SIGNING_KEY,

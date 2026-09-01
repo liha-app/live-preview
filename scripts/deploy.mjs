@@ -363,6 +363,7 @@ function writeGeneratedConfig(config, databaseId) {
     '',
     '[vars]',
     `APP_ORIGIN = "https://${config.appHost}"`,
+    `API_ORIGIN = "https://${config.apiHost}"`,
     `CONTENT_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{label}.${config.contentDomain}"`,
     `REVIEW_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{slug}.${config.contentDomain}"`,
     'MAX_VERSION_BYTES = "31457280"',

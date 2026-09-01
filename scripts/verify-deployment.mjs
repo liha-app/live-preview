@@ -233,6 +233,19 @@ await check('the share URL is somewhere a reviewer can be sent', async () => {
    * origin, so it is not the app origin CORS was configured for — miss this and
    * the page loads perfectly and then says it cannot reach the server.
    */
+  /*
+   * Its own policy has to name the API too. CORS and CSP both have to allow the
+   * same call, and getting one right while the other is wrong looks identical
+   * from the outside: a page that loads and then cannot reach the server.
+   */
+  const ownPolicy = parseCsp(response.headers.get('content-security-policy') ?? '');
+  const ownConnect = ownPolicy['connect-src'] ?? ownPolicy['default-src'] ?? [];
+  assert(
+    cspAllows(ownConnect, API),
+    `${share} sends a policy whose connect-src does not permit ${API}, so it will load and then ` +
+      `fail every call. It reads "${ownConnect.join(' ') || '(empty)'}".`,
+  );
+
   const origin = new URL(share).origin;
   const cors = await fetch(`${API}/api/health`, { headers: { origin } });
   assert(
