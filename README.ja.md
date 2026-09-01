@@ -165,39 +165,27 @@ pnpm db:migrate  # ローカルD1にマイグレーション適用
 
 ## Cloudflare へのデプロイ
 
-ワイルドカードのコンテンツオリジンや WebMCP オリジントライアルを含む詳細な手順は
-**[docs/deployment.md](docs/deployment.md)** にあります。
+```bash
+pnpm run deploy
+```
 
-デプロイ後は外側から検証できます。
+コマンド1つです。ホスト名と Cloudflare の認証情報を聞いたうえで、D1 と R2 の作成、マイグレーション、Worker のデプロイ、DNS レコードの追加、自分のホストを書いた Content-Security-Policy 付きでの Web アプリのビルドと Pages へのデプロイ、証明書の発行待ち、そして外側からの検証までを行います。再実行しても安全です。
+
+```bash
+pnpm run deploy --dry-run   # 何もせずに実行計画だけ表示
+```
+
+必要なのは Cloudflare アカウントと、**そこに登録済みのドメイン2本**です。1本はアプリとAPI用、もう1本は**プレビュー配信専用**にしてください。同じ親ドメインを共有していると、アップロードされたHTMLが親ドメイン向けのCookieを設定でき、ブラウザがそれをアプリに送ってしまいます。登録ドメインごと分ければこれを塞げます。証明書の面でも有利で、Universal SSL はサブドメイン1階層までなので `*.example.net` は無料ですが `*.preview.example.net` はカバーされません。スクリプトは危険な構成を拒否します。
+
+手動での手順、WebMCP オリジントライアル、検証内容は **[docs/deployment.md](docs/deployment.md)** にあります。
 
 ```bash
 pnpm verify:deployment --api https://api.example.com --app https://liha.example.com
 ```
 
-```bash
-# 1. リソース作成
-npx wrangler d1 create liha-live-preview
-npx wrangler r2 bucket create liha-live-preview
+稼働中のインスタンスに対する15項目のチェックです。デプロイの最後に自動で実行されますが、単体でも使えます。
 
-# 2. database_id を apps/api/wrangler.toml に書いてマイグレーション
-pnpm --filter @liha/api db:migrate:remote
-
-# 3. 署名鍵を設定
-openssl rand -base64 32 | npx wrangler secret put CONTENT_SIGNING_KEY
-
-# 4. オリジンを設定（apps/api/wrangler.toml）
-#    APP_ORIGIN              = "https://liha.example.com"
-#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
-
-# 5. デプロイ
-pnpm --filter @liha/api deploy
-```
-
-`CONTENT_ORIGIN_TEMPLATE` には、Workerにルーティングした**プロキシ済みワイルドカードDNSレコード**が必要です。ドメインはアプリとは**別のドメイン**にしてください。サブドメインを分けるだけでは不十分で、アップロードされたHTMLが親ドメイン向けのCookieを設定できてしまいます。登録ドメインごと分ければこれを塞げます。
-
-証明書の面でも別ドメインが有利です。Cloudflare の Universal SSL はサブドメイン1階層までしか対象にしないため、`*.example.net` は無料でカバーされますが、`*.preview.example.net` はカバーされません（[Advanced Certificate Manager](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/) が別途必要）。
-
-Webアプリは静的バンドル（`pnpm --filter @liha/web build` → `apps/web/dist`）で、Cloudflare Pages にデプロイします。ビルド時に `VITE_API_URL` を設定してください。あわせて [`apps/web/public/_headers`](apps/web/public/_headers) の `connect-src` と `frame-src` を自分のホストに書き換えてください。プレースホルダのままだと CSP がAPI通信をすべてブロックします。
+設定リファレンス:
 
 | 変数                      | 用途                                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |

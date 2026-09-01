@@ -13,10 +13,11 @@ Liha runs entirely on Cloudflare. Nothing else is hosted:
 The CLI and the MCP server are not hosted at all — they run on the developer's
 own machine, and talk to your API over HTTPS.
 
-You need a Cloudflare account and **two domains**. The one part that is easy to
-get wrong is the wildcard content origin — read step 1 before starting.
+## Before you start
 
-## 1. Pick your hostnames
+You need a Cloudflare account and **two domains**, both already added to it with
+their nameservers pointed at Cloudflare. That part happens at your registrar and
+cannot be scripted; everything after it can.
 
 |                 | Example                | Notes                                                     |
 | --------------- | ---------------------- | --------------------------------------------------------- |
@@ -38,17 +39,68 @@ handshake until you add [Advanced Certificate
 Manager](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/)
 (paid). Proxied wildcard DNS records themselves are available on every plan.
 
-So, on the content zone, create one proxied wildcard record:
+The deploy script refuses the first arrangement and warns about the second, so
+you do not have to hold this in your head.
 
+## The short way
+
+```bash
+pnpm run deploy
 ```
-Type  Name  Content        Proxy
-A     *     192.0.2.1      Proxied
+
+It asks for the three hostnames and for a Cloudflare credential, then does the
+rest: creates the D1 database and the R2 bucket, writes a generated Wrangler
+config, applies the migrations, deploys the Worker, adds the wildcard DNS
+record, builds the web app with a Content-Security-Policy naming your own hosts,
+deploys it to Pages, attaches the custom domain, waits for the certificate, and
+finishes by running the fifteen outside-in checks described under
+[Checking it](#checking-it).
+
+See the whole plan without touching anything:
+
+```bash
+pnpm run deploy --dry-run
 ```
 
-The address is never used — the Worker route below answers first — but the
-record has to exist for the hostname to resolve and be proxied.
+Re-running is safe. Every step looks before it creates, and an existing
+`CONTENT_SIGNING_KEY` is left alone rather than rotated — rotating it would
+invalidate every outstanding content grant. Your answers are remembered in
+`.liha/deploy.json` (git-ignored); `--reconfigure` asks again.
 
-## 2. Create the resources
+> `pnpm deploy` without `run` is pnpm's own built-in command, not this script.
+
+### Credentials
+
+You have two options, and the script offers both:
+
+- **An API token** (paste it at the prompt, or set `CLOUDFLARE_API_TOKEN`). This
+  is the complete path: the script can also create DNS records and attach the
+  Pages domain. Create one at
+  [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens)
+  with **Account**: Workers Scripts:Edit, Workers R2 Storage:Edit, D1:Edit,
+  Cloudflare Pages:Edit; and **Zone**: Zone:Read, DNS:Edit, Workers Routes:Edit
+  on both zones.
+- **`wrangler login`** (press Enter to skip the token). Everything still
+  deploys, but wrangler's OAuth scopes do not include DNS, so the script prints
+  the one or two records for you to add.
+
+The token is used for that one run. It is never written to disk, never stored in
+the saved configuration, and never passed as a command-line argument — it
+reaches wrangler through the environment.
+
+### What it will not do
+
+- Register domains, or move nameservers to Cloudflare.
+- Buy Advanced Certificate Manager.
+- Register the Chrome origin trial (see
+  [WebMCP in a real agent browser](#webmcp-in-a-real-agent-browser)).
+
+## Doing it by hand
+
+The script is a convenience, not a dependency. The same deployment, step by
+step:
+
+### Create the resources
 
 ```bash
 wrangler login
@@ -59,7 +111,7 @@ wrangler r2 bucket create liha-live-preview
 
 Copy the printed `database_id` into `apps/api/wrangler.toml`.
 
-## 3. Point the Worker at your origins
+### Point the Worker at your origins
 
 In `apps/api/wrangler.toml`:
 
@@ -75,31 +127,39 @@ host. Note the two different zones:
 
 ```toml
 routes = [
-  { pattern = "api.liha.example.com/*", zone_name = "example.com" },
+  { pattern = "api.liha.example.com", custom_domain = true },
   { pattern = "*.example.net/*", zone_name = "example.net" },
 ]
 ```
 
+`custom_domain` makes wrangler provision that hostname's DNS record and
+certificate itself. The wildcard cannot be a custom domain, so it needs one
+proxied record of its own on the content zone:
+
+```
+Type  Name  Content      Proxy
+A     *     192.0.2.1    Proxied
+```
+
+The address is never reached — the Worker route answers at the edge — but the
+record has to exist for the hostname to resolve and be proxied.
+
 The committed `wrangler.toml` holds the _local_ values (`http://localhost:5173`
 and `*.localhost`). Deploying without editing this section produces a Worker
-that mints share URLs pointing at your laptop, so change it before step 4.
+that mints share URLs pointing at your laptop.
 
-## 4. Migrate and deploy
+### Migrate and deploy
 
 ```bash
 openssl rand -base64 32 | wrangler secret put CONTENT_SIGNING_KEY
 
 pnpm --filter @liha/api db:migrate:remote
 pnpm --filter @liha/api deploy
-```
 
-Check it:
-
-```bash
 curl https://api.liha.example.com/api/health
 ```
 
-## 5. Deploy the web app
+### Deploy the web app
 
 ```bash
 VITE_API_URL=https://api.liha.example.com pnpm --filter @liha/web build
@@ -116,24 +176,26 @@ frame-src https://*.example.net
 ```
 
 Leave the placeholders in and the app loads but does nothing: every API call and
-every preview iframe is blocked by CSP. Step 6 checks for exactly this.
+every preview iframe is blocked by CSP. The verification below checks for
+exactly this. (`pnpm run deploy` generates this file from your answers, so a
+scripted deployment cannot ship the placeholders.)
 
-Pages serves `index.html` for unmatched paths, so share URLs like
-`/p/<slug>` survive a reload without any `_redirects` file.
+Pages serves `index.html` for unmatched paths, so share URLs like `/p/<slug>`
+survive a reload without any `_redirects` file.
 
-## 6. Smoke test the deployment
+## Checking it
 
 ```bash
 pnpm verify:deployment --api https://api.liha.example.com --app https://liha.example.com
 ```
 
 Fifteen checks against the live instance: CORS, that the app's own CSP permits
-its API and content hosts, that preview content really is
-on a separate origin, that the wildcard host resolves and serves the artifact
-with its sandbox headers, that root-absolute assets resolve, that path traversal
-is refused, and the whole comment/reply/resolve loop. It creates a sample
-preview and deletes it again, and exits non-zero on any failure, so it can gate
-a deploy.
+its API and content hosts, that preview content really is on a separate origin,
+that the wildcard host resolves and serves the artifact with its sandbox
+headers, that root-absolute assets resolve, that path traversal is refused, and
+the whole comment/reply/resolve loop. It creates a sample preview and deletes it
+again, and exits non-zero on any failure, so it can gate a deploy.
+`pnpm run deploy` finishes by running it for you.
 
 Then, by hand:
 
@@ -148,7 +210,7 @@ Open the printed share URL and confirm:
 - a comment saves and appears in the sidebar
 - `liha-preview comments --json` returns it
 
-## 7. Check the WebMCP tools in a real agent browser
+## WebMCP in a real agent browser
 
 Open the share URL in **ChatGPT's in-app browser** (Site tools require GPT-5.6
 Sol or Terra, and are unavailable in Enterprise and Edu workspaces) and ask:
@@ -172,7 +234,7 @@ token into the commented-out `<meta http-equiv="origin-trial">` in
 `apps/web/index.html`. Without it, users need
 `chrome://flags/#enable-webmcp-testing`.
 
-## 8. Confirm the sample path
+## The sample path
 
 The home page's **"Open a sample review"** button mints a real preview seeded
 with anchored feedback. It is the fastest way to confirm a fresh deployment is

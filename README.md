@@ -204,46 +204,37 @@ pnpm db:migrate  # apply D1 migrations locally
 
 ## Cloudflare setup
 
-Full runbook, including the wildcard content origin and the WebMCP origin
-trial: **[docs/deployment.md](docs/deployment.md)**.
+```bash
+pnpm run deploy
+```
 
-After deploying, check it from the outside:
+One command. It asks for your hostnames and a Cloudflare credential, then
+creates the D1 database and R2 bucket, applies the migrations, deploys the
+Worker, adds the DNS records, builds the web app with a Content-Security-Policy
+naming your own hosts, deploys it to Pages, waits for the certificate, and
+verifies the whole thing from the outside. Re-running it is safe.
+
+```bash
+pnpm run deploy --dry-run   # print the plan, touch nothing
+```
+
+You need a Cloudflare account and **two domains** on it: one for the app and
+API, and a **separate** one for preview content. Uploaded HTML on a sibling
+subdomain could still set a cookie for the shared parent domain and have the
+browser send it to your app; a separate registrable domain closes that. It also
+keeps the certificate free — Universal SSL covers one level of subdomain, so
+`*.example.net` is included but `*.preview.example.net` is not. The script
+refuses the unsafe arrangement rather than letting you discover it later.
+
+Doing it by hand, the WebMCP origin trial, and what the deployment is checked
+for: **[docs/deployment.md](docs/deployment.md)**.
 
 ```bash
 pnpm verify:deployment --api https://api.example.com --app https://liha.example.com
 ```
 
-```bash
-# 1. Create the resources
-npx wrangler d1 create liha-live-preview
-npx wrangler r2 bucket create liha-live-preview
-
-# 2. Put the D1 database_id into apps/api/wrangler.toml, then migrate
-pnpm --filter @liha/api db:migrate:remote
-
-# 3. Set the signing key used for short-lived content grants
-openssl rand -base64 32 | npx wrangler secret put CONTENT_SIGNING_KEY
-
-# 4. Point the worker at your origins (apps/api/wrangler.toml)
-#    APP_ORIGIN              = "https://liha.example.com"
-#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
-
-# 5. Deploy
-pnpm --filter @liha/api deploy
-```
-
-`CONTENT_ORIGIN_TEMPLATE` needs a proxied **wildcard DNS record** routed to the
-worker, on a **second domain** — not a subdomain of your app's. Uploaded HTML on
-a sibling host can still set a cookie for the shared parent domain; a separate
-registrable domain closes that. It also keeps the certificate free: Cloudflare's
-Universal SSL covers one level of subdomain, so `*.example.net` is included but
-`*.preview.example.net` is not.
-
-The web app is a static bundle (`pnpm --filter @liha/web build` →
-`apps/web/dist`) deployed to Cloudflare Pages with `VITE_API_URL` set to your API
-origin at build time. Edit `connect-src` and `frame-src` in
-[`apps/web/public/_headers`](apps/web/public/_headers) to name your hosts first,
-or CSP blocks every API call.
+Fifteen checks against a live instance, run for you at the end of a deploy and
+useful on its own whenever you want to confirm one is healthy.
 
 Configuration reference:
 

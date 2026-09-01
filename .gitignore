@@ -10,6 +10,11 @@ coverage/
 *.log
 .DS_Store
 .liha.json
+
+# Written by `pnpm run deploy`: your hostnames, and the Wrangler config built
+# from them. Both describe one person's deployment, not the project.
+.liha/
+apps/api/wrangler.generated.toml
 playwright-report/
 test-results/
 .vite/

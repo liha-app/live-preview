@@ -1,9 +1,11 @@
-# Security headers for the app origin, in Cloudflare Pages / Netlify format.
+# Security headers for the app origin, in Cloudflare Pages `_headers` format.
 # Preview content is served by the Worker from a *different* origin and carries
 # its own, far stricter, sandbox headers — see apps/api/src/content.ts.
 #
-# Update connect-src and frame-src to match your deployed API and content
-# origins before going live. `pnpm verify:deployment` fails if you forget.
+# `pnpm run deploy` generates this file from your own hostnames and writes it
+# into the build, so a scripted deployment never sees these placeholders. If you
+# deploy by hand, update connect-src and frame-src before going live —
+# `pnpm verify:deployment` fails if you forget.
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.liha.example.com; frame-src https://*.example.net; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff

@@ -19,8 +19,9 @@
     "test": "pnpm build:libs && pnpm -r --sequential test",
     "test:e2e": "pnpm --filter @liha/web test:e2e",
     "lint": "pnpm -r --sequential lint",
-    "format": "prettier --write \"**/*.{ts,tsx,json,md,css,html}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css,html}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,mjs,json,md,css,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,mjs,json,md,css,html}\"",
+    "deploy": "node scripts/deploy.mjs",
     "db:migrate": "pnpm --filter @liha/api db:migrate",
     "clean": "pnpm -r exec rm -rf dist .wrangler node_modules/.vite",
     "verify:deployment": "node scripts/verify-deployment.mjs"
