@@ -740,6 +740,37 @@ kbd {
 .annotation-pin[data-status='resolved'] {
   background: var(--ok);
 }
+
+/*
+ * While one mark is selected the rest step back.
+ *
+ * Weight alone said which was chosen — three pixels against two, in the same
+ * red — and that is a difference you have to look for. Fading the others is one
+ * the eye catches without being asked. Nothing fades when nothing is selected:
+ * every mark is equally the subject then, and a faded page would just look
+ * washed out.
+ */
+.annotation-shape,
+.annotation-pin {
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease;
+}
+
+.annotation-shape[data-dimmed='true'] {
+  opacity: 0.35;
+}
+
+.annotation-pin[data-dimmed='true'] {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .annotation-shape,
+  .annotation-pin {
+    transition: none;
+  }
+}
 .annotation-pin[data-selected='true'] {
   box-shadow:
     0 0 0 2px var(--bg),

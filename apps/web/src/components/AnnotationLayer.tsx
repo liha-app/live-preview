@@ -140,6 +140,13 @@ export function AnnotationLayer({
             item={item}
             projection={projection}
             selected={item.id === selectedId}
+            /*
+             * Only once something is selected. With nothing chosen every mark
+             * is equally the subject, and dimming them all would just make the
+             * page look faded. The draft is what the reviewer is drawing right
+             * now, so it never recedes.
+             */
+            dimmed={selectedId !== null && item.id !== selectedId && item.id !== '__draft__'}
           />
         ))}
       </svg>
@@ -154,6 +161,7 @@ export function AnnotationLayer({
               className="annotation-pin"
               data-status={item.status}
               data-selected={item.id === selectedId}
+              data-dimmed={selectedId !== null && item.id !== selectedId && item.id !== '__draft__'}
               style={{ left: point.x, top: point.y, pointerEvents: 'auto' }}
               title={item.id === '__draft__' ? 'New comment' : `Comment ${item.index}`}
               onPointerDown={(event) => event.stopPropagation()}
@@ -174,14 +182,27 @@ function AnnotationShape({
   item,
   projection,
   selected,
+  dimmed,
 }: {
   item: PlacedAnnotation;
   projection: Projection;
   selected: boolean;
+  dimmed: boolean;
 }) {
   const color = STROKE[item.status];
   const width = selected ? 3 : 2;
   const { annotation } = item;
+
+  /*
+   * Two marks in the same red, one a pixel thicker, are hard to tell apart at a
+   * glance. Weight says which is selected; this says it again in a way the eye
+   * catches without looking for it.
+   */
+  const wrap = (shape: React.ReactNode) => (
+    <g className="annotation-shape" data-dimmed={dimmed}>
+      {shape}
+    </g>
+  );
 
   if (annotation.type === 'rect' || annotation.type === 'highlight') {
     const topLeft = projection.toPx({ x: annotation.rect.x, y: annotation.rect.y });
@@ -189,7 +210,7 @@ function AnnotationShape({
       x: annotation.rect.x + annotation.rect.w,
       y: annotation.rect.y + annotation.rect.h,
     });
-    return (
+    return wrap(
       <rect
         x={topLeft.x}
         y={topLeft.y}
@@ -200,7 +221,7 @@ function AnnotationShape({
         stroke={color}
         strokeWidth={width}
         rx={2}
-      />
+      />,
     );
   }
 
@@ -211,7 +232,7 @@ function AnnotationShape({
         return `${index === 0 ? 'M' : 'L'}${px.x.toFixed(1)},${px.y.toFixed(1)}`;
       })
       .join(' ');
-    return (
+    return wrap(
       <path
         d={d}
         fill="none"
@@ -219,7 +240,7 @@ function AnnotationShape({
         strokeWidth={width + 1}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
+      />,
     );
   }
 
@@ -228,13 +249,13 @@ function AnnotationShape({
     const to = projection.toPx(annotation.to);
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
     const head = 10;
-    return (
+    return wrap(
       <g stroke={color} strokeWidth={width} fill="none" strokeLinecap="round">
         <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
         <path
           d={`M${to.x},${to.y} L${to.x - head * Math.cos(angle - 0.4)},${to.y - head * Math.sin(angle - 0.4)} M${to.x},${to.y} L${to.x - head * Math.cos(angle + 0.4)},${to.y - head * Math.sin(angle + 0.4)}`}
         />
-      </g>
+      </g>,
     );
   }
   return null;

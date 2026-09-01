@@ -161,6 +161,53 @@ test.describe('the review loop in a real browser', () => {
     await expect(page.locator('.thread').first()).toContainText('outdated');
   });
 
+  /*
+   * Two marks in the same red, one a pixel thicker, are hard to tell apart at a
+   * glance. Selecting one should make the difference obvious without being
+   * looked for — and with nothing selected every mark is equally the subject,
+   * so nothing should be faded then.
+   */
+  test('quietens the marks that are not selected', async ({ page }) => {
+    // The sample already carries one of each kind: a pin on the button and a
+    // rectangle round the feature row.
+    const created = (await fetch(`${API}/api/previews/demo`, {
+      method: 'POST',
+      headers: asNewClient(),
+    }).then((response) => response.json())) as Created;
+
+    await openAsOwner(page, created);
+    const marks = page.locator('.annotation-shape, .annotation-pin');
+    await expect(marks).toHaveCount(2);
+
+    const opacities = async () =>
+      marks.evaluateAll((nodes) => nodes.map((n) => Number(getComputedStyle(n).opacity)));
+
+    expect(await opacities()).toEqual([1, 1]);
+
+    await page.locator('.thread [aria-expanded]').first().click();
+    await expect
+      .poll(async () => {
+        const values = await opacities();
+        return {
+          full: values.filter((v) => v === 1).length,
+          faded: values.filter((v) => v < 1).length,
+        };
+      })
+      .toEqual({ full: 1, faded: 1 });
+
+    // And selecting the other one moves the emphasis rather than adding to it.
+    await page.locator('.thread [aria-expanded]').nth(1).click();
+    await expect
+      .poll(async () => {
+        const values = await opacities();
+        return {
+          full: values.filter((v) => v === 1).length,
+          faded: values.filter((v) => v < 1).length,
+        };
+      })
+      .toEqual({ full: 1, faded: 1 });
+  });
+
   test('resolves a comment as the owner', async ({ page }) => {
     const created = await createPreview(SITE);
     await fetch(`${API}/api/previews/${created.preview.slug}/comments`, {
