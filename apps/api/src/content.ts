@@ -18,15 +18,17 @@ import type { ContentLocation } from './content-origin.js';
 const CONTENT_SANDBOX =
   'sandbox allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals';
 
-function securityHeaders(contentType: string, cacheable: boolean, appOrigin: string): HeadersInit {
+function securityHeaders(contentType: string, cacheable: boolean, reader: string): HeadersInit {
   return {
     'content-type': contentType,
     'content-security-policy': CONTENT_SANDBOX,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
-    // The app needs to read PDF bytes with fetch() to render them. Only the
-    // configured app origin is allowed, and content is served without cookies.
-    'access-control-allow-origin': appOrigin,
+    // The app needs to read these bytes with fetch(): pdf.js renders a PDF from
+    // them, and read_artifact_file hands source to an agent. Only the screen
+    // this artifact belongs to is allowed, and content is served without
+    // cookies.
+    'access-control-allow-origin': reader,
     'cross-origin-resource-policy': 'cross-origin',
     'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',
     // Versions are immutable, so public content can be cached hard. Protected
@@ -45,10 +47,28 @@ export interface ServeContentOptions {
   /** Path within the version, already stripped of any mount prefix. */
   requestedPath: string;
   token: string | null;
+  /** The `Origin` of the page asking, when a page is asking. */
+  origin?: string | null;
 }
 
 export async function serveVersionFile(options: ServeContentOptions): Promise<Response> {
   const { db, bucket, config, location } = options;
+
+  /*
+   * Who may read these bytes with fetch(): pdf.js renders a PDF from them, and
+   * read_artifact_file hands source to an agent.
+   *
+   * Two screens can legitimately ask — the app at `/p/<slug>`, and this
+   * preview's own review screen when the deployment gives previews their own
+   * hostnames. Only one origin can be named in the header, so the asker is
+   * echoed when it is one of those two. Every other preview's review screen is
+   * refused: an artifact is nobody else's business.
+   */
+  const ownReviewScreen = config.reviewOriginTemplate?.replace('{slug}', location.slug) ?? null;
+  const reader =
+    options.origin && (options.origin === ownReviewScreen || options.origin === config.appOrigin)
+      ? options.origin
+      : config.appOrigin;
 
   const preview = await findPreviewBySlug(db, location.slug);
   if (!preview) throw notFound('Preview not found.');
@@ -111,10 +131,10 @@ export async function serveVersionFile(options: ServeContentOptions): Promise<Re
   if (contentType.startsWith('text/html')) {
     const html = injectBridge(new TextDecoder().decode(body));
     return new Response(html, {
-      headers: securityHeaders(contentType, cacheable, config.appOrigin),
+      headers: securityHeaders(contentType, cacheable, reader),
     });
   }
-  return new Response(body, { headers: securityHeaders(contentType, cacheable, config.appOrigin) });
+  return new Response(body, { headers: securityHeaders(contentType, cacheable, reader) });
 }
 
 const PATH_MOUNT = /^\/content\/([^/]+)\/(\d+)(\/.*)?$/;

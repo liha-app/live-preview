@@ -178,6 +178,7 @@ export function createApp() {
       location: match.location,
       requestedPath: match.requestedPath,
       token: url.searchParams.get('t'),
+      origin: c.req.header('origin') ?? null,
     });
   };
 
@@ -967,6 +968,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
         location: hostMatch,
         requestedPath: url.pathname,
         token: url.searchParams.get('t'),
+        origin: request?.headers.get('origin') ?? null,
       });
     } catch (error) {
       const status = error instanceof ApiError ? error.status : 500;
@@ -990,6 +992,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
           location: viaReferer.location,
           requestedPath: viaReferer.requestedPath,
           token: url.searchParams.get('t'),
+          origin: request?.headers.get('origin') ?? null,
         });
       } catch {
         return response;

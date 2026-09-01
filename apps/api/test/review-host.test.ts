@@ -152,6 +152,49 @@ describe('a preview on its own hostname', () => {
     }
   });
 
+  /*
+   * pdf.js reads the PDF with fetch(), and read_artifact_file hands source to
+   * an agent. Both are cross-origin from the review screen, so the artifact has
+   * to say who may read it — and say only the screen it belongs to.
+   */
+  it('lets its own review screen read the artifact', async () => {
+    const { server } = serverWithAssets();
+    const created = await createPreview(server);
+    const origin = `https://lp-${created.preview.slug}.liha.review`;
+
+    const response = await server.fetchAbsolute(
+      `https://lp-${created.preview.slug}--1.liha.review/index.html`,
+      { headers: { origin } },
+    );
+    expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+  });
+
+  it('does not let another preview’s screen read it', async () => {
+    const { server } = serverWithAssets();
+    const created = await createPreview(server);
+
+    const response = await server.fetchAbsolute(
+      `https://lp-${created.preview.slug}--1.liha.review/index.html`,
+      { headers: { origin: 'https://lp-someoneelse.liha.review' } },
+    );
+    expect(response.headers.get('access-control-allow-origin')).not.toBe(
+      'https://lp-someoneelse.liha.review',
+    );
+  });
+
+  it('still lets the app read it, for the path-based screen', async () => {
+    const { server } = serverWithAssets();
+    const created = await createPreview(server);
+
+    const response = await server.fetchAbsolute(
+      `https://lp-${created.preview.slug}--1.liha.review/index.html`,
+      { headers: { origin: 'https://livepreview.liha.dev' } },
+    );
+    expect(response.headers.get('access-control-allow-origin')).toBe(
+      'https://livepreview.liha.dev',
+    );
+  });
+
   it('leaves the old path-based link working', async () => {
     const { server } = serverWithAssets();
     const created = await createPreview(server);

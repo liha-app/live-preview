@@ -122,9 +122,9 @@ async function json(response) {
  * the original name in the Host header — exactly what the browser would send.
  * Real deployments use real DNS and take the plain path.
  */
-async function fetchContent(input) {
+async function fetchContent(input, init = {}) {
   const url = new URL(input);
-  if (!url.hostname.endsWith('.localhost')) return fetch(url);
+  if (!url.hostname.endsWith('.localhost')) return fetch(url, init);
 
   const { request } = await import(url.protocol === 'https:' ? 'node:https' : 'node:http');
   return new Promise((resolve, reject) => {
@@ -134,7 +134,7 @@ async function fetchContent(input) {
         port: url.port || (url.protocol === 'https:' ? 443 : 80),
         path: url.pathname + url.search,
         method: 'GET',
-        headers: { host: url.host },
+        headers: { host: url.host, ...(init.headers ?? {}) },
       },
       (response) => {
         const chunks = [];
@@ -254,7 +254,22 @@ await check('the share URL is somewhere a reviewer can be sent', async () => {
       `It answered "${cors.headers.get('access-control-allow-origin')}".`,
   );
 
-  return `${share} serves the app for ${slug}, and may call the API`;
+  /*
+   * And it has to be able to read the artifact it is showing. pdf.js renders a
+   * PDF from those bytes and read_artifact_file hands source to an agent, both
+   * cross-origin from here.
+   */
+  if (contentUrl) {
+    const artifact = await fetchContent(new URL(contentUrl), { origin });
+    assert(
+      artifact.headers.get('access-control-allow-origin') === origin,
+      `the artifact does not allow ${origin} to read it, so PDF previews stay blank and ` +
+        `read_artifact_file fails. It answered ` +
+        `"${artifact.headers.get('access-control-allow-origin')}".`,
+    );
+  }
+
+  return `${share} serves the app for ${slug}, and may read both the API and the artifact`;
 });
 
 // -------------------------------------------------------- content isolation
