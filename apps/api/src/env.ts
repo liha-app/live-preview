@@ -17,6 +17,18 @@ export interface Env {
    * sandboxed, but without origin isolation. See docs/security.md.
    */
   CONTENT_ORIGIN_TEMPLATE?: string;
+  /**
+   * Where a preview's review screen lives, if each gets its own hostname.
+   * `{slug}` is replaced. Example: `https://{slug}-lp.liha.review`.
+   *
+   * Sibling to the content hosts — one level under the same apex, so a single
+   * wildcard certificate covers both — but a different origin, which is what
+   * keeps uploaded HTML away from the owner token. When unset, share URLs stay
+   * `APP_ORIGIN/p/<slug>` as before.
+   */
+  REVIEW_ORIGIN_TEMPLATE?: string;
+  /** Static assets for the review screen, when the Worker serves it. */
+  ASSETS?: { fetch(request: Request): Promise<Response> };
   /** HMAC key for short-lived content grants. */
   CONTENT_SIGNING_KEY?: string;
   /** Comma-separated list of extra origins allowed to call the API. */
@@ -35,6 +47,7 @@ export interface Env {
 export interface ResolvedConfig {
   appOrigin: string;
   contentOriginTemplate: string | null;
+  reviewOriginTemplate: string | null;
   contentSigningKey: string;
   allowedOrigins: string[];
   maxVersionBytes: number;
@@ -62,6 +75,7 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
   return {
     appOrigin,
     contentOriginTemplate: env.CONTENT_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
+    reviewOriginTemplate: env.REVIEW_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     contentSigningKey: env.CONTENT_SIGNING_KEY ?? DEV_SIGNING_KEY,
     allowedOrigins: [appOrigin, requestUrl.origin, ...extra],
     maxVersionBytes: Number.parseInt(env.MAX_VERSION_BYTES ?? '', 10) || LIMITS.maxVersionBytes,

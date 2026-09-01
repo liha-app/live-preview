@@ -18,7 +18,17 @@ export function parseManifest(raw: string): VersionManifest {
   return { entryPath: 'index.html', files: [], totalBytes: 0 };
 }
 
+/**
+ * The link a reviewer is sent.
+ *
+ * With a review template each preview gets its own hostname, so the link is the
+ * whole origin and any path under it belongs to that preview. Without one it
+ * stays a path on the app.
+ */
 export function shareUrl(config: ResolvedConfig, slug: string): string {
+  if (config.reviewOriginTemplate) {
+    return config.reviewOriginTemplate.replace('{slug}', slug);
+  }
   return `${config.appOrigin}/p/${slug}`;
 }
 
