@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Modal } from './Dialogs.js';
 import { useT, type Translate } from '../i18n/index.js';
 
@@ -13,6 +13,16 @@ import { useT, type Translate } from '../i18n/index.js';
 
 const STEPS = [1, 2, 3] as const;
 type Step = (typeof STEPS)[number];
+
+/*
+ * The illustrations are drawn at one size and scaled, rather than laid out
+ * responsively. They are pictures: the arrow has to land on the window it
+ * points at, and the only way to keep that true at every width is to scale the
+ * whole composition. Laid out in pixels they collide — below about 540px of
+ * stage the right-hand window slides left and covers the document.
+ */
+const FRAME_WIDTH = 500;
+const FRAME_HEIGHT = 236;
 
 function StepOne({ t }: { t: Translate }) {
   return (
@@ -142,7 +152,19 @@ function StepThree({ t }: { t: Translate }) {
 export function Onboarding({ onClose, onSample }: { onClose(): void; onSample(): void }) {
   const t = useT();
   const [step, setStep] = useState<Step>(1);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
   const last = step === 3;
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const fit = () => setScale(Math.min(1, stage.clientWidth / FRAME_WIDTH));
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <Modal title={t('onboard.title')} onClose={onClose} bare>
@@ -156,10 +178,16 @@ export function Onboarding({ onClose, onSample }: { onClose(): void; onSample():
           </button>
         </div>
 
-        <div className="onboard__stage">
-          {step === 1 && <StepOne t={t} />}
-          {step === 2 && <StepTwo t={t} />}
-          {step === 3 && <StepThree t={t} />}
+        <div
+          ref={stageRef}
+          className="onboard__stage"
+          style={{ height: Math.round(FRAME_HEIGHT * scale) }}
+        >
+          <div className="ob__frame" style={{ transform: `scale(${scale})` }}>
+            {step === 1 && <StepOne t={t} />}
+            {step === 2 && <StepTwo t={t} />}
+            {step === 3 && <StepThree t={t} />}
+          </div>
         </div>
 
         <div className="onboard__copy">

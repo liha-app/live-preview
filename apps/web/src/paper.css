@@ -845,7 +845,7 @@
 
 .onboard__stage {
   margin-top: 14px;
-  height: 236px;
+  /* Height comes from the frame's scale — see Onboarding.tsx. */
   background-color: var(--paper-ground);
   background-image:
     linear-gradient(var(--paper-grid) 1px, transparent 1px),
@@ -919,6 +919,15 @@
 }
 
 /* Step illustrations. Ornament again — the copy beneath carries the meaning. */
+.ob__frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 500px;
+  height: 236px;
+  transform-origin: top left;
+}
+
 .ob {
   position: absolute;
   inset: 0;
@@ -999,10 +1008,6 @@
   .paper__body {
     gap: 16px;
     padding: 28px 0;
-  }
-
-  .onboard__stage {
-    height: 190px;
   }
 }
 

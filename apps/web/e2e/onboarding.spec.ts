@@ -58,6 +58,51 @@ test.describe('the introduction', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
+  /*
+   * The illustrations are laid out in fixed pixels and scaled to fit. Before
+   * that they were laid out in fixed pixels and not scaled, so on a narrow
+   * window the right-hand browser sat outside the stage and was clipped away
+   * entirely — the arrow pointed at nothing.
+   *
+   * Measured against the stage, which is what a person can actually see. The
+   * frame is 500px wide whatever the window does, so measuring against that
+   * proves nothing.
+   */
+  for (const width of [390, 560, 620, 1280]) {
+    test(`keeps every illustration visible at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      for (const step of [1, 2, 3]) {
+        if (step > 1) await dialog.getByRole('button', { name: `Step ${step}` }).click();
+
+        const clipped = await page.evaluate(() => {
+          const stage = document.querySelector('.onboard__stage')?.getBoundingClientRect();
+          if (!stage) return ['no stage'];
+          return [...document.querySelectorAll('.ob > *')]
+            .map((element) => {
+              const box = element.getBoundingClientRect();
+              const over = Math.max(
+                stage.left - box.left,
+                box.right - stage.right,
+                stage.top - box.top,
+                box.bottom - stage.bottom,
+              );
+              return over > 1
+                ? `${element.className || element.tagName} by ${Math.round(over)}px`
+                : null;
+            })
+            .filter(Boolean);
+        });
+
+        expect(clipped, `step ${step} at ${width}px`).toEqual([]);
+      }
+    });
+  }
+
   test('its last step opens the sample review', async ({ page }) => {
     await page.goto('/');
 
