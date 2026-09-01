@@ -11,9 +11,13 @@
     />
     <!--
       Chrome WebMCP origin trial, so the site publishes its tools in stock
-      Chrome without chrome://flags. Issued for https://livepreview.liha.dev,
-      valid to 2026-11-17, Chrome 149-156. Origin trial tokens are public by
-      design and only work on the origin they name.
+      Chrome without chrome://flags. Two tokens, because the app is served from
+      two places: the landing page at https://livepreview.liha.dev, and every
+      review screen at https://lp-<slug>.liha.review — the second is registered
+      for liha.review with subdomain matching, since each preview is an origin
+      of its own. Both valid to 2026-11-17, Chrome 149-156. A token that does
+      not match the origin it is read on is ignored, so shipping both
+      everywhere is how this is meant to work; tokens are public by design.
 
       Deploying this repo somewhere else? Register your own origin at
       https://developer.chrome.com/origintrials and replace the token. A wrong
@@ -23,6 +27,10 @@
     <meta
       http-equiv="origin-trial"
       content="Ao9TYcPWsKjwJyIH3H6hhgC/TO3endPfrZRu1/PilTymNIpO23H6mWkG08QCfl9IclUOxUqhH7LJcMCTEuboWgAAAABUeyJvcmlnaW4iOiJodHRwczovL2xpdmVwcmV2aWV3LmxpaGEuZGV2OjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE3OTQ4NzM2MDB9"
+    />
+    <meta
+      http-equiv="origin-trial"
+      content="AnFCjzOyaJ0bUcFvA0goDmCyUvuUlazjEp3SuggpPxtbQl7JIrESe0UCwdOPYYft+6IJHjgHiwbrfk0OrKY3PQIAAABeeyJvcmlnaW4iOiJodHRwczovL2xpaGEucmV2aWV3OjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE3OTQ4NzM2MDAsImlzU3ViZG9tYWluIjp0cnVlfQ=="
     />
     <!--
       Yomogi is the handwriting the interface is drawn in; Zen Kaku Gothic New
