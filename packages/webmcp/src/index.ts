@@ -17,3 +17,4 @@ export {
   type ToolDescriptor,
   type ToolResult,
 } from './types.js';
+export { validateArguments } from './validate.js';

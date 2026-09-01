@@ -498,16 +498,20 @@ async function deployWebApp(config, { api, accountId }, zones, env) {
   );
   done('Built, with a Content-Security-Policy naming your own hosts.');
 
-  const projects = parseJsonOutput(
-    (await wrangler(['pages', 'project', 'list', '--json'], { cwd: API_DIR, env, capture: true }))
-      .stdout,
+  // Create and tolerate the conflict, rather than listing first. `wrangler pages
+  // project list --json` keys its objects "Project Name", while `d1 list --json`
+  // uses "name" — so reading the list means depending on a shape that differs
+  // between commands and can change under us. Creating says what happened.
+  const project = await wrangler(
+    ['pages', 'project', 'create', config.pagesProject, '--production-branch', 'main'],
+    { cwd: API_DIR, env, capture: true, allowFailure: true },
   );
-  if (!projects.some((project) => project.name === config.pagesProject)) {
-    await wrangler(
-      ['pages', 'project', 'create', config.pagesProject, '--production-branch', 'main'],
-      { cwd: API_DIR, env, capture: true },
-    );
+  if (project.code === 0) {
     done(`Created the Pages project ${config.pagesProject}.`);
+  } else if (/already exists/i.test(project.stderr)) {
+    done(`Pages project ${config.pagesProject} already exists.`);
+  } else {
+    fail('Could not create the Pages project.', project.stderr);
   }
 
   await wrangler(

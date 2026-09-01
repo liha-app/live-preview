@@ -173,10 +173,20 @@ function createMockModelContext() {
   return {
     document: { modelContext: context } as unknown as Document,
     tools,
+    /** A well-behaved client: refuses to send what the schema does not declare. */
     call: (name: string, args: Record<string, unknown> = {}) => {
       const tool = tools.get(name);
       if (!tool) throw new Error(`tool ${name} is not registered`);
       assertMatchesSchema(name, tool.inputSchema, args);
+      return Promise.resolve(tool.execute(args)) as Promise<ToolResult>;
+    },
+    /**
+     * Chrome: hands the tool whatever the agent produced, schema or no schema.
+     * Verified against Chrome 151 on a live deployment.
+     */
+    callRaw: (name: string, args: Record<string, unknown> = {}) => {
+      const tool = tools.get(name);
+      if (!tool) throw new Error(`tool ${name} is not registered`);
       return Promise.resolve(tool.execute(args)) as Promise<ToolResult>;
     },
   };
@@ -834,5 +844,76 @@ describe('Chrome tool metadata budgets', () => {
         expect(DEFINED.has(key), `${tool.name}: "${key}" is not a WebMCP annotation`).toBe(true);
       }
     }
+  });
+});
+
+/**
+ * The browser is not a validator.
+ *
+ * Chrome 151 hands a tool whatever the agent produced: on a live deployment,
+ * `set_viewport` called with no arguments returned success and changed
+ * nothing. An agent told the preview is now 390px wide will describe what it
+ * sees at mobile width, having never left desktop — so the tool has to refuse
+ * the call itself, and say why.
+ */
+describe('arguments the browser did not check', () => {
+  const registerAgainst = (host: Partial<LihaWebMcpHost> = {}) => {
+    const mock = createMockModelContext();
+    registerLihaTools(createHost(host), mock.document);
+    return mock;
+  };
+
+  it('refuses a call that omits a required argument', async () => {
+    const mock = registerAgainst();
+    const result = await mock.callRaw('set_viewport', {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain('missing required argument "viewport"');
+  });
+
+  it('refuses a value outside the declared enum', async () => {
+    const mock = registerAgainst();
+    const result = await mock.callRaw('set_viewport', { viewport: 'enormous' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain('fit, desktop, tablet, mobile');
+  });
+
+  it('names the arguments a tool does take when given one it does not', async () => {
+    const mock = registerAgainst();
+    const result = await mock.callRaw('set_viewport', { size: 'mobile' });
+
+    expect(result.isError).toBe(true);
+    // Both problems in one message, so a retry can fix both.
+    expect(result.content[0]!.text).toContain('missing required argument "viewport"');
+    expect(result.content[0]!.text).toContain('"size" is not an argument of this tool');
+    expect(result.content[0]!.text).toContain('it takes: viewport');
+  });
+
+  it('refuses an argument of the wrong type', async () => {
+    const mock = registerAgainst();
+    const result = await mock.callRaw('list_comments', { status: 42 });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toContain('must be string');
+  });
+
+  it('reports the refusal to the page, so the human sees it too', async () => {
+    const calls: { name: string; ok: boolean; summary?: string }[] = [];
+    const mock = registerAgainst({ onToolCall: (call) => calls.push(call) });
+    await mock.callRaw('set_viewport', {});
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.ok).toBe(false);
+    expect(calls[0]!.summary).toContain('missing required argument');
+  });
+
+  it('still runs the tool when the arguments are right', async () => {
+    const viewports: string[] = [];
+    const mock = registerAgainst({ setViewport: (viewport) => viewports.push(viewport) });
+    const result = await mock.callRaw('set_viewport', { viewport: 'mobile' });
+
+    expect(result.isError).toBeFalsy();
+    expect(viewports).toEqual(['mobile']);
   });
 });

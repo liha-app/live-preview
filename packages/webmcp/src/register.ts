@@ -1,4 +1,5 @@
 import type { LihaWebMcpHost } from './host.js';
+import { validateArguments } from './validate.js';
 import { buildTools } from './tools.js';
 import {
   findModelContext,
@@ -57,8 +58,18 @@ function guard(host: LihaWebMcpHost, descriptor: ToolDescriptor): ToolDescriptor
   return {
     ...descriptor,
     async execute(args) {
+      const provided = args ?? {};
+
+      // The browser does not check arguments against inputSchema, so the tool
+      // has to. See validate.ts for what happens when it does not.
+      const problem = validateArguments(descriptor.name, descriptor.inputSchema, provided);
+      if (problem) {
+        host.onToolCall?.({ name: descriptor.name, ok: false, summary: problem });
+        return { content: [{ type: 'text', text: problem }], isError: true };
+      }
+
       try {
-        return await descriptor.execute(args ?? {});
+        return await descriptor.execute(provided);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         host.onToolCall?.({ name: descriptor.name, ok: false, summary: message });
