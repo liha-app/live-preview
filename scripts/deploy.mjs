@@ -364,6 +364,7 @@ function writeGeneratedConfig(config, databaseId) {
     '[vars]',
     `APP_ORIGIN = "https://${config.appHost}"`,
     `CONTENT_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{label}.${config.contentDomain}"`,
+    `REVIEW_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{slug}.${config.contentDomain}"`,
     'MAX_VERSION_BYTES = "31457280"',
     'MAX_TOTAL_BYTES = "5368709120"',
     '',
@@ -376,6 +377,14 @@ function writeGeneratedConfig(config, databaseId) {
     '[[r2_buckets]]',
     'binding = "BUCKET"',
     `bucket_name = "${BUCKET_NAME}"`,
+    '',
+    "# The review screen is served from each preview's own hostname, so the",
+    '# Worker needs the app bundle. It answers first and decides by hostname:',
+    '# a review host gets the app, an artifact host gets the artifact.',
+    '[assets]',
+    'directory = "../web/dist"',
+    'binding = "ASSETS"',
+    'run_worker_first = true',
     '',
   ].join('\n');
 
@@ -474,29 +483,41 @@ async function configureDns({ api }, config, zones) {
   done(`${wildcard.name} ${outcome}.`);
 }
 
-async function deployWebApp(config, { api, accountId }, zones, env) {
-  step('Web app');
+/**
+ * Built before the Worker is deployed, because the Worker carries this bundle
+ * for the review-screen hostnames.
+ */
+async function buildWebApp(config) {
+  step('Web app bundle');
 
   const apiOrigin = `https://${config.apiHost}`;
-
   if (dryRun) {
     planned(`VITE_API_URL=${apiOrigin} pnpm --filter @liha/web build`);
     planned(`write apps/web/dist/_headers for ${apiOrigin} and *.${config.contentDomain}`);
-    planned(`wrangler pages project create ${config.pagesProject} (if missing)`);
-    planned(`wrangler pages deploy apps/web/dist --project-name ${config.pagesProject}`);
-    planned(`attach ${config.appHost} to the Pages project`);
     return;
   }
 
   await run('pnpm', ['--filter', '@liha/web', 'build'], { env: { VITE_API_URL: apiOrigin } });
 
   // Written after the build so the placeholders in public/_headers can never
-  // reach a deployment.
+  // reach a deployment. This is the landing page's policy; the review screen
+  // gets its own from the Worker, which knows the preview's own origin.
   fs.writeFileSync(
     path.join(WEB_DIST, '_headers'),
     buildHeaders({ apiOrigin, contentDomain: config.contentDomain }),
   );
   done('Built, with a Content-Security-Policy naming your own hosts.');
+}
+
+async function deployWebApp(config, { api, accountId }, zones, env) {
+  step('Landing page');
+
+  if (dryRun) {
+    planned(`wrangler pages project create ${config.pagesProject} (if missing)`);
+    planned(`wrangler pages deploy apps/web/dist --project-name ${config.pagesProject}`);
+    planned(`attach ${config.appHost} to the Pages project`);
+    return;
+  }
 
   // Create and tolerate the conflict, rather than listing first. `wrangler pages
   // project list --json` keys its objects "Project Name", while `d1 list --json`
@@ -620,6 +641,7 @@ step('Configuration');
 writeGeneratedConfig(config, databaseId);
 
 await ensureSigningKey(env);
+await buildWebApp(config);
 await deployWorker(env);
 await configureDns(auth, config, zones);
 await deployWebApp(config, auth, zones, env);
@@ -633,7 +655,8 @@ process.stdout.write(`\n${bold}${dryRun ? 'Plan complete.' : 'Done.'}${reset}\n\
 if (!dryRun) {
   info(`App        https://${config.appHost}`);
   info(`API        https://${config.apiHost}`);
-  info(`Previews   https://${config.contentPrefix ?? ''}<slug>--<version>.${config.contentDomain}`);
+  info(`Reviews    https://${config.contentPrefix ?? ''}<slug>.${config.contentDomain}`);
+  info(`Artifacts  https://${config.contentPrefix ?? ''}<slug>--<version>.${config.contentDomain}`);
   process.stdout.write('\n');
   info('Try it:');
   detail(`  LIHA_API_URL=https://${config.apiHost} liha-preview deploy ./some-site`);

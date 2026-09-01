@@ -51,8 +51,13 @@ const TOOL_KEYS: Record<string, Tool> = {
   a: 'arrow',
 };
 
-export function PreviewRoute() {
+/** Reads the slug from the path, for deployments that serve `/p/<slug>`. */
+export function PreviewRouteFromPath() {
   const { slug } = useParams({ from: '/p/$slug' });
+  return <PreviewRoute slug={slug} />;
+}
+
+export function PreviewRoute({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();

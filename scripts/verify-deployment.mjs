@@ -192,20 +192,45 @@ if (!created) {
   process.exit(1);
 }
 
-if (APP) {
-  await check('share URL points at the app', async () => {
-    assert(
-      created.preview.shareUrl.startsWith(`${APP}/p/`),
-      `shareUrl is ${created.preview.shareUrl}, expected it under ${APP}. Check APP_ORIGIN.`,
-    );
-    return created.preview.shareUrl;
-  });
-}
-
-// -------------------------------------------------------- content isolation
-
 const contentUrl = created.preview.contentUrl;
 const contentOrigin = contentUrl ? new URL(contentUrl).origin : null;
+
+await check('the share URL is somewhere a reviewer can be sent', async () => {
+  const share = created.preview.shareUrl;
+  assert(share, 'preview has no shareUrl');
+
+  // Either shape is a working deployment: a path on the app, or a hostname of
+  // the preview's own. Which one depends on REVIEW_ORIGIN_TEMPLATE.
+  const onApp = APP && share.startsWith(`${APP}/p/`);
+  const ownHost = new URL(share).hostname.includes(slug);
+  assert(
+    onApp || ownHost,
+    `shareUrl is ${share}, which is neither under ${APP || 'the app'} nor a host of its own. ` +
+      'Check APP_ORIGIN and REVIEW_ORIGIN_TEMPLATE.',
+  );
+
+  if (!ownHost) return `${share} (a path on the app)`;
+
+  /*
+   * A dedicated host has to actually serve the app, and the app has to be told
+   * which preview it is. Without the stamp it renders the landing page on a
+   * hostname that promised a review.
+   */
+  const response = await fetchContent(share);
+  assert(response.ok, `GET ${share} returned ${response.status}`);
+  const html = await response.text();
+  assert(
+    html.includes(`content="${slug}"`),
+    `${share} served a page that does not name this preview, so it will render the landing page.`,
+  );
+  assert(
+    new URL(share).origin !== new URL(contentUrl ?? 'https://x.invalid').origin,
+    'the review screen and the artifact share an origin, so uploaded HTML can read the owner token',
+  );
+  return `${share} serves the app for ${slug}`;
+});
+
+// -------------------------------------------------------- content isolation
 
 await check('preview content is served from a separate origin', async () => {
   assert(contentUrl, 'preview has no contentUrl');

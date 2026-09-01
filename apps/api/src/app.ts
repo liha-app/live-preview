@@ -29,7 +29,7 @@ import {
   requireOwner,
   requireReviewAccess,
 } from './auth.js';
-import { matchContentHost } from './content-origin.js';
+import { matchContentHost, matchReviewHost, originWildcard } from './content-origin.js';
 import { matchContentPath, resolveViaReferer, serveVersionFile } from './content.js';
 import { DEMO_TITLE, demoComments, demoFiles } from './demo.js';
 import { resolveConfig, type Env, type ResolvedConfig } from './env.js';
@@ -870,12 +870,77 @@ async function deleteStoredObjects(env: Env, prefix: string): Promise<void> {
 }
 
 /**
+ * The review screen, served from the preview's own hostname.
+ *
+ * The app is one bundle whichever host asks for it, so the Worker tells it
+ * which preview it is looking at rather than making it guess from a hostname
+ * whose shape is deployment configuration. Any path under the host is the same
+ * screen — the preview owns the whole origin, so sub-pages are its to define.
+ */
+async function serveReviewScreen(
+  request: Request,
+  env: Env,
+  config: ResolvedConfig,
+  slug: string,
+): Promise<Response> {
+  if (!env.ASSETS) return new Response('Not found', { status: 404 });
+
+  const url = new URL(request.url);
+  const asset = await env.ASSETS.fetch(
+    // Anything that is not a built file is the app itself.
+    new Request(new URL(url.pathname.includes('.') ? url.pathname : '/', url), request),
+  );
+
+  const type = asset.headers.get('content-type') ?? '';
+  if (!type.includes('text/html')) return asset;
+
+  const wildcard = originWildcard(config.contentOriginTemplate);
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    `img-src 'self' data: blob:${wildcard ? ` ${wildcard}` : ''}`,
+    "font-src 'self' data: https://fonts.gstatic.com",
+    `connect-src 'self' ${config.appOrigin}${wildcard ? ` ${wildcard}` : ''}`,
+    `frame-src ${wildcard ?? "'none'"}`,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+
+  const html = await asset.text();
+  return new Response(
+    html.replace('</head>', `<meta name="liha:slug" content="${slug}" /></head>`),
+    {
+      status: asset.status,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'content-security-policy': csp,
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+        'x-frame-options': 'DENY',
+        'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+        'strict-transport-security': 'max-age=31536000; includeSubDomains',
+        'cache-control': 'no-store',
+      },
+    },
+  );
+}
+
+/**
  * Content requests are routed before the API because they may arrive on a
  * different host entirely (`<slug>--<n>.preview.example.com`).
  */
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const config = resolveConfig(env, url);
+
+  const reviewSlug = matchReviewHost(config.reviewOriginTemplate, url.hostname);
+  if (reviewSlug && !url.pathname.startsWith('/api/')) {
+    return serveReviewScreen(request, env, config, reviewSlug);
+  }
 
   const hostMatch = matchContentHost(config, url);
   if (hostMatch) {
