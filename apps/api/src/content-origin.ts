@@ -7,9 +7,18 @@ export interface ContentLocation {
 
 interface HostPattern {
   protocol: string;
+  /** Text before the label, e.g. `lp-` in `lp-{label}.example.net`. */
+  prefix: string;
   suffix: string;
   port: string;
 }
+
+/**
+ * Stands in for `{label}` while the template is parsed as a URL. A valid
+ * hostname label that nothing would plausibly use, so finding it is
+ * unambiguous even when the prefix or suffix contains the word "label".
+ */
+const LABEL_MARK = 'lihalabelmark';
 
 /**
  * Every preview version gets its own host label (`<slug>--<n>`) so uploaded HTML
@@ -22,12 +31,20 @@ export function contentHostLabel(slug: string, versionNumber: number): string {
   return `${slug}--${versionNumber}`;
 }
 
-function parseTemplate(template: string | null): HostPattern | null {
+export function parseTemplate(template: string | null): HostPattern | null {
   if (!template || !template.includes('{label}')) return null;
   try {
-    const url = new URL(template.replace('{label}', 'label'));
-    if (!url.hostname.startsWith('label')) return null;
-    return { protocol: url.protocol, suffix: url.hostname.slice('label'.length), port: url.port };
+    const url = new URL(template.replace('{label}', LABEL_MARK));
+    const at = url.hostname.indexOf(LABEL_MARK);
+    // `{label}` has to land in the hostname. In a path it would give every
+    // version the same origin, which is the whole point of this.
+    if (at === -1) return null;
+    return {
+      protocol: url.protocol,
+      prefix: url.hostname.slice(0, at),
+      suffix: url.hostname.slice(at + LABEL_MARK.length),
+      port: url.port,
+    };
   } catch {
     return null;
   }
@@ -42,7 +59,7 @@ export function contentBaseUrl(
 ): string {
   const pattern = parseTemplate(config.contentOriginTemplate);
   if (pattern) {
-    const host = `${contentHostLabel(slug, versionNumber)}${pattern.suffix}`;
+    const host = `${pattern.prefix}${contentHostLabel(slug, versionNumber)}${pattern.suffix}`;
     const port = pattern.port ? `:${pattern.port}` : '';
     return `${pattern.protocol}//${host}${port}/`;
   }
@@ -56,8 +73,11 @@ export function matchContentHost(config: ResolvedConfig, requestUrl: URL): Conte
   const pattern = parseTemplate(config.contentOriginTemplate);
   if (!pattern) return null;
   const hostname = requestUrl.hostname.toLowerCase();
-  if (!hostname.endsWith(pattern.suffix) || hostname.length <= pattern.suffix.length) return null;
-  return parseContentLabel(hostname.slice(0, hostname.length - pattern.suffix.length));
+  if (!hostname.startsWith(pattern.prefix) || !hostname.endsWith(pattern.suffix)) return null;
+  if (hostname.length <= pattern.prefix.length + pattern.suffix.length) return null;
+  return parseContentLabel(
+    hostname.slice(pattern.prefix.length, hostname.length - pattern.suffix.length),
+  );
 }
 
 export function parseContentLabel(label: string): ContentLocation | null {

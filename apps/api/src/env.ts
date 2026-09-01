@@ -1,4 +1,5 @@
 import { LIMITS } from '@liha/shared';
+import { parseTemplate } from './content-origin.js';
 import type { Database, ObjectStore } from './ports.js';
 
 export interface Env {
@@ -75,6 +76,15 @@ export function assertProductionConfig(env: Env): string[] {
   if (!env.APP_ORIGIN) warnings.push('APP_ORIGIN is not set.');
   if (!env.CONTENT_ORIGIN_TEMPLATE) {
     warnings.push('CONTENT_ORIGIN_TEMPLATE is not set; preview content is not origin-isolated.');
+  } else if (!parseTemplate(env.CONTENT_ORIGIN_TEMPLATE)) {
+    // Silence here would be the worst outcome: content quietly falls back to a
+    // path on the API origin, and the deployment looks fine until someone
+    // checks whether uploads are actually isolated.
+    warnings.push(
+      `CONTENT_ORIGIN_TEMPLATE ("${env.CONTENT_ORIGIN_TEMPLATE}") is unusable: it must put ` +
+        '{label} in the hostname, as in https://{label}.example.net. Preview content has ' +
+        'fallen back to a path on the API origin and is NOT origin-isolated.',
+    );
   }
   return warnings;
 }
