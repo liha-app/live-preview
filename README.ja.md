@@ -187,15 +187,17 @@ openssl rand -base64 32 | npx wrangler secret put CONTENT_SIGNING_KEY
 
 # 4. オリジンを設定（apps/api/wrangler.toml）
 #    APP_ORIGIN              = "https://liha.example.com"
-#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.preview.example.com"
+#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
 
 # 5. デプロイ
 pnpm --filter @liha/api deploy
 ```
 
-`CONTENT_ORIGIN_TEMPLATE` には `*.preview.example.com` の**ワイルドカードDNSレコードと証明書**が必要です。アプリのドメインの親にならないドメインを使ってください（Cookieがプレビュー内容と共有される余地をなくすためです）。
+`CONTENT_ORIGIN_TEMPLATE` には、Workerにルーティングした**プロキシ済みワイルドカードDNSレコード**が必要です。ドメインはアプリとは**別のドメイン**にしてください。サブドメインを分けるだけでは不十分で、アップロードされたHTMLが親ドメイン向けのCookieを設定できてしまいます。登録ドメインごと分ければこれを塞げます。
 
-Webアプリは静的バンドル（`pnpm --filter @liha/web build` → `apps/web/dist`）です。Cloudflare Pages などにデプロイし、ビルド時に `VITE_API_URL` を設定してください。
+証明書の面でも別ドメインが有利です。Cloudflare の Universal SSL はサブドメイン1階層までしか対象にしないため、`*.example.net` は無料でカバーされますが、`*.preview.example.net` はカバーされません（[Advanced Certificate Manager](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/) が別途必要）。
+
+Webアプリは静的バンドル（`pnpm --filter @liha/web build` → `apps/web/dist`）で、Cloudflare Pages にデプロイします。ビルド時に `VITE_API_URL` を設定してください。あわせて [`apps/web/public/_headers`](apps/web/public/_headers) の `connect-src` と `frame-src` を自分のホストに書き換えてください。プレースホルダのままだと CSP がAPI通信をすべてブロックします。
 
 | 変数                      | 用途                                                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |

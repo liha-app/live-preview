@@ -3,9 +3,9 @@
 # its own, far stricter, sandbox headers — see apps/api/src/content.ts.
 #
 # Update connect-src and frame-src to match your deployed API and content
-# origins before going live.
+# origins before going live. `pnpm verify:deployment` fails if you forget.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.liha.example.com; frame-src https://*.preview.example.com; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.liha.example.com; frame-src https://*.example.net; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY

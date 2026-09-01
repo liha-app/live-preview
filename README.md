@@ -226,19 +226,24 @@ openssl rand -base64 32 | npx wrangler secret put CONTENT_SIGNING_KEY
 
 # 4. Point the worker at your origins (apps/api/wrangler.toml)
 #    APP_ORIGIN              = "https://liha.example.com"
-#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.preview.example.com"
+#    CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
 
 # 5. Deploy
 pnpm --filter @liha/api deploy
 ```
 
-`CONTENT_ORIGIN_TEMPLATE` needs a **wildcard DNS record and certificate** for
-`*.preview.example.com`, routed to the worker. Use a domain that is not a parent
-of your app domain, so cookies can never be shared with preview content.
+`CONTENT_ORIGIN_TEMPLATE` needs a proxied **wildcard DNS record** routed to the
+worker, on a **second domain** — not a subdomain of your app's. Uploaded HTML on
+a sibling host can still set a cookie for the shared parent domain; a separate
+registrable domain closes that. It also keeps the certificate free: Cloudflare's
+Universal SSL covers one level of subdomain, so `*.example.net` is included but
+`*.preview.example.net` is not.
 
 The web app is a static bundle (`pnpm --filter @liha/web build` →
-`apps/web/dist`); deploy it to Cloudflare Pages or any static host, with
-`VITE_API_URL` set to your API origin at build time.
+`apps/web/dist`) deployed to Cloudflare Pages with `VITE_API_URL` set to your API
+origin at build time. Edit `connect-src` and `frame-src` in
+[`apps/web/public/_headers`](apps/web/public/_headers) to name your hosts first,
+or CSP blocks every API call.
 
 Configuration reference:
 

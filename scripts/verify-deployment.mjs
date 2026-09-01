@@ -34,10 +34,19 @@ const APP = (args.get('app') ?? process.env.LIHA_APP_URL ?? '').replace(/\/$/, '
 const results = [];
 let failures = 0;
 
-function record(ok, name, detail) {
-  results.push({ ok, name, detail });
-  if (!ok) failures += 1;
-  process.stdout.write(`  ${ok ? `${GREEN}ok${RESET}  ` : `${RED}FAIL${RESET}`}  ${name}\n`);
+/** Returned by a check that cannot apply here — not a pass, but not a failure. */
+const SKIP = Symbol('skip');
+const skip = (reason) => ({ [SKIP]: reason });
+
+function record(status, name, detail) {
+  results.push({ status, name, detail });
+  if (status === 'fail') failures += 1;
+  const label = {
+    pass: `${GREEN}ok${RESET}  `,
+    fail: `${RED}FAIL${RESET}`,
+    skip: `${DIM}skip${RESET}`,
+  }[status];
+  process.stdout.write(`  ${label}  ${name}\n`);
   if (detail) process.stdout.write(`        ${DIM}${detail}${RESET}\n`);
 }
 
@@ -45,11 +54,51 @@ function record(ok, name, detail) {
 async function check(name, fn) {
   try {
     const detail = await fn();
-    record(true, name, typeof detail === 'string' ? detail : undefined);
+    if (detail && typeof detail === 'object' && SKIP in detail) {
+      record('skip', name, detail[SKIP]);
+      return;
+    }
+    record('pass', name, typeof detail === 'string' ? detail : undefined);
   } catch (error) {
-    record(false, name, error instanceof Error ? error.message : String(error));
+    record('fail', name, error instanceof Error ? error.message : String(error));
   }
 }
+
+/** Splits a CSP header into `{ 'connect-src': ['\'self\'', 'https://…'] }`. */
+function parseCsp(header) {
+  const directives = {};
+  for (const part of header.split(';')) {
+    const [name, ...sources] = part.trim().split(/\s+/);
+    if (name) directives[name.toLowerCase()] = sources;
+  }
+  return directives;
+}
+
+/**
+ * Whether a CSP source list permits an origin. Keyword sources such as `'self'`
+ * never cover a cross-origin host, which is the case we care about here.
+ */
+function cspAllows(sources, origin) {
+  const target = new URL(origin);
+  return sources.some((source) => {
+    if (source === '*') return true;
+    if (source.startsWith("'")) return false;
+    const written = source.includes('://') ? source : `${target.protocol}//${source}`;
+    let host;
+    try {
+      host = new URL(written).host;
+    } catch {
+      return false;
+    }
+    if (host.startsWith('*.')) return target.host.endsWith(host.slice(1));
+    return host === target.host;
+  });
+}
+
+const isLoopback = (origin) => {
+  const { hostname } = new URL(origin);
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost');
+};
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -168,6 +217,43 @@ await check('preview content is served from a separate origin', async () => {
   if (APP) assert(contentOrigin !== new URL(APP).origin, 'content shares the app origin');
   return contentOrigin;
 });
+
+if (APP) {
+  await check('the app is allowed to reach the API and the content host (CSP)', async () => {
+    const response = await fetch(`${APP}/`);
+    assert(response.ok, `GET ${APP}/ returned ${response.status}`);
+
+    const header = response.headers.get('content-security-policy');
+    if (!header) {
+      if (isLoopback(APP)) {
+        return skip(
+          'the dev server sends no CSP; Cloudflare Pages applies apps/web/public/_headers',
+        );
+      }
+      throw new Error(
+        'the app is served without a Content-Security-Policy, so apps/web/public/_headers was ' +
+          'not applied. On Pages the file must sit in the directory you deploy.',
+      );
+    }
+
+    const directives = parseCsp(header);
+    const connect = directives['connect-src'] ?? directives['default-src'] ?? [];
+    assert(
+      cspAllows(connect, API),
+      `connect-src does not permit ${API}, so the app cannot call its own API. It reads ` +
+        `"${connect.join(' ') || '(empty)'}" — edit connect-src in apps/web/public/_headers.`,
+    );
+
+    const frame = directives['frame-src'] ?? directives['default-src'] ?? [];
+    assert(
+      cspAllows(frame, contentOrigin),
+      `frame-src does not permit ${contentOrigin}, so no preview will render. It reads ` +
+        `"${frame.join(' ') || '(empty)'}" — edit frame-src in apps/web/public/_headers.`,
+    );
+
+    return 'connect-src reaches the API, frame-src reaches the content host';
+  });
+}
 
 await check('content host resolves and serves the artifact', async () => {
   const response = await fetchContent(contentUrl);
@@ -288,12 +374,17 @@ await check('deletes the sample preview again', async () => {
 
 // --------------------------------------------------------------------- done
 
-const passed = results.length - failures;
-process.stdout.write(`\n${passed}/${results.length} checks passed\n`);
+const skipped = results.filter((item) => item.status === 'skip').length;
+const passed = results.length - failures - skipped;
+process.stdout.write(
+  `\n${passed}/${results.length - skipped} checks passed` +
+    (skipped ? ` (${skipped} skipped)` : '') +
+    '\n',
+);
 
 if (failures > 0) {
   process.stdout.write('\nFailed:\n');
-  for (const result of results.filter((item) => !item.ok)) {
+  for (const result of results.filter((item) => item.status === 'fail')) {
     process.stdout.write(`  ${result.name}\n    ${result.detail}\n`);
   }
   process.stdout.write('\nSee docs/deployment.md.\n');
