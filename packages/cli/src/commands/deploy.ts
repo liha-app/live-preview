@@ -19,6 +19,22 @@ import {
  * output, and publish it — creating the preview on first run and adding a
  * version to the same share URL every time after.
  */
+/**
+ * Warns before a long silence.
+ *
+ * The upload is one request, so there is nothing to report while it runs — and
+ * the server writes about six files a second, so a large site is minutes of a
+ * cursor not moving. Saying so beforehand is the difference between waiting
+ * and wondering whether it hung.
+ */
+function slowUploadNote(fileCount: number): string | null {
+  const seconds = Math.round(fileCount / 6);
+  if (seconds < 20) return null;
+  return `That is a large upload; expect around ${
+    seconds < 90 ? `${seconds} seconds` : `${Math.round(seconds / 60)} minutes`
+  }.`;
+}
+
 export async function deployCommand(args: ParsedArgs, reporter: Reporter): Promise<ExitCode> {
   const projectDir = args.positionals[0] ?? '.';
   const project = await inspectProject(projectDir);
@@ -71,6 +87,8 @@ export async function deployCommand(args: ParsedArgs, reporter: Reporter): Promi
     reporter.step(
       `Updating ${target.slug} with ${files.length} file(s), ${formatBytes(totalBytes(files))}`,
     );
+    const updateNote = slowUploadNote(files.length);
+    if (updateNote) reporter.step(updateNote);
     const result = await target.client.addVersion(target.slug, files, flagString(args, 'label'));
     reporter.emit(
       {
@@ -100,6 +118,8 @@ export async function deployCommand(args: ParsedArgs, reporter: Reporter): Promi
   reporter.step(
     `Creating a preview from ${files.length} file(s), ${formatBytes(totalBytes(files))}`,
   );
+  const createNote = slowUploadNote(files.length);
+  if (createNote) reporter.step(createNote);
   const client = new LihaClient({ apiUrl });
   const created = await client.createPreview(files, {
     title: flagString(args, 'title') ?? project.name ?? undefined,

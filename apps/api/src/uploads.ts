@@ -190,20 +190,58 @@ export function resolveContentType(path: string, bytes: Uint8Array): string {
   return sniffed;
 }
 
+/**
+ * How many objects to write at once.
+ *
+ * Each put is a round trip, and measured against the real bucket that trip is
+ * about a second — so a 169-file site written one file at a time took three
+ * minutes. The same site takes 30 seconds written this way. Nothing about the
+ * work needs ordering; only the manifest does, and it is rebuilt by index.
+ *
+ * The real ceiling is the platform's, not this number: a Worker holds about
+ * six connections open at once, and 169 files took the same 30 seconds at 16
+ * as at 48. So this is a bound, not a target — high enough not to be the
+ * limit, low enough that a big upload cannot monopolise the isolate. The bytes
+ * are already in memory either way, so concurrency costs nothing there.
+ */
+const WRITE_CONCURRENCY = 16;
+
+/** Runs `worker` over `items` at most `limit` at a time, keeping input order. */
+async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+
+  const run = async () => {
+    for (let index = next++; index < items.length; index = next++) {
+      results[index] = await worker(items[index] as T, index);
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return results;
+}
+
 export async function storeVersionFiles(
   bucket: ObjectStore,
   previewId: string,
   versionId: string,
   upload: PreparedUpload,
 ): Promise<VersionManifest> {
-  const files: VersionFile[] = [];
-  for (const entry of upload.entries) {
-    const contentType = resolveContentType(entry.path, entry.bytes);
-    await bucket.put(versionFileKey(previewId, versionId, entry.path), entry.bytes, {
-      httpMetadata: { contentType },
-    });
-    files.push({ path: entry.path, size: entry.bytes.length, contentType });
-  }
+  const files = await mapLimit(
+    upload.entries,
+    WRITE_CONCURRENCY,
+    async (entry): Promise<VersionFile> => {
+      const contentType = resolveContentType(entry.path, entry.bytes);
+      await bucket.put(versionFileKey(previewId, versionId, entry.path), entry.bytes, {
+        httpMetadata: { contentType },
+      });
+      return { path: entry.path, size: entry.bytes.length, contentType };
+    },
+  );
 
   const manifest: VersionManifest = {
     entryPath: upload.entryPath,

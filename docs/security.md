@@ -179,6 +179,12 @@ at the network layer for deployments that care. This is stated in
   The ceiling is the runtime's: a Worker isolate has 128 MB of memory, and the
   upload path holds the multipart body and the expanded entries at once.
 - 25 MB per individual file.
+- File count, not size, is what makes a large upload slow. Every file is one
+  R2 write, they are issued 16 at a time, and a Worker holds about six
+  connections open at once — so the throughput is roughly six files a second
+  regardless of how small they are. A 169-file site takes about 30 seconds; the
+  2,000-file ceiling would take about five minutes. Measured against the real
+  bucket, not estimated.
 - 50 versions and 300 MB per preview, so one share URL cannot grow without
   bound even though its owner holds a valid token.
 - 20 new previews per client per five minutes, checked before the body is read.

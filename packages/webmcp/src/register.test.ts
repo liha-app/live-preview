@@ -16,6 +16,7 @@ const PREVIEW: Preview = {
   passwordProtected: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-02T00:00:00.000Z',
+  expiresAt: null,
   shareUrl: 'https://liha.test/p/abcdefghijkm',
   contentUrl: 'https://abcdefghijkm--2.preview.test/index.html',
   openCommentCount: 1,
