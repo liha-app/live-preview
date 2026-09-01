@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { skipIntro } from './home.js';
 import { asNewClient } from './clients.js';
 import { expect, test } from '@playwright/test';
 
@@ -33,8 +34,9 @@ test.describe('localization', () => {
     ] as const) {
       const context = await browser.newContext({ locale });
       const page = await context.newPage();
+      await skipIntro(page);
       await page.goto('/');
-      await expect(page.locator('.lede')).toContainText(heading);
+      await expect(page.locator('.paper__lede')).toContainText(heading);
       await expect(page.locator('html')).toHaveAttribute('lang', locale.slice(0, 2));
       await context.close();
     }
@@ -43,16 +45,17 @@ test.describe('localization', () => {
   test('switches language and remembers the choice', async ({ browser }) => {
     const context = await browser.newContext({ locale: 'en-US' });
     const page = await context.newPage();
+    await skipIntro(page);
     await page.goto('/');
 
-    await expect(page.locator('.lede')).toContainText('Share a build');
+    await expect(page.locator('.paper__lede')).toContainText('Share a build');
     await page.getByRole('button', { name: /Language|言語/ }).click();
 
-    await expect(page.locator('.lede')).toContainText('ビルド成果物');
+    await expect(page.locator('.paper__lede')).toContainText('ビルド成果物');
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
 
     await page.reload();
-    await expect(page.locator('.lede')).toContainText('ビルド成果物');
+    await expect(page.locator('.paper__lede')).toContainText('ビルド成果物');
     await context.close();
   });
 

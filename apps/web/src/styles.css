@@ -748,68 +748,6 @@ kbd {
 
 /* --------------------------------------------------------------- home page */
 
-.page__controls {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  display: flex;
-  gap: 4px;
-}
-
-.page {
-  position: relative;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 56px 20px 80px;
-}
-.page h1 {
-  font-size: 22px;
-  letter-spacing: -0.02em;
-  margin: 0 0 6px;
-  font-weight: 620;
-}
-.page h2 {
-  font-size: 13px;
-  margin: 32px 0 10px;
-  font-weight: 600;
-}
-.lede {
-  color: var(--fg-muted);
-  margin: 0 0 28px;
-  max-width: 58ch;
-}
-
-.try {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 16px 18px;
-  margin-bottom: 20px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--bg-soft);
-}
-
-.try__text {
-  min-width: 0;
-}
-
-.try__text p {
-  margin: 4px 0 0;
-  font-size: 12px;
-}
-
-.try__cta {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 620px) {
-  .try {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
 .dropzone {
   border: 1px dashed var(--line-strong);
   border-radius: 10px;
@@ -832,12 +770,6 @@ kbd {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 14px;
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
 }
 
 .copyable {
@@ -1029,16 +961,6 @@ pre.snippet {
   }
 }
 
-@media (max-width: 620px) {
-  .page {
-    padding: 32px 16px 64px;
-  }
-
-  .grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ------------------------------------------------------- agent visibility */
 
 .topbar__agent {
@@ -1096,4 +1018,18 @@ pre.snippet {
 .tag--acts {
   color: var(--mark);
   border-color: color-mix(in srgb, var(--mark) 40%, transparent);
+}
+
+/*
+ * A dialog that supplies its own surface. Used by the landing page, whose
+ * sheets are drawn on paper rather than in the plain interface.
+ */
+.modal--bare {
+  /* The child brings the surface, and its own width with it. */
+  width: min(620px, 100%);
+  background: none;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  gap: 0;
 }

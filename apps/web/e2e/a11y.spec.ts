@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { skipIntro } from './home.js';
 import { asNewClient } from './clients.js';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -44,6 +45,7 @@ test.describe('accessibility', () => {
     test(`home page has no violations in ${scheme} mode`, async ({ browser }) => {
       const context = await browser.newContext({ colorScheme: scheme });
       const page = await context.newPage();
+      await skipIntro(page);
       await page.goto('/');
       await expect(page.getByRole('heading', { name: 'Liha Live Preview' })).toBeVisible();
       expect((await scan(page)).violations).toEqual([]);
@@ -119,4 +121,22 @@ test.describe('accessibility', () => {
     await expect(page.getByPlaceholder('Password')).toBeVisible();
     expect((await scan(page)).violations).toEqual([]);
   });
+});
+
+/*
+ * The introduction is the first thing a first-time visitor meets, and it is
+ * mostly drawing. If the illustrations were exposed, or the paper palette were
+ * too pale to read, this is where it would show.
+ */
+test.describe('the introduction', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`has no violations in ${scheme} mode`, async ({ browser }) => {
+      const context = await browser.newContext({ colorScheme: scheme });
+      const page = await context.newPage();
+      await page.goto('/');
+      await expect(page.getByRole('dialog')).toBeVisible();
+      expect((await scan(page)).violations).toEqual([]);
+      await context.close();
+    });
+  }
 });

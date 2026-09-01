@@ -17,9 +17,11 @@ export function buildHeaders({ apiOrigin, contentDomain }) {
     "default-src 'self'",
     "script-src 'self'",
     // Vite emits a handful of inline style attributes; scripts stay strict.
-    "style-src 'self' 'unsafe-inline'",
+    // Google Fonts serves the handwriting faces the interface is drawn in. Two
+    // hostnames, both Google's own, on an otherwise self-only policy.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src 'self' ${apiOrigin}`,
     `frame-src https://*.${contentDomain}`,
     "worker-src 'self' blob:",

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipIntro } from './home.js';
 import { asNewClient } from './clients.js';
 
 const API = 'http://localhost:8787';
@@ -302,9 +303,10 @@ test.describe('theme', () => {
 
 test.describe('first run', () => {
   test('one click puts a newcomer inside a real review', async ({ page }) => {
+    await skipIntro(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: /sample review/i }).click();
+    await page.getByRole('button', { name: /see a sample/i }).click();
     await page.waitForURL(/\/p\//);
 
     // A real artifact, not a mockup of one.
@@ -327,8 +329,9 @@ test.describe('first run', () => {
   });
 
   test('the sample markers actually sit on what they describe', async ({ page }) => {
+    await skipIntro(page);
     await page.goto('/');
-    await page.getByRole('button', { name: /sample review/i }).click();
+    await page.getByRole('button', { name: /see a sample/i }).click();
     await page.waitForURL(/\/p\//);
     await page.frameLocator('iframe[title="Preview content"]').locator('#cta').waitFor();
 

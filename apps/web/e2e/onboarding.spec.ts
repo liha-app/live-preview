@@ -1,0 +1,73 @@
+import { expect, test } from '@playwright/test';
+import { skipIntro } from './home.js';
+
+/**
+ * The landing page greets a first-time visitor with three sketches, then gets
+ * out of the way. It has to open once, close for good, and still be reachable
+ * afterwards — a welcome that repeats itself is an obstacle.
+ */
+test.describe('the introduction', () => {
+  test('opens on a first visit and walks its three steps', async ({ page }) => {
+    await page.goto('/');
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('01 / 03');
+    await expect(dialog.getByRole('heading')).toContainText('stable URL');
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog).toContainText('02 / 03');
+    await expect(dialog.getByRole('heading')).toContainText('Mark it up');
+
+    await dialog.getByRole('button', { name: 'Next' }).click();
+    await expect(dialog).toContainText('03 / 03');
+
+    // The last step offers the sample rather than another "next".
+    await expect(dialog.getByRole('button', { name: 'Next' })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: /open a sample/i })).toBeVisible();
+  });
+
+  test('jumps to a step from its marker', async ({ page }) => {
+    await page.goto('/');
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Step 3' }).click();
+    await expect(dialog).toContainText('03 / 03');
+  });
+
+  test('does not come back once it has been seen', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('dialog').getByRole('button', { name: 'Skip' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Liha Live Preview' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('is still reachable from the header', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'How it works' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Escape closes it, like every other dialog in the app.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
+
+  test('its last step opens the sample review', async ({ page }) => {
+    await page.goto('/');
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Step 3' }).click();
+    await dialog.getByRole('button', { name: /open a sample/i }).click();
+
+    await page.waitForURL(/\/p\//);
+    await expect(page.frameLocator('iframe[title="Preview content"]').locator('h1')).toContainText(
+      'Ship faster',
+    );
+  });
+});

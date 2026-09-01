@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { I18nProvider } from './i18n/index.js';
 import { initTheme } from './lib/theme.js';
 import './styles.css';
+import './paper.css';
 
 // Before the first paint: an explicitly-dark user should never see a white flash.
 initTheme();

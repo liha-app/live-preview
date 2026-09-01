@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowRight, Files, FolderOpen, Link2, Play, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CreatePreviewResult } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
 import { api } from '../lib/api.js';
-import { ownerTokens } from '../lib/storage.js';
+import { ownerTokens, seenIntro } from '../lib/storage.js';
 import { useTheme } from '../lib/useTheme.js';
 import { filesFromDataTransfer, pickFiles, type UploadSelection } from '../lib/files.js';
-import { CopyField } from '../components/Dialogs.js';
+import { CopyField, Modal } from '../components/Dialogs.js';
 import { LocaleToggle } from '../components/LocaleToggle.js';
 import { ThemeToggle } from '../components/ThemeToggle.js';
+import { PaperDecor } from '../components/PaperDecor.js';
+import { Onboarding } from '../components/Onboarding.js';
 import { useT } from '../i18n/index.js';
 import { registerLihaTools, type RegistrationHandle } from '@liha/webmcp';
 import { AgentPanel } from '../components/AgentPanel.js';
 
-function PageControls({ onAgentPanel }: { onAgentPanel?(): void }) {
+/** What the create sheet is about to make. */
+type Pending = 'files' | 'url';
+
+function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
   const { theme, setTheme } = useTheme();
   const t = useT();
   return (
-    <div className="page__controls">
+    <>
       {onAgentPanel && (
         <button
           type="button"
@@ -33,21 +38,33 @@ function PageControls({ onAgentPanel }: { onAgentPanel?(): void }) {
       )}
       <LocaleToggle />
       <ThemeToggle theme={theme} onChange={setTheme} />
-    </div>
+    </>
   );
 }
 
 export function HomeRoute() {
   const t = useT();
   const navigate = useNavigate();
+  const stageRef = useRef<HTMLDivElement>(null);
   const [registration, setRegistration] = useState<RegistrationHandle | null>(null);
+  const [mode, setMode] = useState<'drop' | 'url' | 'cli'>('drop');
   const [selection, setSelection] = useState<UploadSelection | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
   const [title, setTitle] = useState('');
   const [password, setPassword] = useState('');
   const [url, setUrl] = useState('');
   const [result, setResult] = useState<CreatePreviewResult | null>(null);
   const [showAgent, setShowAgent] = useState(false);
+  const [intro, setIntro] = useState(false);
+
+  // Once, on a first visit. After that it lives behind "how it works".
+  useEffect(() => {
+    if (!seenIntro.get()) {
+      seenIntro.set();
+      setIntro(true);
+    }
+  }, []);
 
   const remember = (created: CreatePreviewResult) => {
     ownerTokens.set(created.preview.slug, created.ownerToken);
@@ -60,7 +77,10 @@ export function HomeRoute() {
         title: title || undefined,
         password: password || undefined,
       }),
-    onSuccess: remember,
+    onSuccess: (created) => {
+      setPending(null);
+      remember(created);
+    },
   });
 
   const importUrl = useMutation({
@@ -70,7 +90,10 @@ export function HomeRoute() {
         title: title || undefined,
         password: password || undefined,
       }),
-    onSuccess: remember,
+    onSuccess: (created) => {
+      setPending(null);
+      remember(created);
+    },
   });
 
   // The sample opens straight into the review UI: the point is to land someone
@@ -125,169 +148,196 @@ export function HomeRoute() {
 
   if (result) return <CreatedPanel result={result} onReset={() => setResult(null)} />;
 
-  const agentPanel = showAgent ? (
-    <AgentPanel registration={registration} onClose={() => setShowAgent(false)} />
-  ) : null;
+  const choose = async (directory: boolean) => {
+    const picked = await pickFiles({ directory });
+    if (!picked) return;
+    setSelection(picked);
+    setPending('files');
+  };
+
+  const confirm = () => (pending === 'url' ? importUrl.mutate() : upload.mutate());
 
   return (
-    <div className="page">
-      {agentPanel}
-      <PageControls onAgentPanel={() => setShowAgent(true)} />
-      <h1>{t('app.name')} Live Preview</h1>
-      <p className="lede">{t('app.tagline')}</p>
+    <div className="paper">
+      <PaperDecor targetRef={stageRef} />
 
-      <section className="try">
-        <div className="try__text">
-          <strong>{t('home.demoHeading')}</strong>
-          <p className="muted">{t('home.demoBody')}</p>
-        </div>
-        <button
-          type="button"
-          className="btn btn--primary try__cta"
-          disabled={busy}
-          onClick={() => demo.mutate()}
-        >
-          {demo.isPending ? (
-            <span className="spinner" aria-hidden="true" />
-          ) : (
-            <Play size={14} strokeWidth={1.75} aria-hidden="true" />
-          )}
-          {t('home.demoCta')}
-        </button>
-      </section>
+      <div className="paper__shell">
+        <header className="paper__head">
+          <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
+          <div className="paper__nav">
+            <button type="button" className="paper-link" onClick={() => setIntro(true)}>
+              {t('home.howTo')}
+            </button>
+            <PageChrome onAgentPanel={() => setShowAgent(true)} />
+          </div>
+        </header>
 
-      <div
-        className="dropzone"
-        data-active={dragging}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={async (event) => {
-          event.preventDefault();
-          setDragging(false);
-          setSelection(await filesFromDataTransfer(event.dataTransfer));
-        }}
-      >
-        {selection ? (
+        <main className="paper__body">
           <div>
-            <strong>{t.plural('home.ready', selection.parts.length)}</strong>
-            <div className="faint">{formatBytes(selection.totalBytes)}</div>
-            <div className="faint mono" style={{ marginTop: 6 }}>
-              {selection.parts
-                .slice(0, 4)
-                .map((part) => part.path)
-                .join('  ·  ')}
-              {selection.parts.length > 4 ? ` … +${selection.parts.length - 4}` : ''}
+            <h1 className="paper__title">{t('app.name')} Live Preview</h1>
+            <div className="paper__underline" aria-hidden="true" />
+          </div>
+          <p className="paper__lede">{t('app.tagline')}</p>
+
+          <div className="paper__stage" ref={stageRef}>
+            {mode === 'drop' && (
+              <button
+                type="button"
+                className="paper-drop"
+                data-active={dragging}
+                disabled={busy}
+                onClick={() => void choose(false)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={async (event) => {
+                  event.preventDefault();
+                  setDragging(false);
+                  const dropped = await filesFromDataTransfer(event.dataTransfer);
+                  if (!dropped) return;
+                  setSelection(dropped);
+                  setPending('files');
+                }}
+              >
+                <span className="paper-drop__title">{t('home.dropTitle')}</span>
+                <span className="paper-drop__hint">{t('home.dropHint')}</span>
+              </button>
+            )}
+
+            {mode === 'url' && (
+              <div className="paper-url">
+                <div className="paper-url__row">
+                  <input
+                    className="paper-input"
+                    placeholder={t('home.urlPlaceholder')}
+                    aria-label={t('home.urlHeading')}
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="paper-btn paper-btn--ink"
+                    disabled={!url || busy}
+                    onClick={() => setPending('url')}
+                  >
+                    {t('home.import')}
+                  </button>
+                </div>
+                <p className="paper-url__note">{t('home.urlHint')}</p>
+              </div>
+            )}
+
+            {mode === 'cli' && (
+              <div className="paper-cli">
+                <div className="paper-cli__cmd">npx @liha/live-preview deploy .</div>
+                <div className="paper-cli__note"># build, publish, print the share URL</div>
+                <div className="paper-cli__cmd">npx @liha/live-preview comments --json</div>
+                <div className="paper-cli__note"># what reviewers asked for</div>
+                <div className="paper-cli__cmd">npx @liha/live-preview update ./dist</div>
+                <div className="paper-cli__note"># same URL, new version</div>
+              </div>
+            )}
+          </div>
+
+          {mode === 'drop' && (
+            <div className="paper__picks">
+              <button type="button" className="paper-link" onClick={() => void choose(true)}>
+                {t('upload.folder')}
+              </button>
+            </div>
+          )}
+
+          <div className="paper__modes">
+            {(['drop', 'url', 'cli'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className="paper__mode"
+                aria-pressed={mode === value}
+                onClick={() => setMode(value)}
+              >
+                {t(
+                  value === 'drop'
+                    ? 'home.modeDrop'
+                    : value === 'url'
+                      ? 'home.modeUrl'
+                      : 'home.modeCli',
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="paper-link paper-link--pen"
+              disabled={busy}
+              onClick={() => demo.mutate()}
+            >
+              {demo.isPending ? t('common.loading') : t('home.sample')}
+            </button>
+          </div>
+
+          {error && <div className="notice notice--error">{messageOf(error)}</div>}
+        </main>
+      </div>
+
+      {pending && (
+        <Modal title={t('home.createHeading')} onClose={() => setPending(null)} bare>
+          <div className="paper-tokens paper-sheet paper-sheet--narrow">
+            <h2 className="paper-sheet__title">{t('home.createHeading')}</h2>
+
+            {pending === 'files' && selection && (
+              <p className="paper-drop__files">
+                {t.plural('home.ready', selection.parts.length)} ·{' '}
+                {formatBytes(selection.totalBytes)}
+              </p>
+            )}
+
+            <div className="paper-sheet__fields">
+              <label>
+                <span className="paper-sheet__label">{t('home.title')}</span>
+                <input
+                  className="paper-ruled"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder={t('home.titlePlaceholder')}
+                />
+              </label>
+              <label>
+                <span className="paper-sheet__label">{t('home.password')}</span>
+                <input
+                  className="paper-ruled"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={t('home.passwordPlaceholder')}
+                />
+              </label>
+            </div>
+
+            <div className="paper-sheet__foot">
+              <button type="button" className="paper-link" onClick={() => setPending(null)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="paper-btn" disabled={busy} onClick={confirm}>
+                {busy ? t('common.loading') : t('home.create')}
+              </button>
             </div>
           </div>
-        ) : (
-          <>
-            <strong>{t('home.dropTitle')}</strong>
-            <div className="dropzone__hint">{t('home.dropHint')}</div>
-          </>
-        )}
-        <div className="dropzone__actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={async () => setSelection(await pickFiles({ directory: false }))}
-          >
-            <Files size={14} strokeWidth={1.75} aria-hidden="true" />
-            {t('upload.files')}
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={async () => setSelection(await pickFiles({ directory: true }))}
-          >
-            <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" />
-            {t('upload.folder')}
-          </button>
-          {selection && (
-            <button type="button" className="btn btn--quiet" onClick={() => setSelection(null)}>
-              {t('common.clear')}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid-2" style={{ marginTop: 14 }}>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted">{t('home.title')}</span>
-          <input
-            className="field"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={t('home.titlePlaceholder')}
-          />
-        </label>
-        <label className="stack" style={{ gap: 4 }}>
-          <span className="muted">{t('home.password')}</span>
-          <input
-            className="field"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={t('home.passwordPlaceholder')}
-          />
-        </label>
-      </div>
-
-      <div className="row" style={{ marginTop: 14 }}>
-        <button
-          type="button"
-          className="btn btn--primary"
-          disabled={!selection || busy}
-          onClick={() => upload.mutate()}
-        >
-          {upload.isPending && <span className="spinner" aria-hidden="true" />}
-          {t('home.create')}
-        </button>
-      </div>
-
-      <h2>{t('home.urlHeading')}</h2>
-      <div className="row">
-        <input
-          className="field"
-          placeholder={t('home.urlPlaceholder')}
-          aria-label={t('home.urlHeading')}
-          value={url}
-          onChange={(event) => setUrl(event.target.value)}
-        />
-        <button
-          type="button"
-          className="btn"
-          disabled={!url || busy}
-          onClick={() => importUrl.mutate()}
-        >
-          {importUrl.isPending ? (
-            <span className="spinner" aria-hidden="true" />
-          ) : (
-            <Link2 size={14} strokeWidth={1.75} aria-hidden="true" />
-          )}
-          {t('home.import')}
-        </button>
-      </div>
-      <p className="faint" style={{ marginTop: 6 }}>
-        {t('home.urlHint')}
-      </p>
-
-      {error && (
-        <div className="notice notice--error" style={{ marginTop: 14 }}>
-          {messageOf(error)}
-        </div>
+        </Modal>
       )}
 
-      <h2>{t('home.terminalHeading')}</h2>
-      <div className="card">
-        <pre className="snippet">
-          {`npx @liha/live-preview deploy .          # build, publish, print the share URL
-npx @liha/live-preview comments --json   # what reviewers asked for
-npx @liha/live-preview update ./dist     # same URL, new version`}
-        </pre>
-      </div>
+      {intro && (
+        <Onboarding
+          onClose={() => setIntro(false)}
+          onSample={() => {
+            setIntro(false);
+            demo.mutate();
+          }}
+        />
+      )}
+
+      {showAgent && <AgentPanel registration={registration} onClose={() => setShowAgent(false)} />}
     </div>
   );
 }
@@ -296,34 +346,49 @@ function CreatedPanel({ result, onReset }: { result: CreatePreviewResult; onRese
   const t = useT();
 
   return (
-    <div className="page">
-      <PageControls />
-      <h1>{t('created.title')}</h1>
-      <p className="lede">{t('created.body')}</p>
-      <div className="card stack">
-        <CopyField label={t('share.url')} value={result.preview.shareUrl} />
-        <CopyField label={t('created.ownerLink')} value={result.ownerUrl} />
-        <CopyField label={t('share.ownerToken')} value={result.ownerToken} />
-        <CopyField label={t('share.previewId')} value={result.preview.id} />
-        <p className="faint" style={{ margin: 0 }}>
-          {t('created.ownerNote')}
-        </p>
-      </div>
-      <div className="row" style={{ marginTop: 14 }}>
-        <Link className="btn btn--primary" to="/p/$slug" params={{ slug: result.preview.slug }}>
-          {t('created.open')}
-          <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
-        </Link>
-        <button type="button" className="btn" onClick={onReset}>
-          {t('created.another')}
-        </button>
-      </div>
-      <h2>{t('created.agentHeading')}</h2>
-      <div className="card">
-        <pre className="snippet">
-          {`liha-preview link ${result.preview.id} --token ${result.ownerToken.slice(0, 16)}…
-liha-preview mcp        # expose this review to a local MCP client`}
-        </pre>
+    <div className="paper">
+      <div className="paper__shell">
+        <header className="paper__head">
+          <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
+          <div className="paper__nav">
+            <PageChrome />
+          </div>
+        </header>
+
+        <main className="paper__body">
+          <div>
+            <h1 className="paper__title" style={{ fontSize: 'clamp(28px, 3.4vw, 44px)' }}>
+              {t('created.title')}
+            </h1>
+            <div className="paper__underline" aria-hidden="true" />
+          </div>
+          <p className="paper__lede">{t('created.body')}</p>
+
+          <div className="paper-sheet" style={{ maxWidth: 560 }}>
+            <div className="stack">
+              <CopyField label={t('share.url')} value={result.preview.shareUrl} />
+              <CopyField label={t('created.ownerLink')} value={result.ownerUrl} />
+              <CopyField label={t('share.ownerToken')} value={result.ownerToken} />
+              <p className="paper-url__note" style={{ margin: 0 }}>
+                {t('created.ownerNote')}
+              </p>
+            </div>
+          </div>
+
+          <div className="paper__picks">
+            <Link
+              className="paper-btn paper-btn--ink"
+              to="/p/$slug"
+              params={{ slug: result.preview.slug }}
+            >
+              {t('created.open')}
+              <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
+            </Link>
+            <button type="button" className="paper-btn paper-btn--quiet" onClick={onReset}>
+              {t('created.another')}
+            </button>
+          </div>
+        </main>
       </div>
     </div>
   );

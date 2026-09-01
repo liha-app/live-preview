@@ -162,6 +162,37 @@ export const en = {
   'shortcuts.theme': 'Cycle the colour theme',
   'shortcuts.thisList': 'This list',
 
+  'home.howTo': 'How it works',
+  'home.modeDrop': 'Drop and share',
+  'home.modeUrl': 'Review a URL',
+  'home.modeCli': 'From the terminal',
+  'home.sample': 'See a sample',
+  'home.createHeading': 'Create this preview?',
+
+  'decor.scrawl': 'text too small here',
+  'decor.specOk': 'p.3 OK',
+  'decor.sticky': 'Reviewers draw\nstraight on\nthe screen',
+  'decor.comments': 'An agent reads it and\nships the fix to the same URL',
+  'decor.password': 'you can password-protect it',
+  'decor.dropLabel': 'drag & drop',
+  'decor.urlLabel': 'a URL that never changes',
+
+  'onboard.title': 'How Liha works',
+  'onboard.step': '{current} / {total}',
+  'onboard.close': 'close',
+  'onboard.skip': 'Skip',
+  'onboard.next': 'Next',
+  'onboard.openSample': 'Open a sample',
+  'onboard.goTo': 'Step {step}',
+  'onboard.1.title': 'First, hand over a stable URL',
+  'onboard.1.body': 'A static site, a PDF, an image — just drop it.',
+  'onboard.2.title': 'Mark it up where you see it',
+  'onboard.2.body': 'Reviewers write straight onto the screen.',
+  'onboard.3.title': 'The fix lands at the same URL',
+  'onboard.3.body': 'An agent reads the feedback and ships it.',
+  'onboard.fix': 'fix this',
+  'onboard.sameUrl': 'same URL · v2',
+
   'home.dropTitle': 'Drop a file, a folder, or a zipped site',
   'home.dropHint': 'HTML & static sites · PNG, JPEG, WebP · PDF',
   'home.ready': '{count} file ready|{count} files ready',
@@ -175,11 +206,6 @@ export const en = {
   'home.import': 'Import',
   'home.urlHint':
     'Liha snapshots the page HTML so reviewers can mark it up. Private and internal addresses are rejected.',
-  'home.terminalHeading': 'From the terminal',
-  'home.demoHeading': 'Never used it? Start here',
-  'home.demoBody':
-    'Opens a real preview of a sample landing page, already carrying review feedback — including a comment anchored to a specific button. Nothing to upload, and you get the owner token so you can resolve it.',
-  'home.demoCta': 'Open a sample review',
 
   'created.title': 'Preview created',
   'created.body':

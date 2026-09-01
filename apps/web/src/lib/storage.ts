@@ -7,6 +7,7 @@
 const OWNER_PREFIX = 'liha.owner.';
 const REVIEW_PREFIX = 'liha.review.';
 const NAME_KEY = 'liha.reviewer-name';
+const INTRO_KEY = 'liha.seen-intro';
 
 function read(key: string): string | null {
   try {
@@ -33,6 +34,16 @@ export const ownerTokens = {
 export const reviewSessions = {
   get: (slug: string) => read(REVIEW_PREFIX + slug),
   set: (slug: string, token: string | null) => write(REVIEW_PREFIX + slug, token),
+};
+
+/**
+ * Whether the three-step introduction has been seen. It opens once, on a first
+ * visit, and after that only when someone asks for it — a modal that greets you
+ * every time stops being a welcome.
+ */
+export const seenIntro = {
+  get: () => read(INTRO_KEY) === '1',
+  set: () => write(INTRO_KEY, '1'),
 };
 
 export const reviewerName = {

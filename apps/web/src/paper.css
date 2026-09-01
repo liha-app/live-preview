@@ -1,0 +1,1041 @@
+/*
+ * The landing surface.
+ *
+ * Everything here is scoped under `.paper`. The review screen keeps the plain
+ * interface it has always had — the artifact under review is the only thing
+ * that should draw the eye there. This is the front door, and a front door is
+ * allowed to have a face.
+ *
+ * The look is a sheet of graph paper marked up in red pen: off-square borders
+ * (the `--rough-*` radii), hard offset shadows instead of blurs, and a
+ * handwriting face for anything the interface says in its own voice. Text the
+ * user typed — titles, comments, file names — stays in a normal face, because
+ * handwriting is the product talking, not them.
+ *
+ * Greys are darker than the mock's. Several of its labels sat around 2.6:1 on
+ * paper; every colour below clears WCAG AA against the ground it is used on,
+ * verified by the axe pass in e2e/a11y.spec.ts.
+ */
+
+.paper,
+.paper-tokens {
+  --paper-ground: #f7f3e8;
+  --paper-grid: rgb(31 79 109 / 6%);
+  --paper-card: #fffdf7;
+  --paper-ink: #2b3a45;
+  --paper-text: #23303a;
+  --paper-muted: #3b4853;
+  --paper-faint: #59646d;
+  --paper-quiet: #616c75;
+  --paper-pen: #b8352a;
+  /* Text laid on the pen or the blue. Both grounds invert between themes, so
+     the colour that sits on them has to invert with them. */
+  --paper-pen-fg: #fffdf7;
+  --paper-blue: #1f4f6d;
+  --paper-blue-fg: #fdfaf1;
+  --paper-sticky: #ffe58a;
+  --paper-sticky-ink: #23303a;
+  --paper-underline: rgb(255 206 84 / 90%);
+  --paper-underline-fade: rgb(255 206 84 / 25%);
+  --paper-fill: #eae5d8;
+  --paper-fill-strong: #e6e0d1;
+  --paper-terminal: #23303a;
+  --paper-terminal-fg: #f4efe2;
+  --paper-terminal-dim: #93a2ac;
+  --paper-shadow: rgb(43 58 69 / 13%);
+  --paper-shadow-strong: rgb(43 58 69 / 22%);
+  --paper-overlay: rgb(35 48 58 / 50%);
+
+  /* Off-square corners. Nothing drawn by hand closes on itself exactly. */
+  --rough-a: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --rough-b: 15px 225px 15px 255px / 225px 15px 255px 15px;
+  --rough-c: 225px 14px 255px 12px / 12px 255px 14px 225px;
+  --rough-d: 14px 255px 15px 225px / 225px 15px 255px 14px;
+
+  --hand: 'Yomogi', 'Zen Kurenaido', cursive;
+  --body: 'Zen Kaku Gothic New', var(--sans);
+  --form: 'Zen Kurenaido', var(--sans);
+  --code: 'JetBrains Mono', var(--mono);
+}
+
+/*
+ * Dark is the same drawing on darker stock: the ground drops away, the ink
+ * lightens, and the pen moves up in brightness so it still reads as red rather
+ * than going muddy. Declared twice for the same reason as the tokens in
+ * styles.css — an explicit light choice has to survive a dark OS.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .paper,
+  :root:not([data-theme='light']) .paper-tokens {
+    --paper-ground: #1a1c1a;
+    --paper-grid: rgb(232 226 212 / 5.5%);
+    --paper-card: #23262a;
+    --paper-ink: #cfc9bb;
+    --paper-text: #e8e2d4;
+    --paper-muted: #cbc5b8;
+    --paper-faint: #a8a296;
+    --paper-quiet: #979186;
+    --paper-pen: #ef6f5e;
+    --paper-pen-fg: #20100d;
+    --paper-blue: #8fbcda;
+    --paper-blue-fg: #0e1c24;
+    --paper-sticky: #3d3722;
+    --paper-sticky-ink: #f0e9d8;
+    --paper-underline: rgb(255 206 84 / 34%);
+    --paper-underline-fade: rgb(255 206 84 / 8%);
+    --paper-fill: #31353a;
+    --paper-fill-strong: #3b4047;
+    --paper-terminal: #101214;
+    --paper-terminal-fg: #e8e2d4;
+    --paper-terminal-dim: #8d9aa3;
+    --paper-shadow: rgb(0 0 0 / 45%);
+    --paper-shadow-strong: rgb(0 0 0 / 60%);
+    --paper-overlay: rgb(0 0 0 / 66%);
+  }
+}
+
+:root[data-theme='dark'] .paper,
+:root[data-theme='dark'] .paper-tokens {
+  --paper-ground: #1a1c1a;
+  --paper-grid: rgb(232 226 212 / 5.5%);
+  --paper-card: #23262a;
+  --paper-ink: #cfc9bb;
+  --paper-text: #e8e2d4;
+  --paper-muted: #cbc5b8;
+  --paper-faint: #a8a296;
+  --paper-quiet: #979186;
+  --paper-pen: #ef6f5e;
+  --paper-pen-fg: #20100d;
+  --paper-blue: #8fbcda;
+  --paper-blue-fg: #0e1c24;
+  --paper-sticky: #3d3722;
+  --paper-sticky-ink: #f0e9d8;
+  --paper-underline: rgb(255 206 84 / 34%);
+  --paper-underline-fade: rgb(255 206 84 / 8%);
+  --paper-fill: #31353a;
+  --paper-fill-strong: #3b4047;
+  --paper-terminal: #101214;
+  --paper-terminal-fg: #e8e2d4;
+  --paper-terminal-dim: #8d9aa3;
+  --paper-shadow: rgb(0 0 0 / 45%);
+  --paper-shadow-strong: rgb(0 0 0 / 60%);
+  --paper-overlay: rgb(0 0 0 / 66%);
+}
+
+/* ------------------------------------------------------------------ ground */
+
+.paper {
+  position: relative;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background-color: var(--paper-ground);
+  background-image:
+    linear-gradient(var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+  background-size: 26px 26px;
+  font-family: var(--body);
+  color: var(--paper-text);
+}
+
+.paper__shell {
+  position: relative;
+  z-index: 3;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 30px 26px;
+  box-sizing: border-box;
+}
+
+.paper__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.paper__wordmark {
+  font-family: var(--hand);
+  font-size: 17px;
+  transform: rotate(-1deg);
+}
+
+.paper__nav {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.paper__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  padding: 40px 0;
+}
+
+/* ------------------------------------------------------------------- hero */
+
+.paper__title {
+  position: relative;
+  margin: 0;
+  font-family: var(--hand);
+  font-weight: 400;
+  font-size: clamp(34px, 4.6vw, 62px);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.paper__underline {
+  height: 10px;
+  margin-top: 2px;
+  border-radius: 6px;
+  transform: rotate(-0.6deg);
+  background: linear-gradient(
+    90deg,
+    var(--paper-underline-fade),
+    var(--paper-underline) 30%,
+    var(--paper-underline) 72%,
+    var(--paper-underline-fade)
+  );
+}
+
+.paper__lede {
+  margin: 0;
+  max-width: 430px;
+  font-size: 14px;
+  line-height: 2;
+  color: var(--paper-muted);
+  text-wrap: pretty;
+  /*
+   * Japanese has no spaces, so the default is to break anywhere — including
+   * inside a word like レビュアー. `auto-phrase` breaks on phrase boundaries
+   * instead, and is ignored by browsers that do not know it.
+   */
+  word-break: auto-phrase;
+}
+
+/* --------------------------------------------------------------- controls */
+
+.paper-link {
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--paper-faint);
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid var(--paper-quiet);
+  padding: 0 0 1px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.paper-link:hover,
+.paper-link:focus-visible {
+  color: var(--paper-pen);
+  border-color: var(--paper-pen);
+}
+
+.paper-link--pen {
+  color: var(--paper-pen);
+  border-color: var(--paper-pen);
+}
+
+.paper__modes {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.paper__mode {
+  font-family: var(--hand);
+  font-size: 13px;
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid transparent;
+  padding: 0 0 1px;
+  color: var(--paper-faint);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.paper__mode[aria-pressed='true'] {
+  color: var(--paper-text);
+  border-color: var(--paper-text);
+}
+
+.paper__mode:hover,
+.paper__mode:focus-visible {
+  color: var(--paper-pen);
+}
+
+.paper-btn {
+  font-family: var(--hand);
+  font-size: 15px;
+  background: var(--paper-sticky);
+  color: var(--paper-sticky-ink);
+  border: 2px solid var(--paper-ink);
+  border-radius: var(--rough-a);
+  padding: 10px 24px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--paper-shadow-strong);
+  transform: rotate(-0.7deg);
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.paper-btn:hover:not(:disabled),
+.paper-btn:focus-visible:not(:disabled) {
+  background: var(--paper-pen);
+  border-color: var(--paper-pen);
+  color: var(--paper-pen-fg);
+}
+
+.paper-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.paper-btn--ink {
+  background: var(--paper-blue);
+  border-color: var(--paper-blue);
+  color: var(--paper-blue-fg);
+  border-radius: var(--rough-d);
+  transform: rotate(-0.6deg);
+  box-shadow: 3px 3px 0 var(--paper-shadow);
+}
+
+.paper-btn--quiet {
+  background: transparent;
+  border-color: var(--paper-ink);
+  color: var(--paper-text);
+  box-shadow: none;
+  font-size: 14px;
+  padding: 8px 18px;
+}
+
+/* --------------------------------------------------------------- the drop */
+
+.paper__stage {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  justify-content: center;
+}
+
+.paper-drop {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 30px 22px;
+  width: 100%;
+  max-width: 460px;
+  background: color-mix(in srgb, var(--paper-card) 82%, transparent);
+  border: 2.5px dashed var(--paper-ink);
+  border-radius: var(--rough-b);
+  box-shadow: 4px 5px 0 var(--paper-shadow);
+  transform: rotate(0.3deg);
+  color: inherit;
+  font: inherit;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.paper-drop[data-active='true'] {
+  background: color-mix(in srgb, var(--paper-sticky) 40%, var(--paper-card));
+  border-color: var(--paper-pen);
+  transform: rotate(0.3deg) scale(1.006);
+}
+
+.paper-drop__title {
+  font-family: var(--hand);
+  font-size: 18px;
+}
+
+.paper-drop__hint {
+  margin-top: 6px;
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--paper-faint);
+}
+
+.paper-drop__files {
+  margin-top: 10px;
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--paper-faint);
+  word-break: break-all;
+}
+
+.paper__picks {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ---------------------------------------------------------------- the url */
+
+.paper-url {
+  width: 100%;
+  max-width: 480px;
+  text-align: left;
+}
+
+.paper-url__row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paper-input {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-family: var(--code);
+  font-size: 13px;
+  background: color-mix(in srgb, var(--paper-card) 90%, transparent);
+  border: 2px solid var(--paper-ink);
+  border-radius: var(--rough-d);
+  padding: 12px 16px;
+  outline: none;
+  color: var(--paper-text);
+}
+
+.paper-input:focus-visible {
+  border-color: var(--paper-pen);
+}
+
+.paper-url__note {
+  margin: 13px 0 0;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: var(--paper-faint);
+  text-wrap: pretty;
+}
+
+/* ---------------------------------------------------------------- the cli */
+
+.paper-cli {
+  width: 100%;
+  max-width: 520px;
+  background: var(--paper-terminal);
+  border: 2px solid var(--paper-terminal);
+  border-radius: var(--rough-a);
+  box-shadow: 4px 5px 0 var(--paper-shadow);
+  padding: 20px 22px;
+  box-sizing: border-box;
+  text-align: left;
+  transform: rotate(0.3deg);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 16px;
+  row-gap: 10px;
+  font-family: var(--code);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.paper-cli__cmd {
+  color: var(--paper-terminal-fg);
+  white-space: nowrap;
+}
+
+.paper-cli__note {
+  color: var(--paper-terminal-dim);
+}
+
+@media (max-width: 560px) {
+  .paper-cli {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+
+  .paper-cli__cmd {
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  .paper-cli__note {
+    margin-bottom: 8px;
+  }
+}
+
+/* -------------------------------------------------------------- the decor */
+
+/*
+ * Ornament. It is `aria-hidden` and untouchable: a screen reader gets the page
+ * without it, and a mouse passes straight through to whatever is underneath.
+ */
+.paper__decor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.decor-card {
+  position: absolute;
+  background: var(--paper-card);
+  border: 2px solid var(--paper-ink);
+  box-sizing: border-box;
+}
+
+.decor-browser {
+  left: 3.5%;
+  top: 12%;
+  width: min(250px, calc(50% - 300px));
+  border-width: 2.5px;
+  border-radius: var(--rough-a);
+  box-shadow: 8px 10px 0 var(--paper-shadow);
+  transform: rotate(-2.2deg);
+  padding: 16px 18px 20px;
+}
+
+.decor-dots {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.decor-dots i {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--paper-quiet);
+  border-radius: 50%;
+}
+
+.decor-lines {
+  display: grid;
+  gap: 9px;
+}
+
+.decor-lines b,
+.decor-lines s {
+  display: block;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.decor-lines b {
+  height: 14px;
+  width: 58%;
+  background: var(--paper-fill-strong);
+}
+
+.decor-lines s {
+  height: 7px;
+  background: var(--paper-fill);
+}
+
+.decor-tiles {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.decor-tiles i {
+  height: 44px;
+  flex: 1;
+  background: color-mix(in srgb, var(--paper-fill) 70%, var(--paper-card));
+  border-radius: 5px;
+}
+
+.decor-cta {
+  height: 22px;
+  width: 40%;
+  background: var(--paper-fill-strong);
+  border-radius: 5px;
+  margin-top: 6px;
+  position: relative;
+}
+
+.decor-cta::after {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: -9px;
+  width: calc(100% + 22px);
+  height: 40px;
+  border: 2.5px solid var(--paper-pen);
+  border-radius: var(--rough-a);
+  transform: rotate(-4deg);
+}
+
+.decor-scrawl {
+  margin-top: 16px;
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--paper-pen);
+  transform: rotate(-2deg);
+}
+
+.decor-spec {
+  left: 4%;
+  bottom: 5%;
+  width: min(170px, calc(50% - 320px));
+  border-radius: var(--rough-b);
+  box-shadow: 5px 6px 0 var(--paper-shadow);
+  transform: rotate(2.6deg);
+  padding: 13px 15px;
+}
+
+.decor-file {
+  font-family: var(--code);
+  font-size: 10px;
+  color: var(--paper-quiet);
+}
+
+.decor-sticky {
+  right: 5%;
+  top: 10%;
+  width: min(178px, calc(50% - 300px));
+  background: var(--paper-sticky);
+  color: var(--paper-sticky-ink);
+  border-radius: var(--rough-b);
+  box-shadow: 5px 6px 0 var(--paper-shadow);
+  transform: rotate(2.4deg);
+  padding: 14px 16px;
+  font-family: var(--hand);
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.decor-comments {
+  right: 4%;
+  bottom: 5%;
+  width: min(214px, calc(50% - 320px));
+  border-radius: var(--rough-a);
+  box-shadow: 6px 7px 0 var(--paper-shadow);
+  transform: rotate(-2.2deg);
+  padding: 14px 16px;
+  font-family: var(--hand);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.decor-note {
+  position: absolute;
+  font-family: var(--hand);
+  font-size: 12.5px;
+  color: var(--paper-blue);
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.decor-path {
+  position: absolute;
+  left: 2.5%;
+  top: 5.5%;
+  font-family: var(--code);
+  font-size: 10.5px;
+  color: var(--paper-quiet);
+  transform: rotate(-3deg);
+}
+
+.decor-pencil {
+  position: absolute;
+  left: 24%;
+  top: 5%;
+  width: 118px;
+  height: 15px;
+  background: var(--paper-text);
+  border-radius: 3px 12px 12px 3px;
+  transform: rotate(-8deg);
+  animation: paper-floaty 4.6s ease-in-out infinite;
+}
+
+.decor-pencil::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 0.5px;
+  width: 27px;
+  height: 14px;
+  background: var(--paper-pen);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  border-radius: 2px;
+}
+
+.decor-arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.decor-arrows path {
+  fill: none;
+  stroke: var(--paper-pen);
+  stroke-linecap: round;
+  stroke-dasharray: 700;
+}
+
+/* The marks land in the order a person would draw them. */
+.decor-arrows .ink--1 {
+  animation: paper-ink 1.3s ease-out 0.7s both;
+}
+
+.decor-arrows .ink--2 {
+  animation: paper-ink 0.5s ease-out 1.9s both;
+}
+
+.decor-arrows .ink--3 {
+  animation: paper-ink 1.3s ease-out 2.1s both;
+}
+
+.decor-arrows .ink--4 {
+  animation: paper-ink 0.5s ease-out 3.2s both;
+}
+
+.decor-label {
+  position: absolute;
+  font-family: var(--hand);
+  font-size: 14px;
+  color: var(--paper-pen);
+  white-space: nowrap;
+}
+
+@keyframes paper-ink {
+  from {
+    stroke-dashoffset: 700;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes paper-floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+
+  50% {
+    transform: translateY(-8px) rotate(-6deg);
+  }
+}
+
+/*
+ * Motion is decoration here, so it goes away entirely when it is not wanted —
+ * the arrows simply start drawn.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .decor-arrows path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+
+  .decor-pencil {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ sheet */
+
+/* A dialog drawn on the same stock. */
+.paper-sheet {
+  width: 100%;
+  margin-inline: auto;
+  min-height: 0;
+  background: var(--paper-card);
+  border: 2.5px solid var(--paper-ink);
+  border-radius: var(--rough-a);
+  box-shadow: 8px 10px 0 var(--paper-shadow-strong);
+  padding: 26px 28px 24px;
+  box-sizing: border-box;
+  transform: rotate(-0.5deg);
+  color: var(--paper-text);
+  font-family: var(--body);
+}
+
+.paper-sheet__title {
+  font-family: var(--hand);
+  font-size: 21px;
+  margin: 0;
+  font-weight: 400;
+}
+
+.paper-sheet__fields {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.paper-sheet__label {
+  display: block;
+  font-family: var(--hand);
+  font-size: 13px;
+  color: var(--paper-muted);
+  margin-bottom: 4px;
+}
+
+.paper-ruled {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--form);
+  font-size: 15px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--paper-ink);
+  padding: 6px 4px;
+  outline: none;
+  color: var(--paper-text);
+}
+
+.paper-ruled:focus-visible {
+  border-bottom-color: var(--paper-pen);
+}
+
+.paper-sheet__foot {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------- onboarding */
+
+.paper-sheet--narrow {
+  max-width: 430px;
+}
+
+.onboard {
+  max-width: 560px;
+}
+
+.onboard__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.onboard__step {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--paper-faint);
+  letter-spacing: 0.06em;
+}
+
+.onboard__stage {
+  margin-top: 14px;
+  height: 236px;
+  background-color: var(--paper-ground);
+  background-image:
+    linear-gradient(var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 2px solid var(--paper-ink);
+  border-radius: var(--rough-c);
+  position: relative;
+  overflow: hidden;
+}
+
+.onboard__copy {
+  margin-top: 20px;
+  min-height: 58px;
+}
+
+.onboard__heading {
+  font-family: var(--hand);
+  font-size: 25px;
+  line-height: 1.3;
+  margin: 0;
+  font-weight: 400;
+}
+
+.onboard__sub {
+  margin: 7px 0 0;
+  font-size: 13px;
+  color: var(--paper-faint);
+  word-break: auto-phrase;
+}
+
+.onboard__foot {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.onboard__dots {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.onboard__dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 2px solid var(--paper-ink);
+  background: transparent;
+  border-radius: 225px 8px 255px 8px / 8px 255px 8px 225px;
+  cursor: pointer;
+  transition:
+    width 0.2s,
+    background 0.2s;
+}
+
+.onboard__dot[aria-current='true'] {
+  width: 26px;
+  background: var(--paper-pen);
+  border-color: var(--paper-pen);
+}
+
+.onboard__actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Step illustrations. Ornament again — the copy beneath carries the meaning. */
+.ob {
+  position: absolute;
+  inset: 0;
+}
+
+.ob-doc {
+  position: absolute;
+  left: 34px;
+  top: 38px;
+  width: 120px;
+  height: 150px;
+  background: var(--paper-card);
+  border: 2px solid var(--paper-ink);
+  border-radius: 10px 200px 12px 220px / 220px 12px 200px 10px;
+  transform: rotate(-6deg);
+  padding: 14px 15px;
+  box-sizing: border-box;
+}
+
+.ob-window {
+  position: absolute;
+  background: var(--paper-card);
+  border: 2px solid var(--paper-ink);
+  border-radius: 8px;
+  box-shadow: 5px 6px 0 var(--paper-shadow);
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.ob-url {
+  font-family: var(--code);
+  font-size: 10px;
+  color: var(--paper-text);
+  background: color-mix(in srgb, var(--paper-fill) 80%, var(--paper-card));
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.ob-arrow {
+  position: absolute;
+  overflow: visible;
+}
+
+.ob-arrow path {
+  fill: none;
+  stroke: var(--paper-pen);
+  stroke-linecap: round;
+  stroke-dasharray: 400;
+}
+
+.ob-json {
+  position: absolute;
+  background: var(--paper-terminal);
+  border-radius: 8px;
+  box-shadow: 5px 6px 0 var(--paper-shadow);
+  padding: 14px 16px;
+  box-sizing: border-box;
+  font-family: var(--code);
+  font-size: 9.5px;
+  color: var(--paper-terminal-dim);
+  line-height: 1.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-arrow path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+/* ------------------------------------------------------------ narrow view */
+
+@media (max-width: 700px) {
+  .paper__shell {
+    padding: 16px 18px 24px;
+  }
+
+  .paper__body {
+    gap: 16px;
+    padding: 28px 0;
+  }
+
+  .onboard__stage {
+    height: 190px;
+  }
+}
+
+/*
+ * The controls the rest of the app shares — language, theme, agent tools —
+ * keep their markup and pick up the surface they are standing on.
+ */
+.paper .btn {
+  font-family: var(--hand);
+  background: transparent;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: var(--rough-d);
+  color: var(--paper-text);
+  box-shadow: none;
+}
+
+.paper .btn:hover:not(:disabled),
+.paper .btn:focus-visible:not(:disabled) {
+  border-color: var(--paper-pen);
+  color: var(--paper-pen);
+  background: transparent;
+}
+
+.paper .notice {
+  font-family: var(--body);
+  border-radius: var(--rough-d);
+  border-width: 2px;
+}
+
+.paper .copyable code {
+  font-family: var(--code);
+}
+
+.paper .muted {
+  color: var(--paper-faint);
+}

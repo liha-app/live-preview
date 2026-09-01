@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipIntro } from './home.js';
 
 const API = 'http://localhost:8787';
 
@@ -51,8 +52,9 @@ declare global {
 
 async function openDemo(page: Page) {
   await page.addInitScript(SHIM);
+  await skipIntro(page);
   await page.goto('/');
-  await page.getByRole('button', { name: /sample review/i }).click();
+  await page.getByRole('button', { name: /see a sample/i }).click();
   await page.waitForURL(/\/p\//);
   await page.waitForSelector('iframe[title="Preview content"]');
   await expect(page.locator('.thread').first()).toBeVisible();

@@ -12,10 +12,17 @@ export function Modal({
   title,
   onClose,
   children,
+  /**
+   * Drops the default box so the dialog can bring its own — the landing page's
+   * paper sheet, for one. The dialog keeps `aria-label`, so its accessible name
+   * survives the visible heading going away.
+   */
+  bare = false,
 }: {
   title: string;
   onClose(): void;
   children: React.ReactNode;
+  bare?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -64,13 +71,13 @@ export function Modal({
     <div className="scrim" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="modal"
+        className={bare ? 'modal modal--bare' : 'modal'}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
       >
-        <h3>{title}</h3>
+        {!bare && <h3>{title}</h3>}
         {children}
       </div>
     </div>

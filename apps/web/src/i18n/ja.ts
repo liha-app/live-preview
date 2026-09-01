@@ -164,6 +164,37 @@ export const ja: Messages = {
   'shortcuts.theme': 'テーマを切り替え',
   'shortcuts.thisList': 'この一覧',
 
+  'home.howTo': 'つかいかた',
+  'home.modeDrop': 'ドロップして共有',
+  'home.modeUrl': 'URLをレビューする',
+  'home.modeCli': 'ターミナルから',
+  'home.sample': 'サンプルを見る',
+  'home.createHeading': 'このプレビューを作成しますか？',
+
+  'decor.scrawl': 'ここ、文字小さい',
+  'decor.specOk': 'p.3 OK',
+  'decor.sticky': 'クライアントは\n画面の上に直接\nペンで書ける',
+  'decor.comments': 'AIエージェントが読み取り、\n同じURLに修正版が出る',
+  'decor.password': 'パスワードもかけられる',
+  'decor.dropLabel': 'ドラッグ&ドロップ',
+  'decor.urlLabel': '固定URLができる',
+
+  'onboard.title': 'Liha のつかいかた',
+  'onboard.step': '{current} / {total}',
+  'onboard.close': 'とじる',
+  'onboard.skip': 'スキップ',
+  'onboard.next': 'つぎへ',
+  'onboard.openSample': 'サンプルを開く',
+  'onboard.goTo': 'ステップ {step}',
+  'onboard.1.title': 'まず、固定URLで渡す',
+  'onboard.1.body': '静的サイト・PDF・画像、そのままドロップ。',
+  'onboard.2.title': '見たままに、ペン入れ',
+  'onboard.2.body': 'クライアントは画面の上に直接書き込むだけ。',
+  'onboard.3.title': '同じURLに、修正版',
+  'onboard.3.body': 'AIエージェントが指摘を読み取って直す。',
+  'onboard.fix': 'なおして',
+  'onboard.sameUrl': '同じURL・v2',
+
   'home.dropTitle': 'ファイル・フォルダ・zip化したサイトをドロップ',
   'home.dropHint': 'HTML / 静的サイト・PNG, JPEG, WebP・PDF',
   'home.ready': '{count} ファイルを選択中|{count} ファイルを選択中',
@@ -177,11 +208,6 @@ export const ja: Messages = {
   'home.import': '読み込む',
   'home.urlHint':
     'ページのHTMLをスナップショットして、その上に指摘を書き込めるようにします。プライベートIPや内部アドレスは拒否されます。',
-  'home.terminalHeading': 'ターミナルから',
-  'home.demoHeading': 'はじめての方はこちら',
-  'home.demoBody':
-    'サンプルのランディングページを、レビューコメント付きの本物のプレビューとして開きます。特定のボタンに紐づいたコメントも入っています。アップロード不要で、オーナートークンも渡されるのでそのまま解決まで試せます。',
-  'home.demoCta': 'サンプルのレビューを開く',
 
   'created.title': 'プレビューを作成しました',
   'created.body':
