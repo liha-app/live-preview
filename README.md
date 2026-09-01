@@ -102,6 +102,11 @@ are looking:
   list, `E` resolves, `V P R D A` pick tools, `?` lists the rest.
 - **Drafts survive a reload**, and a comment link (`?comment=…`) reopens exactly
   that thread.
+- **The tab tells you what arrived while you were away.** The screen polls, and
+  anything that turns up while it is behind another window shows up as a count
+  on the tab's icon and title. It clears the moment you come back, because from
+  then on the sidebar is the answer. The tab also carries the preview's name, so
+  several open at once stay tellable apart.
 
 ### Themes and languages
 

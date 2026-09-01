@@ -34,6 +34,8 @@ import {
 } from '../components/PreviewStage.js';
 import { ThemeToggle } from '../components/ThemeToggle.js';
 import { TopBar } from '../components/TopBar.js';
+import { COMMENT_POLL_MS } from '../lib/unseen.js';
+import { useUnseenComments } from '../lib/useUnseenComments.js';
 import type { Tool } from '../components/AnnotationLayer.js';
 
 interface AgentEvent {
@@ -114,6 +116,15 @@ export function PreviewRoute({ slug }: { slug: string }) {
     queryKey: ['comments', slug],
     queryFn: () => api.listComments(slug, 'all'),
     enabled: Boolean(preview),
+    /*
+     * There is no server push, so somebody else's comment would otherwise not
+     * arrive until a reload. In the background too — a badge that only counts
+     * while you are watching the tab counts nothing. Browsers throttle timers
+     * in hidden tabs, so the real background interval is longer than this; for
+     * a badge that is fine.
+     */
+    refetchInterval: COMMENT_POLL_MS,
+    refetchIntervalInBackground: true,
   });
   const shareQuery = useQuery({
     queryKey: ['share', slug],
@@ -124,6 +135,15 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const versions = useMemo(() => versionsQuery.data?.versions ?? [], [versionsQuery.data]);
   const allComments = useMemo(() => commentsQuery.data?.comments ?? [], [commentsQuery.data]);
   const counts = commentsQuery.data?.counts ?? { open: 0, resolved: 0, total: 0 };
+
+  // What arrived while this tab did not have focus, shown on the tab itself.
+  // `null` until the list has actually arrived, so the empty list this renders
+  // while loading is not mistaken for "there was nothing here a moment ago".
+  const commentIds = useMemo(
+    () => (commentsQuery.data ? allComments.map((comment) => comment.id) : null),
+    [commentsQuery.data, allComments],
+  );
+  useUnseenComments(commentIds, preview?.title ?? null);
 
   const activeVersionId = pinnedVersionId ?? preview?.currentVersionId ?? null;
   const activeVersion = versions.find((version) => version.id === activeVersionId) ?? null;

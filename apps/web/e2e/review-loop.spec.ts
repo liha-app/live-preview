@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { asNewClient } from './clients.js';
+import { COMMENT_POLL_MS } from '../src/lib/unseen.js';
 
 const API = 'http://localhost:8787';
 
@@ -346,5 +347,79 @@ test.describe('on a phone', () => {
     const title = page.locator('.topbar__title');
     await expect(title).toHaveText('A rather long preview title');
     expect((await title.boundingBox())!.width).toBeGreaterThan(60);
+  });
+});
+
+/*
+ * The tab is the only place a review can reach you while you are working
+ * somewhere else — there is no server push, so the screen polls.
+ *
+ * Headless Chromium reports every tab as focused and visible, so leaving is
+ * dispatched here rather than caused. Everything downstream is the real thing:
+ * the poll, the count, the title and the icon the app actually draws.
+ */
+test.describe('while you are working somewhere else', () => {
+  const leave = (hidden: boolean) => (state: boolean) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => (state ? 'hidden' : 'visible'),
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  /*
+   * The screen renders an empty comment list while the request is in flight.
+   * Taking that as the baseline made every comment a preview already had look
+   * like it arrived while you were away: opening a sample said "(3)" before
+   * anyone had touched it. Loading the whole page away from the tab is the only
+   * way to see it.
+   */
+  test('does not count what was already there before you opened it', async ({ page }) => {
+    const created = await createPreview(SITE, 'Acme');
+    await fetch(`${API}/api/previews/${created.preview.slug}/comments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...asNewClient() },
+      body: JSON.stringify({ authorName: 'Mika', body: 'Existing feedback.' }),
+    });
+
+    await page.addInitScript(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+    });
+    await page.goto(`/p/${created.preview.slug}`);
+    await expect(page.locator('.thread')).toHaveCount(1);
+
+    await expect(page).toHaveTitle('Acme');
+    // And it stays that way across a poll, rather than arriving late.
+    await page.waitForTimeout(COMMENT_POLL_MS + 3_000);
+    await expect(page).toHaveTitle('Acme');
+  });
+
+  test('counts what arrived on the tab, and clears it when you come back', async ({ page }) => {
+    const created = await createPreview(SITE, 'Acme');
+    await page.goto(`/p/${created.preview.slug}`);
+    await expect(page.frameLocator('iframe[title="Preview content"]').locator('h1')).toBeVisible();
+    await expect(page).toHaveTitle('Acme');
+
+    await page.evaluate(leave(true), true);
+
+    await fetch(`${API}/api/previews/${created.preview.slug}/comments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...asNewClient() },
+      body: JSON.stringify({ authorName: 'Mika', body: 'The hero is too tall.' }),
+    });
+
+    // The poll is the only way this can arrive.
+    await expect(page).toHaveTitle('(1) Acme', { timeout: 30_000 });
+    const icon = await page.locator('link[rel="icon"]').getAttribute('href');
+    expect(decodeURIComponent(icon ?? '')).toContain('>1</text>');
+
+    // Back at the screen, the sidebar is the answer and the badge is noise.
+    await page.evaluate(leave(false), false);
+    await expect(page).toHaveTitle('Acme');
+    const cleared = await page.locator('link[rel="icon"]').getAttribute('href');
+    expect(decodeURIComponent(cleared ?? '')).toContain('fill="none"');
   });
 });
