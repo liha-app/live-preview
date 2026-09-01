@@ -41,15 +41,15 @@ This buys two things:
 The Workers entry (`src/index.ts`) is deliberately trivial; everything is in
 `handleRequest`.
 
-## Two origins
+## Three origins
 
 ```
-app origin                     content origin
-https://liha.example           https://<slug>--<n>.preview.example
-  ├── the React app              └── uploaded HTML, CSS, JS, images, PDFs
-  ├── owner tokens in
-  │   localStorage
-  └── review session tokens
+landing                    review screen              artifact
+https://liha.example       https://lp-<slug>.review   https://lp-<slug>--<n>.review
+  ├── the app                ├── the same app           └── uploaded HTML, CSS,
+  └── creates previews       ├── owner token in             JS, images, PDFs
+                             │   localStorage
+                             └── review session token
 ```
 
 Uploaded HTML is untrusted code. Rather than trying to sanitize it, we run it
@@ -57,13 +57,38 @@ somewhere it cannot do damage: a different origin, inside an iframe with
 `sandbox` and no `allow-same-origin`. The browser's same-origin policy does the
 enforcement.
 
-The version number is part of the **hostname**, not a path prefix. This is not
-cosmetic:
+The slug and version number are part of the **hostname**, not a path prefix.
+None of that is cosmetic:
 
 - Bundlers emit root-absolute asset paths (`/assets/app.js`). Under a path mount
   those 404. Under a host mount they resolve.
 - Switching versions is a different origin, so a stale service worker or cache
   from v1 cannot affect v2.
+- A preview owns its whole origin, so any path under it is that preview's review
+  screen. Sub-pages of a review would otherwise collide with the artifact's own
+  paths.
+- The owner token is kept in `localStorage`, which is scoped to an origin, so
+  holding one preview does not imply holding another.
+
+The review screen and the artifact are siblings one level under the same apex, so
+a single wildcard certificate covers both while they stay different origins. The
+`lp-` prefix is this service's slice of a domain that may carry others: the
+Worker takes the whole wildcard, because Cloudflare cannot route on anything
+narrower, and leaves hostnames it does not recognise alone rather than claiming
+them.
+
+Three things have to line up for a review screen to work, and each fails the
+same way from outside — a page that loads and then cannot do something:
+
+| The app does                | Which needs                              |
+| --------------------------- | ---------------------------------------- |
+| calls the API               | CORS on the API, `connect-src` on itself |
+| shows an HTML artifact      | `frame-src`                              |
+| shows an image              | `img-src`                                |
+| renders a PDF, reads source | `connect-src`, and CORS on the artifact  |
+
+`scripts/verify-deployment.mjs` makes each of those calls from the origin the
+app makes it from. The end-to-end suite cannot: the dev server sends no policy.
 
 A path-mounted fallback (`/content/:slug/:version/*`) exists for deployments
 without wildcard DNS. It resolves root-absolute assets by inspecting the

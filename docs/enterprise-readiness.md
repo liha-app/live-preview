@@ -22,7 +22,7 @@ meeting and gets surprised.
 | **SSRF**                        | Scheme, port, hostname and address blocklists for IPv4 and IPv6, re-validated on every redirect hop. ~40 blocked URL shapes under test.                                                                |
 | **Abuse limits**                | 30 MB / 2,000 files per version, 50 versions and 300 MB per preview, 20 new previews and 60 comments per client per five minutes, size checked before zip expansion.                                   |
 | **Accessibility**               | Zero axe-core WCAG 2.1 AA violations on every screen in both themes, verified in CI. Full keyboard operation, focus trapping in dialogs, reduced-motion support, live-region announcements.            |
-| **Test coverage**               | 188 unit and integration tests plus 43 end-to-end tests in real Chromium. Integration tests run the shipped SQL and migrations.                                                                        |
+| **Test coverage**               | 226 unit and integration tests plus 60 end-to-end tests in real Chromium. Integration tests run the shipped SQL and migrations.                                                                        |
 | **CI**                          | Format, typecheck, test, build and E2E on every pull request.                                                                                                                                          |
 | **Licence**                     | MIT, no third-party licence conflicts.                                                                                                                                                                 |
 

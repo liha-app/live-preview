@@ -54,6 +54,15 @@ describe('a preview on its own hostname', () => {
     expect(created.preview.shareUrl).toBe(`https://lp-${created.preview.slug}.liha.review`);
   });
 
+  it('hands ownership to the origin the preview lives on', async () => {
+    const { server } = serverWithAssets();
+    const created = await createPreview(server);
+
+    // The token in the fragment is kept in localStorage, which is scoped to an
+    // origin. Pointed anywhere else, a preview's creator would not be its owner.
+    expect(created.ownerUrl).toBe(`${created.preview.shareUrl}#owner=${created.ownerToken}`);
+  });
+
   it('serves the app, told which preview it is', async () => {
     const { server } = serverWithAssets();
     const created = await createPreview(server);

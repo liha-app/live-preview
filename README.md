@@ -54,7 +54,7 @@ URL. Concretely:
 
 | Concept         | What it means                                                                            |
 | --------------- | ---------------------------------------------------------------------------------------- |
-| **Preview**     | A stable share URL (`/p/<slug>`). Never changes.                                         |
+| **Preview**     | A stable share URL, one origin per preview. Never changes.                               |
 | **Version**     | An immutable snapshot of the artifact. Publishing a new one does not move the URL.       |
 | **Comment**     | Anchored feedback, recorded against the version it was left on. Resolved, never deleted. |
 | **Annotation**  | Pin, box, freehand, arrow or highlight, stored in normalized (0–1) coordinates.          |
@@ -118,26 +118,27 @@ typed against English, so a missing key will not compile.
 ## Architecture
 
 ```
-┌───────────────────────────┐         ┌──────────────────────────────────┐
-│  Web app  (React + Vite)  │         │  Coding agent / terminal         │
-│  app origin               │         │                                  │
-│                           │         │   @liha/live-preview  (CLI)      │
-│   ┌───────────────────┐   │         │   @liha/mcp           (stdio MCP)│
-│   │ WebMCP tools      │◄──┼── browser agent                            │
-│   │ document.         │   │         └──────────────┬───────────────────┘
-│   │   modelContext    │   │                        │ HTTPS
-│   └───────────────────┘   │                        │
-│   ┌───────────────────┐   │                        │
-│   │ <iframe sandbox>  │   │                        │
-│   │  preview origin ──┼───┼────────┐               │
-│   └───────────────────┘   │        │               │
-└─────────────┬─────────────┘        │               │
-              │ JSON API             │ content       │
-              ▼                      ▼               ▼
+┌────────────────────────────────┐    ┌──────────────────────────────────┐
+│  Review screen (React + Vite)  │    │  Coding agent / terminal         │
+│  lp-<slug>.example.net         │    │                                  │
+│                                │    │   @liha/live-preview  (CLI)      │
+│   ┌────────────────────────┐   │    │   @liha/mcp           (stdio MCP)│
+│   │ WebMCP tools           │◄──┼── browser agent                       │
+│   │ document.modelContext  │   │    └──────────────┬───────────────────┘
+│   └────────────────────────┘   │                   │ HTTPS
+│   ┌────────────────────────┐   │                   │
+│   │ <iframe sandbox>       │   │                   │
+│   │  lp-<slug>--<n>.  ─────┼───┼───────┐           │
+│   │    example.net         │   │       │           │
+│   └────────────────────────┘   │       │           │
+└──────────────┬─────────────────┘       │           │
+               │ JSON API                │ artifact  │
+               ▼                         ▼           ▼
         ┌────────────────────────────────────────────────┐
-        │  API — Hono on Cloudflare Workers              │
+        │  Hono on Cloudflare Workers                    │
         │    /api/*        JSON, owner + review auth     │
-        │    content host  sandboxed artifact bytes      │
+        │    review host   the app bundle                │
+        │    artifact host sandboxed artifact bytes      │
         └──────────────┬──────────────────┬──────────────┘
                        │                  │
                   ┌────▼────┐        ┌────▼────┐
@@ -146,11 +147,14 @@ typed against English, so a missing key will not compile.
                   └─────────┘        └─────────┘
 ```
 
-**Two origins, on purpose.** The app is served from one origin; uploaded
-artifacts are served from another (`<slug>--<version>.preview.example.com`).
-Uploaded HTML is untrusted code, so the browser's same-origin policy — not our
-own carefulness — is what keeps it away from owner tokens. See
-[docs/security.md](docs/security.md).
+**Three origins, on purpose.** The landing page, each preview's review screen
+(`lp-<slug>.example.net`) and each version's artifact
+(`lp-<slug>--<version>.example.net`) are separate origins. Uploaded HTML is
+untrusted code, so the browser's same-origin policy — not our own carefulness —
+is what keeps it away from the owner token the review screen holds. Giving a
+preview a whole origin also means any path under it belongs to that preview, so
+its review screen can have sub-pages without colliding with the artifact's own
+paths. See [docs/security.md](docs/security.md).
 
 **Ports, not frameworks, at the boundary.** The API talks to `Database` and
 `ObjectStore` interfaces that D1 and R2 satisfy structurally. Tests bind the same
@@ -219,12 +223,14 @@ pnpm run deploy --dry-run   # print the plan, touch nothing
 ```
 
 You need a Cloudflare account and **two domains** on it: one for the app and
-API, and a **separate** one for preview content. Uploaded HTML on a sibling
-subdomain could still set a cookie for the shared parent domain and have the
-browser send it to your app; a separate registrable domain closes that. It also
-keeps the certificate free — Universal SSL covers one level of subdomain, so
-`*.example.net` is included but `*.preview.example.net` is not. The script
-refuses the unsafe arrangement rather than letting you discover it later.
+API, and a **separate** one that carries everything a stranger uploaded — both
+each preview's review screen (`lp-<slug>.example.net`) and its artifacts
+(`lp-<slug>--<n>.example.net`). Keeping those off your other domains means a
+blocklisting caused by a malicious upload stops somewhere you use for nothing
+else, and that uploaded HTML cannot set a cookie your app would receive. Both
+sit one level under the apex, where Universal SSL covers them for free.
+The script refuses the unsafe arrangement rather than letting you discover it
+later.
 
 Doing it by hand, the WebMCP origin trial, and what the deployment is checked
 for: **[docs/deployment.md](docs/deployment.md)**.
@@ -238,14 +244,16 @@ useful on its own whenever you want to confirm one is healthy.
 
 Configuration reference:
 
-| Variable                  | Purpose                                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `APP_ORIGIN`              | Where the web app lives. Used to build share URLs and to scope CORS.                                                           |
-| `CONTENT_ORIGIN_TEMPLATE` | Wildcard pattern for preview content, `{label}` → `<slug>--<version>`. Unset falls back to a path mount (not origin-isolated). |
-| `CONTENT_SIGNING_KEY`     | Secret. HMAC key for short-lived content grants on password-protected previews.                                                |
-| `ALLOWED_ORIGINS`         | Extra comma-separated origins allowed to call the API.                                                                         |
-| `MAX_VERSION_BYTES`       | Upload cap per version. Default 30 MB.                                                                                         |
-| `MAX_TOTAL_BYTES`         | Ceiling on everything the instance stores. Default 5 GB; `0` removes it.                                                       |
+| Variable                  | Purpose                                                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_ORIGIN`              | Where the web app lives. Used to build share URLs and to scope CORS.                                                                                            |
+| `CONTENT_ORIGIN_TEMPLATE` | Hostname pattern for artifacts. `{slug}`, `{version}` and `{label}` (`<slug>--<version>`) are replaced. Unset falls back to a path mount (not origin-isolated). |
+| `REVIEW_ORIGIN_TEMPLATE`  | Hostname pattern for review screens, `{slug}` replaced. Unset keeps share URLs at `APP_ORIGIN/p/<slug>`.                                                        |
+| `API_ORIGIN`              | Where the API answers, when that is not the app's origin. A review screen has to name it in its own CSP.                                                        |
+| `CONTENT_SIGNING_KEY`     | Secret. HMAC key for short-lived content grants on password-protected previews.                                                                                 |
+| `ALLOWED_ORIGINS`         | Extra comma-separated origins allowed to call the API.                                                                                                          |
+| `MAX_VERSION_BYTES`       | Upload cap per version. Default 30 MB.                                                                                                                          |
+| `MAX_TOTAL_BYTES`         | Ceiling on everything the instance stores. Default 5 GB; `0` removes it.                                                                                        |
 
 ---
 
@@ -460,7 +468,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-188 tests, no network access required:
+226 tests, no network access required:
 
 | Suite                | Covers                                                                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -32,6 +32,18 @@ export function shareUrl(config: ResolvedConfig, slug: string): string {
   return `${config.appOrigin}/p/${slug}`;
 }
 
+/**
+ * The link that makes whoever opens it the owner.
+ *
+ * Built from the share URL, not the app, because the token it carries is kept
+ * in `localStorage` — which is scoped to an origin. Pointing this somewhere
+ * other than where the preview lives would leave the token on one origin and
+ * the preview on another, and its own creator would not be its owner.
+ */
+export function ownerUrl(config: ResolvedConfig, slug: string, token: string): string {
+  return `${shareUrl(config, slug)}#owner=${token}`;
+}
+
 export function toVersion(
   row: VersionRow,
   currentVersionId: string | null,

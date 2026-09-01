@@ -16,11 +16,13 @@ single fact drives most of the design below.
 
 ## Isolating uploaded content
 
-Preview files are served from `https://<slug>--<version>.preview.example.com`,
-never from the app origin. Three independent layers apply:
+Preview files are served from `https://lp-<slug>--<version>.example.com`, never
+from an origin the app is served on. Three independent layers apply:
 
 1. **Different origin.** The same-origin policy prevents uploaded script from
-   reading the app's `localStorage`, where owner tokens live.
+   reading the app's `localStorage`, where owner tokens live. The review screen
+   for a preview is a sibling hostname — `lp-<slug>.example.com` — so it is a
+   different origin from the artifact it displays, not merely a different path.
 2. **Iframe sandbox.** The app embeds content with
    `sandbox="allow-scripts allow-forms allow-popups allow-modals"` — note the
    absence of `allow-same-origin`, which gives the document an opaque origin with
@@ -61,6 +63,24 @@ If `CONTENT_ORIGIN_TEMPLATE` is unset, content is served from
 attributes still apply, but the app and the content share an origin, so layer 1
 is gone. **Always configure a wildcard content origin in production.** The
 worker logs a warning at startup when it is missing.
+
+### Who may read an artifact
+
+The app reads artifact bytes with `fetch()`: pdf.js renders a PDF from them, and
+`read_artifact_file` hands source to an agent. So the artifact has to name a
+reader in `Access-Control-Allow-Origin`, and it names exactly one — the screen
+that artifact belongs to. Another preview's review screen is refused. An
+artifact is nobody else's business, including another preview's.
+
+### A domain shared with other services
+
+The deployment holds a wildcard route because Cloudflare cannot route on
+anything narrower, so the Worker decides by hostname and leaves anything it does
+not recognise alone rather than claiming it. `matchReviewHost` and
+`matchContentHost` match exactly around their placeholders: a slug cannot
+contain a hyphen, so `lp-<slug>` and `lp-<slug>--<n>` are unambiguous, and
+`cms-abc.example.com` belongs to whoever else wants it. The same matching gates
+CORS, so a lookalike origin is not handed access either.
 
 ## Path traversal
 

@@ -19,28 +19,40 @@ You need a Cloudflare account and **two domains**, both already added to it with
 their nameservers pointed at Cloudflare. That part happens at your registrar and
 cannot be scripted; everything after it can.
 
-|                 | Example                | Notes                                                     |
-| --------------- | ---------------------- | --------------------------------------------------------- |
-| App             | `liha.example.com`     | The review UI (Pages)                                     |
-| API             | `api.liha.example.com` | The Worker                                                |
-| Preview content | `*.example.net`        | **A second, dedicated domain.** See below — this matters. |
+|               | Example                      | Served by |
+| ------------- | ---------------------------- | --------- |
+| Landing       | `liha.example.com`           | Pages     |
+| API           | `api.liha.example.com`       | Worker    |
+| Review screen | `lp-<slug>.example.net`      | Worker    |
+| Artifact      | `lp-<slug>--<n>.example.net` | Worker    |
 
-Preview content must live on a **different registrable domain** from the app,
-not merely a different hostname. A sibling subdomain is not enough: uploaded
-HTML on `abc.example.com` can set a cookie scoped to `.example.com`, and that
-cookie reaches your app. A separate domain makes that impossible.
+The second domain is where everything a stranger uploaded is served, and it
+carries both the review screen and the artifact. Two reasons to keep it separate
+from the one your other services use:
 
-Using a second domain also keeps the certificate free. Cloudflare's Universal
-SSL covers the apex and **one** level of subdomain — `example.net` and
-`*.example.net`, but not `*.preview.example.net`. Preview hosts look like
-`abc123--1.example.net`, which is exactly one level down, so Universal SSL
-covers them. Put the wildcard any deeper and every preview fails its TLS
-handshake until you add [Advanced Certificate
+- **Reputation.** A malicious upload can get a domain onto a blocklist. When
+  that happens you want the damage to stop at a domain you use for nothing else.
+- **Cookies.** Uploaded HTML on `x.example.net` can set a cookie scoped to
+  `.example.net`. On a shared domain that cookie would reach your app.
+
+Within that domain the review screen and the artifact are **siblings**, not
+parent and child: `lp-abc123.example.net` and `lp-abc123--1.example.net`. They
+have to be different origins — the review screen holds the owner token in
+`localStorage`, and uploaded HTML must not be able to read it — and they have to
+be one level under the apex, because Cloudflare's Universal SSL covers
+`example.net` and `*.example.net` but not `*.preview.example.net`. Put either
+any deeper and every preview fails its TLS handshake until you add [Advanced
+Certificate
 Manager](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/)
 (paid). Proxied wildcard DNS records themselves are available on every plan.
 
-The deploy script refuses the first arrangement and warns about the second, so
-you do not have to hold this in your head.
+The `lp-` prefix is this service's slice of that domain. The Worker holds the
+whole wildcard, because Cloudflare cannot route on anything narrower, and
+answers only for hostnames it recognises — so the same domain can carry other
+services under other prefixes.
+
+The deploy script refuses to put previews inside your app's own domain, and
+warns before a domain deep enough that the certificate will not reach.
 
 ## The short way
 
@@ -118,13 +130,36 @@ In `apps/api/wrangler.toml`:
 ```toml
 [vars]
 APP_ORIGIN = "https://liha.example.com"
-CONTENT_ORIGIN_TEMPLATE = "https://{label}.example.net"
+API_ORIGIN = "https://api.liha.example.com"
+REVIEW_ORIGIN_TEMPLATE = "https://lp-{slug}.example.net"
+CONTENT_ORIGIN_TEMPLATE = "https://lp-{label}.example.net"
 MAX_VERSION_BYTES = "31457280"
 MAX_TOTAL_BYTES = "5368709120"
 ```
 
-Add the routes so the Worker answers on both the API host and every preview
-host. Note the two different zones:
+`{slug}` and `{label}` (which is `<slug>--<version>`) are replaced; `{version}`
+also works, so `https://lp-{slug}-v{version}.example.net` is equally valid if a
+shared domain already has a convention to fit. A slug never contains a hyphen,
+so the review and artifact patterns cannot be confused for each other.
+
+`API_ORIGIN` exists because the review screen has to name the API in its own
+Content-Security-Policy, and it cannot work that out from a hostname that
+belongs to a preview. Leave it out only when the API and the app share an
+origin.
+
+The Worker serves the app bundle for review hostnames, so it needs it:
+
+```toml
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+run_worker_first = true
+```
+
+Build the web app before deploying the Worker, or there is nothing to attach.
+
+Add the routes so the Worker answers on both the API host and everything on the
+preview domain. Note the two different zones:
 
 ```toml
 routes = [
@@ -132,6 +167,9 @@ routes = [
   { pattern = "*.example.net/*", zone_name = "example.net" },
 ]
 ```
+
+One wildcard covers review screens and artifacts alike; the Worker tells them
+apart by hostname, and answers for nothing else on that domain.
 
 `custom_domain` makes wrangler provision that hostname's DNS record and
 certificate itself. The wildcard cannot be a custom domain, so it needs one
@@ -167,8 +205,10 @@ VITE_API_URL=https://api.liha.example.com pnpm --filter @liha/web build
 wrangler pages deploy apps/web/dist --project-name liha
 ```
 
-`_headers` in `apps/web/public` sets the app's Content-Security-Policy, and
-Pages applies it as-is. It ships with the same placeholders used above, so edit
+`_headers` in `apps/web/public` sets the **landing page's**
+Content-Security-Policy — review screens are served by the Worker, which builds
+its own from the origins it knows. Pages applies this file as-is. It ships with
+the same placeholders used above, so edit
 two directives to match your own hosts before that first deploy:
 
 ```
@@ -181,8 +221,10 @@ every preview iframe is blocked by CSP. The verification below checks for
 exactly this. (`pnpm run deploy` generates this file from your answers, so a
 scripted deployment cannot ship the placeholders.)
 
-Pages serves `index.html` for unmatched paths, so share URLs like `/p/<slug>`
-survive a reload without any `_redirects` file.
+Pages serves `index.html` for unmatched paths, so `/p/<slug>` on the landing
+domain survives a reload without any `_redirects` file. Those links keep working
+after review screens move to their own hostnames, so nothing already sent
+breaks.
 
 ## Checking it
 
@@ -190,13 +232,26 @@ survive a reload without any `_redirects` file.
 pnpm verify:deployment --api https://api.liha.example.com --app https://liha.example.com
 ```
 
-Fifteen checks against the live instance: CORS, that the app's own CSP permits
-its API and content hosts, that preview content really is on a separate origin,
-that the wildcard host resolves and serves the artifact with its sandbox
-headers, that root-absolute assets resolve, that path traversal is refused, and
-the whole comment/reply/resolve loop. It creates a sample preview and deletes it
-again, and exits non-zero on any failure, so it can gate a deploy.
-`pnpm run deploy` finishes by running it for you.
+Fifteen checks against the live instance. It creates a sample preview,
+exercises it, and deletes it again, exiting non-zero on any failure so it can
+gate a deploy. `pnpm run deploy` finishes by running it for you.
+
+Most of them are about the seams a deployment can get wrong while every test
+still passes, because the dev server the test suite runs against sends no
+Content-Security-Policy and knows nothing about your hostnames:
+
+- The share URL leads to a page that serves the app and knows which preview it
+  is, on an origin that is not the artifact's.
+- That page may call the API — both CORS on the API and `connect-src` on the
+  page, which fail identically from outside.
+- It may read the artifact, which pdf.js and `read_artifact_file` both need.
+- `img-src` and `frame-src` reach the artifact, or images and HTML render as
+  nothing while the other kind works.
+- The artifact carries its sandbox headers, root-absolute assets resolve, and
+  path traversal is refused.
+- The whole comment, reply, resolve loop.
+
+Each of those was written after watching it fail against a real deployment.
 
 Then, by hand:
 

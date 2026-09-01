@@ -61,7 +61,7 @@ import {
   updatePreviewFields,
   type PreviewRow,
 } from './repo.js';
-import { toShareInfo } from './serialize.js';
+import { ownerUrl, toShareInfo } from './serialize.js';
 import { entriesFromFormData, prepareUpload, storeVersionFiles } from './uploads.js';
 import {
   commentView,
@@ -294,7 +294,7 @@ export function createApp() {
         preview: await previewView(ctx, preview),
         version: await versionView(ctx, preview, version),
         ownerToken,
-        ownerUrl: `${config.appOrigin}/p/${slug}#owner=${ownerToken}`,
+        ownerUrl: ownerUrl(config, slug, ownerToken),
       },
       201,
       NO_STORE,
@@ -402,7 +402,7 @@ export function createApp() {
         preview: await previewView(ctx, preview),
         version: await versionView(ctx, preview, version),
         ownerToken,
-        ownerUrl: `${config.appOrigin}/p/${slug}#owner=${ownerToken}`,
+        ownerUrl: ownerUrl(config, slug, ownerToken),
       },
       201,
       NO_STORE,
@@ -486,7 +486,7 @@ export function createApp() {
         preview: await previewView(ctx, preview),
         version: await versionView(ctx, preview, version),
         ownerToken,
-        ownerUrl: `${config.appOrigin}/p/${slug}#owner=${ownerToken}`,
+        ownerUrl: ownerUrl(config, slug, ownerToken),
       },
       201,
       NO_STORE,
