@@ -39,6 +39,10 @@ export const ja: Messages = {
   'topbar.ownerSettings': 'オーナー設定',
   'topbar.shortcuts': 'キーボードショートカット',
   'topbar.passwordProtected': 'パスワード保護',
+  'topbar.expiresHours': 'あと{hours}時間',
+  'topbar.expiresMinutes': 'あと{minutes}分',
+  'topbar.expiresNote':
+    'このサンプルは作成から24時間で削除されます。自分でアップロードしたものは残ります。',
   'topbar.agentConnected': 'WebMCP 経由でエージェントがこのページを操作できます',
 
   'tool.inspect': '要素を選択',

@@ -11,6 +11,8 @@ export interface PreviewRow {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** When this preview stops existing, or null if it does not. */
+  expires_at: string | null;
 }
 
 export interface VersionRow {
@@ -47,8 +49,8 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
   await db
     .prepare(
       `INSERT INTO previews (id, slug, title, type, current_version_id, owner_token_hash,
-        password_hash, created_at, updated_at, deleted_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+        password_hash, created_at, updated_at, deleted_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
     )
     .bind(
       row.id,
@@ -60,6 +62,7 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
       row.password_hash,
       row.created_at,
       row.updated_at,
+      row.expires_at,
     )
     .run();
 }
@@ -382,6 +385,25 @@ export async function countRateEvents(
     .bind(bucket, clientKey, Date.now() - windowMs)
     .first<{ count: number }>();
   return Number(row?.count ?? 0);
+}
+
+/**
+ * Previews whose time is up.
+ *
+ * Only ones that were given a time; an upload is somebody's work and has none.
+ * Returns rows rather than deleting, because the caller has to clear R2 too and
+ * a half-deleted preview is worse than an expired one.
+ */
+export async function expiredPreviews(db: Database, limit = 100): Promise<PreviewRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM previews
+        WHERE deleted_at IS NULL AND expires_at IS NOT NULL AND expires_at <= ?
+        ORDER BY expires_at LIMIT ?`,
+    )
+    .bind(nowIso(), limit)
+    .all<PreviewRow>();
+  return results;
 }
 
 /** Opportunistic cleanup so the limiter and session tables do not grow forever. */

@@ -1,5 +1,5 @@
 import { assertProductionConfig, type Env } from './env.js';
-import { handleRequest } from './app.js';
+import { handleRequest, sweepExpired } from './app.js';
 
 export type { Env };
 
@@ -14,5 +14,17 @@ export default {
       }
     }
     return handleRequest(request, env);
+  },
+
+  /**
+   * Retention. Samples are minted per visitor and expire; uploads do not.
+   *
+   * On a schedule rather than opportunistically on a request, because an expiry
+   * that only fires while the site is busy is not an expiry — and because
+   * deleting somebody's storage is not work to do inside somebody else's page
+   * load.
+   */
+  async scheduled(_event: unknown, env: Env): Promise<void> {
+    await sweepExpired(env);
   },
 };

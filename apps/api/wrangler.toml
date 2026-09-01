@@ -24,6 +24,12 @@ migrations_dir = "migrations"
 binding = "BUCKET"
 bucket_name = "liha-live-preview"
 
+# Samples expire after a day; uploads never do. Hourly, off the hour, because
+# that is when everyone else's cron jobs are not running. `wrangler dev` does
+# not fire these on its own — POST to /cdn-cgi/handler/scheduled to try it.
+[triggers]
+crons = ["19 * * * *"]
+
 # Production deployments should set CONTENT_SIGNING_KEY as a secret:
 #   wrangler secret put CONTENT_SIGNING_KEY
 # and point CONTENT_ORIGIN_TEMPLATE at a wildcard subdomain you control:

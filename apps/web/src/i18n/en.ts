@@ -37,6 +37,10 @@ export const en = {
   'topbar.ownerSettings': 'Owner settings',
   'topbar.shortcuts': 'Keyboard shortcuts',
   'topbar.passwordProtected': 'Password protected',
+  'topbar.expiresHours': 'Expires in {hours}h',
+  'topbar.expiresMinutes': 'Expires in {minutes}m',
+  'topbar.expiresNote':
+    'This sample is deleted 24 hours after it was created. Uploads of your own are kept.',
   'topbar.agentConnected': 'An agent can act on this page through WebMCP',
 
   'tool.inspect': 'Inspect',

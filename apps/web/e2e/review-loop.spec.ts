@@ -62,6 +62,9 @@ test.describe('the review loop in a real browser', () => {
     await expect(content.locator('h1')).toHaveText('Ship faster');
     // Root-absolute assets resolve, so the stylesheet actually applied.
     await expect(content.locator('button.cta')).toHaveCSS('font-size', '22px');
+
+    // Somebody's work is kept. Only samples count down.
+    await expect(page.locator('.topbar__expiry')).toHaveCount(0);
   });
 
   test('clicking an element captures its DOM context into a comment', async ({ page }) => {

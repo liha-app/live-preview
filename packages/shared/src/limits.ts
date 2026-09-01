@@ -52,6 +52,15 @@ export const LIMITS = {
    * and someone filling its bucket.
    */
   previewsPerWindow: 20,
+  /**
+   * How long a sample preview lasts.
+   *
+   * "Open a sample" mints a real preview that the visitor owns — which is the
+   * point, and also means one accumulates per curious visitor, forever, for
+   * something nobody comes back to. A day is long enough to finish looking.
+   * Uploads have no lifetime; they are somebody's work.
+   */
+  sampleLifetimeMs: 24 * 60 * 60 * 1000,
   /** Lifetime of the signed review session issued after a correct password. */
   reviewSessionTtlMs: 12 * 60 * 60 * 1000,
   /** Lifetime of the signed URL token that lets an iframe load protected content. */

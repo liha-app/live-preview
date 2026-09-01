@@ -398,6 +398,11 @@ function writeGeneratedConfig(config, databaseId) {
     'binding = "ASSETS"',
     'run_worker_first = true',
     '',
+    '# Samples expire after a day; uploads never do. Hourly, off the hour,',
+    "# because that is when everyone else's cron jobs are not running.",
+    '[triggers]',
+    'crons = ["19 * * * *"]',
+    '',
   ].join('\n');
 
   if (dryRun) {

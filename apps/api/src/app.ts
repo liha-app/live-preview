@@ -49,6 +49,7 @@ import {
   insertPreview,
   insertVersion,
   listComments,
+  expiredPreviews,
   listVersions,
   totalStoredBytes,
   nextVersionNumber,
@@ -265,6 +266,7 @@ export function createApp() {
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
+      expires_at: null,
     });
     await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
@@ -342,6 +344,8 @@ export function createApp() {
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
+      // A sample is minted per visitor and nobody comes back to one.
+      expires_at: new Date(Date.now() + LIMITS.sampleLifetimeMs).toISOString(),
     });
     await insertVersion(c.env.DB, {
       id: versionId,
@@ -459,6 +463,7 @@ export function createApp() {
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
+      expires_at: null,
     });
     await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
@@ -951,6 +956,31 @@ async function serveReviewScreen(
  * Content requests are routed before the API because they may arrive on a
  * different host entirely (`<slug>--<n>.preview.example.com`).
  */
+/**
+ * Deletes previews whose time is up.
+ *
+ * Run on a schedule rather than when somebody happens to make a request: an
+ * expiry that only fires while the site is busy is not an expiry. Bounded per
+ * run, because a sweep that tries to clear a backlog in one go is how a cron
+ * job starts timing out; the next run picks up the rest.
+ *
+ * Storage first, then the row. A row without its bytes is a preview that
+ * renders as nothing; bytes without their row are unreachable and get swept
+ * again next time.
+ */
+export async function sweepExpired(env: Env, limit = 100): Promise<number> {
+  const due = await expiredPreviews(env.DB, limit);
+
+  for (const preview of due) {
+    await deleteStoredObjects(env, `previews/${preview.id}/`);
+    await deleteReviewSessions(env.DB, preview.id);
+    await softDeletePreview(env.DB, preview.id);
+  }
+
+  if (due.length > 0) console.log(`[liha] swept ${due.length} expired preview(s)`);
+  return due.length;
+}
+
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const config = resolveConfig(env, url);

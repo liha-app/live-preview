@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { ArrowLeftRight, Lock, Settings2, Share2, Sparkles, Upload } from 'lucide-react';
+import { ArrowLeftRight, Clock, Lock, Settings2, Share2, Sparkles, Upload } from 'lucide-react';
 import type { Preview, Version } from '@liha/shared';
 import { useT } from '../i18n/index.js';
+import { timeLeft } from '../lib/expiry.js';
 
 interface Props {
   children?: ReactNode;
@@ -34,6 +35,7 @@ export function TopBar({
   onAgentPanel,
 }: Props) {
   const t = useT();
+  const remaining = timeLeft(preview.expiresAt);
 
   return (
     <header className="topbar">
@@ -45,6 +47,19 @@ export function TopBar({
       </span>
       {preview.passwordProtected && (
         <Lock size={13} className="faint" role="img" aria-label={t('topbar.passwordProtected')} />
+      )}
+      {remaining && (
+        /*
+         * A sample is a real preview that the visitor owns, and nothing else
+         * about it says it goes away. Finding that out by coming back to a 404
+         * is the worst way to learn it.
+         */
+        <span className="topbar__expiry" title={t('topbar.expiresNote')}>
+          <Clock size={12} strokeWidth={1.75} aria-hidden="true" />
+          {remaining.hours >= 1
+            ? t('topbar.expiresHours', { hours: String(remaining.hours) })
+            : t('topbar.expiresMinutes', { minutes: String(remaining.minutes) })}
+        </span>
       )}
       {/*
         Always offered, not only when WebMCP is present: someone whose browser

@@ -89,6 +89,7 @@ export function toPreview(row: PreviewRow, options: PreviewViewOptions): Preview
     passwordProtected: row.password_hash !== null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    expiresAt: row.expires_at,
     shareUrl: shareUrl(config, row.slug),
     contentUrl,
     openCommentCount: options.counts.open,

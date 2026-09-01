@@ -59,6 +59,14 @@ export const PreviewSchema = z.object({
   passwordProtected: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /**
+   * When this preview is deleted on its own, or `null` to keep it.
+   *
+   * Only samples get one. The CLI is installed globally and may be talking to
+   * an older deployment, so a missing field reads as "kept" rather than an
+   * error.
+   */
+  expiresAt: z.string().nullable().default(null),
   shareUrl: z.string(),
   contentUrl: z.string().nullable(),
   openCommentCount: z.number().int().min(0),

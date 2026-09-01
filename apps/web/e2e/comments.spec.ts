@@ -326,6 +326,9 @@ test.describe('first run', () => {
     await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
     await first.getByRole('button', { name: 'Resolve', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Open 1' })).toBeVisible();
+
+    // It looks exactly like a preview they made, so it has to say it goes away.
+    await expect(page.locator('.topbar__expiry')).toHaveText(/Expires in 23h/);
   });
 
   test('the sample markers actually sit on what they describe', async ({ page }) => {

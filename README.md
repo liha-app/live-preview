@@ -457,6 +457,8 @@ sandbox` header so it stays contained even when opened directly. It cannot read
   300 MB per preview, 20 new previews per client per five minutes, and a 5 GB
   ceiling on everything the instance stores. Zip expansion is checked _before_
   decompression to refuse zip bombs.
+- **Samples expire after 24 hours**, uploads never. An hourly cron sweeps them;
+  the review screen counts the time down so nobody returns to a surprise 404.
 
 Found something? See [SECURITY.md](SECURITY.md).
 

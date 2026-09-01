@@ -191,6 +191,11 @@ at the network layer for deployments that care. This is stated in
   preview frees its space. For a public instance, put a Cloudflare WAF rate
   limiting rule in front as well: it sheds load at the edge, before a request
   costs you a Worker invocation.
+- Samples expire after 24 hours; uploads do not. "Open a sample" mints a real
+  preview that the visitor owns, which is the point — and also means one
+  accumulates per curious visitor, forever, for something nobody comes back to.
+  An hourly cron sweeps them, bytes first and then the row, in bounded batches.
+  Anything somebody uploaded is kept until they delete it.
 - `Content-Length` is checked before the multipart body is parsed.
 - Zip expansion size and entry count are checked before decompression.
 - Comment bodies are capped at 10,000 characters; every string in a comment
