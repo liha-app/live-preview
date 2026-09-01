@@ -998,7 +998,6 @@ pre.snippet {
   .topbar {
     gap: 6px;
     padding: 0 8px;
-    overflow-x: auto;
   }
 
   .topbar__title {
@@ -1028,6 +1027,54 @@ pre.snippet {
 
   .inline-composer__caret {
     display: none;
+  }
+}
+
+/*
+ * A phone. The bar used to scroll sideways, which put Share — the reason a
+ * review link exists — off the right edge, and squeezed the title to nothing.
+ * Everything here buys width back so the whole bar fits at 375px: the labels
+ * go (the buttons keep their names), the version menu shows its number, and
+ * the shortcut list goes entirely, since there is no keyboard to shortcut.
+ */
+@media (max-width: 620px) {
+  .topbar {
+    gap: 4px;
+  }
+
+  .topbar .btn__label {
+    display: none;
+  }
+
+  .topbar .btn {
+    padding-inline: 8px;
+  }
+
+  .topbar__shortcuts {
+    display: none;
+  }
+
+  /*
+   * The brand is a link home, and someone who opened a share link on their
+   * phone did not come here for the home page. Its width is worth more to the
+   * title, which is the only thing on the bar that says what you are looking
+   * at.
+   */
+  .topbar__brand {
+    display: none;
+  }
+
+  .topbar__title {
+    flex: 1 1 auto;
+    min-width: 4ch;
+    max-width: none;
+  }
+
+  /* Wide enough for "v12", which is all of it that matters here. */
+  .topbar .select {
+    flex: none;
+    max-width: 58px;
+    padding-inline: 6px;
   }
 }
 

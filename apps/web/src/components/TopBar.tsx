@@ -3,6 +3,7 @@ import { ArrowLeftRight, Clock, Lock, Settings2, Share2, Sparkles, Upload } from
 import type { Preview, Version } from '@liha/shared';
 import { useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';
+import { useNarrow } from '../lib/useNarrow.js';
 
 interface Props {
   children?: ReactNode;
@@ -36,6 +37,7 @@ export function TopBar({
 }: Props) {
   const t = useT();
   const remaining = timeLeft(preview.expiresAt);
+  const narrow = useNarrow();
 
   return (
     <header className="topbar">
@@ -103,23 +105,39 @@ export function TopBar({
         aria-label={t('topbar.version')}
       >
         {versions.map((version) => (
+          /*
+            On a phone the select is only wide enough for the number, and a
+            browser truncating an option mid-character reads as a bug. What is
+            dropped is decoration: which version is current is also in the
+            version list itself.
+          */
           <option key={version.id} value={version.id}>
             v{version.number}
-            {version.isCurrent ? ` · ${t('topbar.versionCurrent')}` : ''}
-            {version.label ? ` · ${version.label}` : ''}
+            {narrow ? '' : version.isCurrent ? ` · ${t('topbar.versionCurrent')}` : ''}
+            {narrow ? '' : version.label ? ` · ${version.label}` : ''}
           </option>
         ))}
       </select>
 
-      <button type="button" className="btn" onClick={onShare}>
+      {/*
+        The label collapses on a phone but the name does not: an icon-only
+        button still has to say what it is. Share is the reason a review link
+        exists, so it may never be the thing that falls off the edge.
+      */}
+      <button type="button" className="btn" onClick={onShare} aria-label={t('topbar.share')}>
         <Share2 size={14} strokeWidth={1.75} aria-hidden="true" />
-        {t('topbar.share')}
+        <span className="btn__label">{t('topbar.share')}</span>
       </button>
       {isOwner && (
         <>
-          <button type="button" className="btn btn--primary" onClick={onUpload}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={onUpload}
+            aria-label={t('topbar.update')}
+          >
             <Upload size={14} strokeWidth={1.75} aria-hidden="true" />
-            {t('topbar.update')}
+            <span className="btn__label">{t('topbar.update')}</span>
           </button>
           <button
             type="button"

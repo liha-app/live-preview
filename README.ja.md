@@ -322,7 +322,7 @@ liha-preview mcp --root .
 pnpm test
 ```
 
-ネットワーク不要で 226 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 60 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
+ネットワーク不要で 240 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 63 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
 
 ```bash
 npx playwright install chromium

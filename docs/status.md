@@ -13,9 +13,9 @@ immutable version → same URL. D1 schema and migrations, R2 storage with a
 per-version manifest, owner tokens (hashed), password protection (PBKDF2 + review
 sessions + rate limiting), CORS, the full JSON API.
 
-**Tests.** 48 unit tests in `@liha/shared`; 18 API tests covering the review loop
+**Tests.** 48 unit tests in `@liha/shared`; 90 API tests covering the review loop
 end to end plus owner auth, password flow, path traversal, content isolation,
-zip handling and deletion.
+zip handling, deletion, sample expiry and concurrent version writes.
 
 **Remaining.** None for this phase.
 
@@ -197,8 +197,8 @@ actually holds — once the composer is on screen, it holds the caret.
 
 |                          |                                                             |
 | ------------------------ | ----------------------------------------------------------- |
-| Unit + integration tests | 226, `pnpm test`, no network needed                         |
-| End-to-end tests         | 60, `pnpm test:e2e`, real Chromium, incl. WCAG 2.1 AA audit |
+| Unit + integration tests | 240, `pnpm test`, no network needed                         |
+| End-to-end tests         | 63, `pnpm test:e2e`, real Chromium, incl. WCAG 2.1 AA audit |
 | Packages                 | 6                                                           |
-| Migrations               | 2                                                           |
+| Migrations               | 4                                                           |
 | Languages                | English, Japanese                                           |

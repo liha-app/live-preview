@@ -573,9 +573,10 @@ export function PreviewRoute({ slug }: { slug: string }) {
       >
         <LocaleToggle />
         <ThemeToggle theme={theme} onChange={setTheme} />
+        {/* A phone has no keyboard, and the bar has no room to spare. */}
         <button
           type="button"
-          className="btn btn--icon btn--quiet"
+          className="btn btn--icon btn--quiet topbar__shortcuts"
           onClick={() => setDialog('shortcuts')}
           aria-label={t('topbar.shortcuts')}
           title={`${t('topbar.shortcuts')} (?)`}

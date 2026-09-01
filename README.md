@@ -470,7 +470,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-226 tests, no network access required:
+240 tests, no network access required:
 
 | Suite                | Covers                                                                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -479,7 +479,7 @@ pnpm test
 | `@liha/webmcp`       | Tool registration across five browser API shapes, Chrome's metadata budgets, schema-validated read and write paths.                               |
 | `@liha/mcp`          | The agent loop over a real MCP client/server pair; workspace confinement including symlink escapes.                                               |
 | `@liha/live-preview` | `upload`, `deploy`, `update`, `comments --json`; stdout/stderr separation and exit codes.                                                         |
-| `@liha/web`          | Coordinate projection and the iframe message-origin check.                                                                                        |
+| `@liha/web`          | Coordinate projection, the iframe message-origin check, sample expiry, and that every CSS custom property resolves.                               |
 
 End-to-end tests run in real Chromium and cover the parts only a browser can
 prove — the sandboxed iframe, the injected bridge, the annotation overlay, the

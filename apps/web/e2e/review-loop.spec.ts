@@ -311,3 +311,40 @@ test.describe('the review loop in a real browser', () => {
     expect(text).not.toContain('liha_ot_');
   });
 });
+
+/*
+ * A share link is a thing people open on a phone. The bar used to scroll
+ * sideways there, which put Share — the reason the link exists — off the right
+ * edge, and squeezed the title down to nothing.
+ */
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 375, height: 812 } });
+
+  test('fits the whole top bar on screen, Share included', async ({ page }) => {
+    const created = await createPreview(SITE, 'A rather long preview title');
+    await openAsOwner(page, created);
+
+    const overflow = await page
+      .locator('.topbar')
+      .evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    // Every control is reachable without scrolling the bar.
+    for (const name of ['Share', 'Update']) {
+      const box = await page.getByRole('button', { name, exact: true }).boundingBox();
+      expect(box, name).not.toBeNull();
+      expect(box!.x, name).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width, name).toBeLessThanOrEqual(375);
+    }
+
+    // The version menu says just the number, so the browser has nothing to
+    // truncate mid-character.
+    await expect(page.locator('.topbar .select option')).toHaveText(['v1']);
+
+    // And the title keeps enough room to say something, since it is the only
+    // thing on the bar that tells you which preview you are looking at.
+    const title = page.locator('.topbar__title');
+    await expect(title).toHaveText('A rather long preview title');
+    expect((await title.boundingBox())!.width).toBeGreaterThan(60);
+  });
+});
