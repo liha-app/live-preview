@@ -335,27 +335,41 @@ test.describe('first run', () => {
     await page.waitForURL(/\/p\//);
     await page.frameLocator('iframe[title="Preview content"]').locator('#cta').waitFor();
 
-    // The pin should be within the button's neighbourhood, and the box should
-    // overlap the feature section — a marker that misses its subject is worse
-    // than no marker at all.
-    const target = await page
-      .frameLocator('iframe[title="Preview content"]')
-      .locator('#cta')
-      .boundingBox();
-    const pin = await page.locator('.annotation-pin').boundingBox();
-    expect(pin).not.toBeNull();
-    expect(Math.abs(pin!.x - target!.x)).toBeLessThan(120);
-    expect(Math.abs(pin!.y - (target!.y + target!.height))).toBeLessThan(120);
+    /*
+     * The pin should be within the button's neighbourhood, and the box should
+     * overlap the feature section — a marker that misses its subject is worse
+     * than no marker at all.
+     *
+     * Polled, because `#cta` exists as soon as the iframe parses while the
+     * markers are placed from a measurement of the iframe that lands a frame or
+     * two later. Reading once raced that on a loaded machine and put the pin
+     * 225px from a button it is drawn on. Polling still fails if a marker never
+     * arrives at its subject; it only stops the test insisting on the answer
+     * before the app has worked it out.
+     */
+    const content = page.frameLocator('iframe[title="Preview content"]');
 
-    const features = await page
-      .frameLocator('iframe[title="Preview content"]')
-      .locator('#features')
-      .boundingBox();
-    const box = await page.locator('.annotation-svg rect').boundingBox();
-    expect(box).not.toBeNull();
-    // Rectangles overlap vertically.
-    expect(box!.y).toBeLessThan(features!.y + features!.height);
-    expect(box!.y + box!.height).toBeGreaterThan(features!.y);
+    await expect
+      .poll(async () => {
+        const target = await content.locator('#cta').boundingBox();
+        const pin = await page.locator('.annotation-pin').boundingBox();
+        if (!target || !pin) return null;
+        return {
+          x: Math.abs(pin.x - target.x) < 120,
+          y: Math.abs(pin.y - (target.y + target.height)) < 120,
+        };
+      })
+      .toEqual({ x: true, y: true });
+
+    await expect
+      .poll(async () => {
+        const features = await content.locator('#features').boundingBox();
+        const box = await page.locator('.annotation-svg rect').boundingBox();
+        if (!features || !box) return null;
+        // Rectangles overlap vertically.
+        return box.y < features.y + features.height && box.y + box.height > features.y;
+      })
+      .toBe(true);
   });
 });
 
