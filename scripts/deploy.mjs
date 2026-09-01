@@ -5,7 +5,7 @@
  *   pnpm run deploy              # ask what it needs, then do it
  *   pnpm run deploy --dry-run    # print the whole plan, touch nothing
  *   pnpm run deploy --reconfigure
- *   pnpm run deploy --content-prefix lp-
+ *   pnpm run deploy --service-prefix lp-
  *
  * It provisions D1 and R2, writes a generated Wrangler config, applies the
  * migrations, deploys the Worker, builds and deploys the web app to Pages,
@@ -67,13 +67,21 @@ const dryRun = flags.has('--dry-run');
 const reconfigure = flags.has('--reconfigure');
 
 /**
- * Optional text in front of every preview hostname, e.g. `lp-` for
- * `lp-ab12cd--1.example.net`. Worth having when the content domain is shared
- * with something else; the route still has to be the bare wildcard, because
- * Cloudflare rejects a wildcard in the middle of a hostname.
+ * This service's slice of the preview domain: text in front of every hostname it
+ * claims, so `lp-` gives `lp-ab12cd.example.net` for a review screen and
+ * `lp-ab12cd--1.example.net` for that preview's artifact.
+ *
+ * Not decoration. A domain carrying more than one service needs each to hold an
+ * unmistakable namespace, because the route has to be the bare wildcard —
+ * Cloudflare rejects a wildcard in the middle of a hostname, so the Worker takes
+ * everything and decides for itself which hostnames are its own.
+ *
+ * `--content-prefix` is still accepted; it was named before it applied to both.
  */
-const contentPrefixFlag = argv[argv.indexOf('--content-prefix') + 1];
-const contentPrefix = flags.has('--content-prefix') ? (contentPrefixFlag ?? '') : undefined;
+const prefixIndex = flags.has('--service-prefix')
+  ? argv.indexOf('--service-prefix')
+  : argv.indexOf('--content-prefix');
+const servicePrefix = prefixIndex === -1 ? undefined : (argv[prefixIndex + 1] ?? '');
 
 // --------------------------------------------------------------------- state
 
@@ -119,7 +127,10 @@ async function collectConfiguration(state) {
 
   if (state.appHost && !reconfigure) {
     detail(`Reusing the answers in ${path.relative(ROOT, STATE_FILE)}. --reconfigure to change.`);
-    return { ...state, contentPrefix: contentPrefix ?? state.contentPrefix ?? '' };
+    return {
+      ...state,
+      servicePrefix: servicePrefix ?? state.servicePrefix ?? state.contentPrefix ?? '',
+    };
   }
 
   info('Two hostnames on a domain you control, and one separate domain for');
@@ -171,7 +182,7 @@ async function collectConfiguration(state) {
     appHost,
     apiHost,
     contentDomain,
-    contentPrefix: contentPrefix ?? state.contentPrefix ?? '',
+    servicePrefix: servicePrefix ?? state.servicePrefix ?? state.contentPrefix ?? '',
     pagesProject: state.pagesProject ?? 'liha',
   };
   saveState(next);
@@ -364,8 +375,8 @@ function writeGeneratedConfig(config, databaseId) {
     '[vars]',
     `APP_ORIGIN = "https://${config.appHost}"`,
     `API_ORIGIN = "https://${config.apiHost}"`,
-    `CONTENT_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{label}.${config.contentDomain}"`,
-    `REVIEW_ORIGIN_TEMPLATE = "https://${config.contentPrefix ?? ''}{slug}.${config.contentDomain}"`,
+    `CONTENT_ORIGIN_TEMPLATE = "https://${config.servicePrefix ?? ''}{label}.${config.contentDomain}"`,
+    `REVIEW_ORIGIN_TEMPLATE = "https://${config.servicePrefix ?? ''}{slug}.${config.contentDomain}"`,
     'MAX_VERSION_BYTES = "31457280"',
     'MAX_TOTAL_BYTES = "5368709120"',
     '',
@@ -656,8 +667,8 @@ process.stdout.write(`\n${bold}${dryRun ? 'Plan complete.' : 'Done.'}${reset}\n\
 if (!dryRun) {
   info(`App        https://${config.appHost}`);
   info(`API        https://${config.apiHost}`);
-  info(`Reviews    https://${config.contentPrefix ?? ''}<slug>.${config.contentDomain}`);
-  info(`Artifacts  https://${config.contentPrefix ?? ''}<slug>--<version>.${config.contentDomain}`);
+  info(`Reviews    https://${config.servicePrefix ?? ''}<slug>.${config.contentDomain}`);
+  info(`Artifacts  https://${config.servicePrefix ?? ''}<slug>--<version>.${config.contentDomain}`);
   process.stdout.write('\n');
   info('Try it:');
   detail(`  LIHA_API_URL=https://${config.apiHost} liha-preview deploy ./some-site`);

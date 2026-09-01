@@ -46,10 +46,11 @@ Certificate
 Manager](https://developers.cloudflare.com/ssl/edge-certificates/advanced-certificate-manager/)
 (paid). Proxied wildcard DNS records themselves are available on every plan.
 
-The `lp-` prefix is this service's slice of that domain. The Worker holds the
-whole wildcard, because Cloudflare cannot route on anything narrower, and
-answers only for hostnames it recognises — so the same domain can carry other
-services under other prefixes.
+The `lp-` prefix is this service's slice of that domain, set with
+`--service-prefix lp-`. The Worker holds the whole wildcard, because Cloudflare
+cannot route on anything narrower, and answers only for hostnames it recognises
+— so the same domain can carry other services under other prefixes. On a domain
+this deployment has to itself, the prefix can be empty.
 
 The deploy script refuses to put previews inside your app's own domain, and
 warns before a domain deep enough that the certificate will not reach.

@@ -779,6 +779,23 @@
   font-weight: 400;
 }
 
+.paper-sheet__selection {
+  margin-top: 12px;
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--paper-faint);
+}
+
+.paper-sheet__selection p {
+  margin: 0;
+}
+
+.paper-sheet__paths {
+  margin-top: 4px !important;
+  word-break: break-all;
+  line-height: 1.7;
+}
+
 .paper-sheet__fields {
   margin-top: 20px;
   display: grid;

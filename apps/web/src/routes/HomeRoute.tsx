@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CreatePreviewResult } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
@@ -19,6 +18,19 @@ import { AgentPanel } from '../components/AgentPanel.js';
 
 /** What the create sheet is about to make. */
 type Pending = 'files' | 'url';
+
+/**
+ * Opens a preview that was just created, as its owner.
+ *
+ * Always a full navigation to the owner link, never a route change. A preview
+ * lives on its own origin when the deployment gives it one, and the token that
+ * makes you its owner rides in the fragment — `localStorage` does not cross an
+ * origin, so a client-side hop to `/p/<slug>` would land you on the landing
+ * page's copy of the app, looking at a preview you no longer own.
+ */
+function openAsOwner(created: CreatePreviewResult): void {
+  window.location.href = created.ownerUrl;
+}
 
 function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
   const { theme, setTheme } = useTheme();
@@ -44,7 +56,6 @@ function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
 
 export function HomeRoute() {
   const t = useT();
-  const navigate = useNavigate();
   const stageRef = useRef<HTMLDivElement>(null);
   const [registration, setRegistration] = useState<RegistrationHandle | null>(null);
   const [mode, setMode] = useState<'drop' | 'url' | 'cli'>('drop');
@@ -100,10 +111,7 @@ export function HomeRoute() {
   // in a working review, not to show them another form.
   const demo = useMutation({
     mutationFn: () => api.createDemoPreview(),
-    onSuccess: (created) => {
-      ownerTokens.set(created.preview.slug, created.ownerToken);
-      void navigate({ to: '/p/$slug', params: { slug: created.preview.slug } });
-    },
+    onSuccess: openAsOwner,
   });
 
   /*
@@ -126,8 +134,7 @@ export function HomeRoute() {
       focusComment: () => false,
       createPreviewFromUrl: async (input) => {
         const created = await api.createPreviewFromUrl(input);
-        ownerTokens.set(created.preview.slug, created.ownerToken);
-        void navigate({ to: '/p/$slug', params: { slug: created.preview.slug } });
+        openAsOwner(created);
         return {
           previewId: created.preview.id,
           slug: created.preview.slug,
@@ -141,7 +148,7 @@ export function HomeRoute() {
       handle.unregister();
       setRegistration(null);
     };
-  }, [navigate]);
+  }, []);
 
   const busy = upload.isPending || importUrl.isPending || demo.isPending;
   const error = upload.error ?? importUrl.error ?? demo.error;
@@ -287,10 +294,21 @@ export function HomeRoute() {
             <h2 className="paper-sheet__title">{t('home.createHeading')}</h2>
 
             {pending === 'files' && selection && (
-              <p className="paper-drop__files">
-                {t.plural('home.ready', selection.parts.length)} ·{' '}
-                {formatBytes(selection.totalBytes)}
-              </p>
+              <div className="paper-sheet__selection">
+                <p>
+                  {t.plural('home.ready', selection.parts.length)} ·{' '}
+                  {formatBytes(selection.totalBytes)}
+                </p>
+                {/* What you are about to publish, by name. A count and a size
+                    do not tell you whether you picked the right folder. */}
+                <p className="paper-sheet__paths">
+                  {selection.parts
+                    .slice(0, 4)
+                    .map((part) => part.path)
+                    .join('  ·  ')}
+                  {selection.parts.length > 4 ? ` … +${selection.parts.length - 4}` : ''}
+                </p>
+              </div>
             )}
 
             <div className="paper-sheet__fields">
@@ -376,14 +394,10 @@ function CreatedPanel({ result, onReset }: { result: CreatePreviewResult; onRese
           </div>
 
           <div className="paper__picks">
-            <Link
-              className="paper-btn paper-btn--ink"
-              to="/p/$slug"
-              params={{ slug: result.preview.slug }}
-            >
+            <a className="paper-btn paper-btn--ink" href={result.ownerUrl}>
               {t('created.open')}
               <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
+            </a>
             <button type="button" className="paper-btn paper-btn--quiet" onClick={onReset}>
               {t('created.another')}
             </button>
