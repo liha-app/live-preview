@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { asNewClient } from './clients.js';
 import { skipIntro } from './home.js';
 
@@ -11,15 +11,63 @@ const SITE = '<!doctype html><h1>Ship faster</h1><button id="cta">Get started</b
  * *acts*, anonymously, with nothing asked for — so this page has something in
  * it without anybody having signed up.
  */
+/** Publishes something, which is the moment the offer is made. */
+async function publishAUrl(page: Page) {
+  await page.getByRole('button', { name: 'Review a URL' }).click();
+  await page
+    .getByRole('textbox', { name: /review a url that is already deployed/i })
+    .fill('https://example.com');
+  await page.getByRole('button', { name: 'Import' }).click();
+  await page.getByRole('button', { name: 'Create preview' }).click();
+}
+
 test.describe('what this browser is involved in', () => {
-  test('is empty before doing anything, and has no door on the landing page', async ({ page }) => {
+  /*
+   * Signing in lives on that page, so the way to it cannot be hidden until you
+   * already have something — that is exactly backwards, and it is how this
+   * shipped the first time.
+   */
+  test('is reachable from the landing page before there is anything in it', async ({ page }) => {
     await skipIntro(page);
-    await page.goto('/me');
+    await page.goto('/');
+
+    await page.getByRole('link', { name: 'Your previews' }).click();
+    await page.waitForURL(/\/me$/);
+
     await expect(page.getByRole('heading', { name: 'Previews' })).toBeVisible();
     await expect(page.getByText('Nothing yet. Publish something')).toBeVisible();
+    // And the way in is right there, with nothing behind it yet.
+    await expect(page.getByRole('link', { name: /sign in with google/i })).toBeVisible();
+  });
 
+  /*
+   * The offer is made once somebody has published something — the first moment
+   * there is anything to keep — and never again once they say so. Which is why
+   * signing in also has a permanent home: a dismissed prompt must not be the
+   * only door.
+   */
+  test('offers an account after publishing, and stops asking when told to', async ({ page }) => {
+    await skipIntro(page);
     await page.goto('/');
-    await expect(page.getByRole('link', { name: 'Your previews' })).toHaveCount(0);
+
+    await publishAUrl(page);
+
+    const modal = page.getByRole('dialog');
+    await expect(modal.getByText('Keep this on an account?')).toBeVisible();
+    await modal.getByRole('button', { name: /don.t ask again/i }).click();
+    await expect(modal).toHaveCount(0);
+
+    // Publishing again is the same trigger, and it must stay quiet this time.
+    // Reloading and looking would prove nothing: nothing fires on arrival.
+    await page.goto('/');
+    await publishAUrl(page);
+    await expect(page.getByRole('heading', { name: 'Preview created' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // Still reachable by hand, which is the other half of the promise.
+    await page.goto('/');
+    await page.getByRole('button', { name: /sign in with google/i }).click();
+    await expect(page.getByRole('dialog').getByText('Keep this on an account?')).toBeVisible();
   });
 
   test('lists what I made and what happened on it', async ({ page }) => {
@@ -55,7 +103,7 @@ test.describe('what this browser is involved in', () => {
     // Straight to the comment, not just to the preview.
     await expect(activity.locator('a').first()).toHaveAttribute('href', /comment=/);
 
-    // And now the landing page has somewhere to go.
+    // And the landing page still points at it.
     await page.goto('/');
     await expect(page.getByRole('link', { name: 'Your previews' })).toBeVisible();
   });

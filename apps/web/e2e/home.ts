@@ -13,3 +13,19 @@ export const skipIntro = (page: Page) =>
       /* private mode: the introduction just opens, which is fine */
     }
   });
+
+/**
+ * Silences the offer to sign in.
+ *
+ * It is a real dialog a real person sees after their first action, so a suite
+ * about something else has to say it is not that person — otherwise it lands in
+ * front of the next click and the failure looks like a broken review screen.
+ */
+export const skipAccountPrompt = (page: Page) =>
+  page.addInitScript(() => {
+    try {
+      localStorage.setItem('liha.no-account-prompt', '1');
+    } catch {
+      /* private mode: the offer appears, and the test says so */
+    }
+  });

@@ -1319,7 +1319,13 @@ async function serveReviewScreen(
 
   const html = await asset.text();
   return new Response(
-    html.replace('</head>', `<meta name="liha:slug" content="${slug}" /></head>`),
+    html.replace(
+      '</head>',
+      `<meta name="liha:slug" content="${slug}" />` +
+        // This host belongs to one preview, so "/" is this same screen. The
+        // way out has to be named.
+        `<meta name="liha:app" content="${config.appOrigin}" /></head>`,
+    ),
     {
       status: asset.status,
       headers: {

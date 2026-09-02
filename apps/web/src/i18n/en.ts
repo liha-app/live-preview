@@ -7,6 +7,15 @@
  */
 export const en = {
   'app.name': 'Liha',
+  'account.title': 'Keep this on an account?',
+  'account.why':
+    'Previews are deleted after {anonymous} days without being opened. Signing in makes that {signedIn} — and none of it is required.',
+  'account.benefitList': 'Everything you have made or reviewed, in one list.',
+  'account.benefitActivity': 'A feed of what other people said on them.',
+  'account.benefitDevices': 'The same list on your other browsers.',
+  'account.later': 'Not now',
+  'account.never': 'Don’t ask again',
+  'account.open': 'Account',
   'me.signIn': 'Sign in with Google',
   'me.signOut': 'Sign out',
   'me.previews': 'Previews',

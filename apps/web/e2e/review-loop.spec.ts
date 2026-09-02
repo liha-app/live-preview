@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { asNewClient } from './clients.js';
 import { COMMENT_POLL_MS } from '../src/lib/unseen.js';
+import { skipAccountPrompt } from './home.js';
+
+/* The offer to sign in is a real dialog, and it lands in front of the next
+   click. These suites are about something else. */
+test.beforeEach(({ page }) => skipAccountPrompt(page));
 
 const API = 'http://localhost:8787';
 

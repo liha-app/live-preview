@@ -9,6 +9,15 @@ import type { Messages } from './en.js';
  */
 export const ja: Messages = {
   'app.name': 'Liha',
+  'account.title': 'アカウントに紐づけませんか？',
+  'account.why':
+    '誰も開かないまま {anonymous} 日経つとプレビューは削除されます。サインインすると {signedIn} 日になります。必須ではありません。',
+  'account.benefitList': '作ったもの・参加しているものが一覧になります。',
+  'account.benefitActivity': '誰が何をコメントしたかがまとめて見られます。',
+  'account.benefitDevices': '他のブラウザでも同じ一覧が見られます。',
+  'account.later': 'あとで',
+  'account.never': '今後表示しない',
+  'account.open': 'アカウント',
   'me.signIn': 'Google でサインイン',
   'me.signOut': 'サインアウト',
   'me.previews': 'プレビュー',

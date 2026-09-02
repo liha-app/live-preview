@@ -3,6 +3,7 @@ import { ArrowLeftRight, Clock, Lock, Settings2, Share2, Sparkles, Upload } from
 import type { Preview, Version } from '@liha/shared';
 import { useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';
+import { appHome } from '../lib/ownPreview.js';
 import { useNarrow } from '../lib/useNarrow.js';
 
 interface Props {
@@ -53,7 +54,7 @@ export function TopBar({
 
   return (
     <header className="topbar">
-      <a className="topbar__brand" href="/" title={t('app.name')}>
+      <a className="topbar__brand" href={appHome()} title={t('app.name')}>
         {t('app.name')}
       </a>
       <span className="topbar__title" title={preview.title}>

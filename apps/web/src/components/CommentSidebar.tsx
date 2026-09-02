@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Bell, MessageSquarePlus } from 'lucide-react';
+import { Bell, MessageSquarePlus, UserRound } from 'lucide-react';
 import type { Comment, CommentFilter } from '@liha/shared';
 import { CommentComposer } from './CommentComposer.js';
 import { CommentThread } from './CommentThread.js';
@@ -33,6 +33,14 @@ interface Props {
    * are waiting on a reply.
    */
   onNotifications(): void;
+  /**
+   * Opens the account offer. Absent when there is nothing to offer — already
+   * signed in, or a deployment with no sign-in configured.
+   *
+   * Here permanently, because the prompt can be dismissed forever and a
+   * dismissed prompt must not be the only way in.
+   */
+  onAccount: (() => void) | null;
   onFilterChange(filter: CommentFilter): void;
   onSelect(id: string | null): void;
   onHover(id: string | null): void;
@@ -104,6 +112,17 @@ export function CommentSidebar(props: Props) {
             <Bell size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         }
+        {props.onAccount && (
+          <button
+            type="button"
+            className="btn btn--icon btn--quiet"
+            onClick={props.onAccount}
+            aria-label={t('account.open')}
+            title={t('account.open')}
+          >
+            <UserRound size={14} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <ul className="comment-list list-reset" ref={listRef}>

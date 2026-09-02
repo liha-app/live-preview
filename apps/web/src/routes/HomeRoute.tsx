@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CreatePreviewResult } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
 import { api } from '../lib/api.js';
+import { AccountModal } from '../components/AccountModal.js';
+import { askedAlready, markAsked, useAccount } from '../lib/account.js';
 import { ownerTokens, seenIntro } from '../lib/storage.js';
 import { useTheme } from '../lib/useTheme.js';
 import { filesFromDataTransfer, pickFiles, type UploadSelection } from '../lib/files.js';
@@ -55,8 +57,19 @@ function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
 }
 
 export function HomeRoute() {
-  // Only to decide whether the door to it is worth showing.
-  const mine = useQuery({ queryKey: ['me', 'previews'], queryFn: () => api.listMyPreviews() });
+  const account = useAccount();
+  const [askAccount, setAskAccount] = useState(false);
+
+  /*
+   * Offered once somebody has published something, which is the first moment
+   * there is anything to keep. The sample goes straight into its review screen,
+   * so that path is offered there instead.
+   */
+  const offerAccount = () => {
+    if (!account.worthAsking || askedAlready()) return;
+    markAsked();
+    setAskAccount(true);
+  };
   const t = useT();
   const stageRef = useRef<HTMLDivElement>(null);
   const [registration, setRegistration] = useState<RegistrationHandle | null>(null);
@@ -82,6 +95,8 @@ export function HomeRoute() {
   const remember = (created: CreatePreviewResult) => {
     ownerTokens.set(created.preview.slug, created.ownerToken);
     setResult(created);
+    // Just published something: the first moment there is anything to keep.
+    offerAccount();
   };
 
   const upload = useMutation({
@@ -155,7 +170,14 @@ export function HomeRoute() {
   const busy = upload.isPending || importUrl.isPending || demo.isPending;
   const error = upload.error ?? importUrl.error ?? demo.error;
 
-  if (result) return <CreatedPanel result={result} onReset={() => setResult(null)} />;
+  if (result) {
+    return (
+      <>
+        <CreatedPanel result={result} onReset={() => setResult(null)} />
+        {askAccount && <AccountModal account={account} onClose={() => setAskAccount(false)} />}
+      </>
+    );
+  }
 
   const choose = async (directory: boolean) => {
     const picked = await pickFiles({ directory });
@@ -175,13 +197,21 @@ export function HomeRoute() {
           <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
           <div className="paper__nav">
             {/*
-              Only once there is something behind it. A door to an empty room is
-              worse than no door, and this browser may never have made anything.
+              Always, even with nothing behind it. Signing in is on that page,
+              so hiding the door until you have something means you can never
+              sign in before you have something — which is exactly backwards.
             */}
-            {(mine.data?.previews.length ?? 0) > 0 && (
-              <a className="paper-link" href="/me">
-                {t('home.mine')}
-              </a>
+            <a className="paper-link" href="/me">
+              {t('home.mine')}
+            </a>
+            {/*
+              Permanent, because the offer below can be dismissed forever and a
+              dismissed prompt must not be the only way in.
+            */}
+            {account.available && !account.signedIn && (
+              <button type="button" className="paper-link" onClick={() => setAskAccount(true)}>
+                {t('me.signIn')}
+              </button>
             )}
             <button type="button" className="paper-link" onClick={() => setIntro(true)}>
               {t('home.howTo')}
@@ -367,6 +397,7 @@ export function HomeRoute() {
       )}
 
       {showAgent && <AgentPanel registration={registration} onClose={() => setShowAgent(false)} />}
+      {askAccount && <AccountModal account={account} onClose={() => setAskAccount(false)} />}
     </div>
   );
 }

@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { skipIntro } from './home.js';
+import { skipIntro, skipAccountPrompt } from './home.js';
+
+/* The offer to sign in is a real dialog, and it lands in front of the next
+   click. These suites are about something else. */
+test.beforeEach(({ page }) => skipAccountPrompt(page));
 
 /**
  * The sheet that asks for a title and a password before a preview is made.

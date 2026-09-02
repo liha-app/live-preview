@@ -18,3 +18,20 @@ const stamped = (() => {
 export function ownPreviewSlug(): string | null {
   return stamped;
 }
+
+/**
+ * Where the app itself lives, when this document is a preview's own host.
+ *
+ * On such a host every path is that preview's review screen, so "/" leads back
+ * to the same place. Getting out means naming somewhere else, and only the
+ * server knows where that is.
+ */
+const home = (() => {
+  if (typeof document === 'undefined') return null;
+  const value = document.querySelector('meta[name="liha:app"]')?.getAttribute('content')?.trim();
+  return value || null;
+})();
+
+export function appHome(): string {
+  return home ?? '/';
+}

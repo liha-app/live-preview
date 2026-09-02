@@ -24,6 +24,21 @@ NOTIFICATION_ORIGIN = "http://notification.localhost:8787"
 VAPID_PUBLIC_KEY = "BGEpyIoPOQ31k9pUsOlL3sctXBT6DS46M5EeqBnauw1idMhVxtz7D9mx2WPhtqO5iHY8BH3P0N8XE3CBEFBaE7E"
 VAPID_PRIVATE_KEY = '{"key_ops":["sign"],"ext":true,"kty":"EC","x":"YSnIig85DfWT2lSw6Uvexy1cFPoNLjozkR6oGdq7DWI","y":"dMhVxtz7D9mx2WPhtqO5iHY8BH3P0N8XE3CBEFBaE7E","crv":"P-256","d":"xvHO2HqN2IkNvpl_w6lNMhPUi078Io94Ha7P-JsB414"}'
 
+# Google sign-in, locally.
+#
+# These are NOT a real client — they exist so the sign-in path is present in
+# development and can be exercised by the tests. Following it as far as Google
+# will fail, which is the honest outcome for a made-up client. To sign in for
+# real locally, put your own in .dev.vars (which is not committed):
+#
+#   GOOGLE_CLIENT_ID = "…apps.googleusercontent.com"
+#   GOOGLE_CLIENT_SECRET = "…"
+#
+# The deploy script never copies these: it takes the id from GOOGLE_CLIENT_ID
+# and the secret from a file in your home directory.
+GOOGLE_CLIENT_ID = "development-only.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "development-only-not-a-real-secret"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "liha-live-preview"

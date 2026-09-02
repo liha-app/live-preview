@@ -138,6 +138,12 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
 export function assertProductionConfig(env: Env): string[] {
   const warnings: string[] = [];
   if (!env.CONTENT_SIGNING_KEY) warnings.push('CONTENT_SIGNING_KEY is not set.');
+  if (env.GOOGLE_CLIENT_ID?.startsWith('development-only')) {
+    warnings.push(
+      'GOOGLE_CLIENT_ID is the development placeholder committed to this ' +
+        'repository. Sign-in will fail at Google. Set a real client id and secret.',
+    );
+  }
   if (env.VAPID_PUBLIC_KEY === DEV_VAPID_PUBLIC_KEY) {
     warnings.push(
       'VAPID_PUBLIC_KEY is the development keypair committed to this repository. ' +

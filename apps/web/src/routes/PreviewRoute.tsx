@@ -34,6 +34,8 @@ import {
 } from '../components/PreviewStage.js';
 import { ThemeToggle } from '../components/ThemeToggle.js';
 import { TopBar } from '../components/TopBar.js';
+import { AccountModal } from '../components/AccountModal.js';
+import { askedAlready, markAsked, useAccount } from '../lib/account.js';
 import { pushSupported, watchUrl } from '../lib/notifications.js';
 import { COMMENT_POLL_MS } from '../lib/unseen.js';
 import { useUnseenComments } from '../lib/useUnseenComments.js';
@@ -83,6 +85,19 @@ export function PreviewRoute({ slug }: { slug: string }) {
   >(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notifyError, setNotifyError] = useState<string | null>(null);
+  const account = useAccount();
+  const [askAccount, setAskAccount] = useState(false);
+
+  /*
+   * Offered after somebody has done something, not on arrival: before that
+   * there is nothing to keep and asking would be asking for its own sake. Once
+   * per page, so an afternoon of commenting is not an afternoon of asking.
+   */
+  const offerAccount = useCallback(() => {
+    if (!account.worthAsking || askedAlready()) return;
+    markAsked();
+    setAskAccount(true);
+  }, [account.worthAsking]);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [announcement, setAnnouncement] = useState('');
@@ -247,6 +262,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setAnnouncement(t('comments.added'));
       setSelectedCommentId(comment.id);
       refresh();
+      offerAccount();
     },
   });
 
@@ -258,6 +274,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setReplyBody('');
       setAnnouncement(t('comments.replyAdded'));
       refresh();
+      offerAccount();
     },
   });
 
@@ -280,6 +297,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setDialog(null);
       setDialogError(null);
       refresh();
+      offerAccount();
     },
     onError: (error) => setDialogError(messageOf(error)),
   });
@@ -701,6 +719,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
           replyBody={replyBody}
           replySubmitting={addReply.isPending}
           onNotifications={startNotifications}
+          onAccount={account.available && !account.signedIn ? () => setAskAccount(true) : null}
           onFilterChange={setFilter}
           onSelect={selectComment}
           onHover={highlight}
@@ -766,6 +785,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
           onDelete={() => deletePreview.mutate()}
         />
       )}
+      {askAccount && <AccountModal account={account} onClose={() => setAskAccount(false)} />}
       {dialog === 'shortcuts' && <ShortcutsModal onClose={() => setDialog(null)} />}
       {dialog === 'agent' && (
         <AgentPanel registration={registration} onClose={() => setDialog(null)} />
