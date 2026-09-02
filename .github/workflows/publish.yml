@@ -49,7 +49,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@11.6.2
       - run: npm --version
 
       - run: pnpm install --frozen-lockfile
