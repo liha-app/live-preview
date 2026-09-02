@@ -397,3 +397,38 @@ test.describe('when the API is unreachable', () => {
     await expect(page.locator('iframe[title="Preview content"]')).toBeVisible();
   });
 });
+
+/*
+ * The API answers in English, because an API has one language and its callers
+ * include a CLI and an agent. A person reading a Japanese screen should not be
+ * the one absorbing that — and every failure used to hand them the server's
+ * own sentence.
+ */
+test.describe('when something fails, in Japanese', () => {
+  test('says so in Japanese, and says it out loud', async ({ page }) => {
+    const created = await createPreview();
+    await fetch(`${API}/api/previews/${created.preview.slug}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'x-liha-owner-token': created.ownerToken },
+      body: JSON.stringify({ password: 'a-good-enough-password' }),
+    });
+
+    await skipIntro(page);
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('liha.locale', 'ja');
+      } catch {
+        /* private mode */
+      }
+    });
+    await page.goto(`/p/${created.preview.slug}`);
+
+    const field = page.getByLabel('パスワード');
+    await field.fill('not-the-password');
+    await page.getByRole('button', { name: '開く' }).click();
+
+    // Not "Incorrect password.", which is what the server says.
+    const alert = page.getByRole('alert');
+    await expect(alert).toHaveText('パスワードが違います。');
+  });
+});

@@ -18,6 +18,7 @@ import { Onboarding } from '../components/Onboarding.js';
 import { useT } from '../i18n/index.js';
 import { registerLihaTools, type RegistrationHandle } from '@liha-cli/webmcp';
 import { AgentPanel } from '../components/AgentPanel.js';
+import { describeError } from '../lib/apiMessage.js';
 
 /** What the create sheet is about to make. */
 type Pending = 'files' | 'url';
@@ -385,7 +386,7 @@ export function HomeRoute() {
             </button>
           </div>
 
-          {error && <div className="notice notice--error">{messageOf(error)}</div>}
+          {error && <div className="notice notice--error">{describeError(error, t)}</div>}
         </main>
       </div>
 
@@ -518,8 +519,4 @@ function CreatedPanel({ result, onReset }: { result: CreatePreviewResult; onRese
       </div>
     </div>
   );
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
 }

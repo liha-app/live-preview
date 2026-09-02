@@ -9,6 +9,18 @@ import type { Messages } from './en.js';
  */
 export const ja: Messages = {
   'app.name': 'Liha',
+  'apiError.network':
+    'サーバーに接続できませんでした。回線が切れているか、サーバーが再起動中の可能性があります。',
+  'apiError.notFound': 'このプレビューはもう存在しません。',
+  'apiError.unauthorized': 'この操作にはこのプレビューのオーナーリンクが必要です。',
+  'apiError.forbidden': 'そのオーナーリンクはこのプレビューのものではありません。',
+  'apiError.passwordRequired': 'このプレビューはパスワードで保護されています。',
+  'apiError.invalidPassword': 'パスワードが違います。',
+  'apiError.rateLimited': '短時間に操作が多すぎます。数分おいてからお試しください。',
+  'apiError.unsupportedMedia': 'この種類のファイルはプレビューできません。',
+  'apiError.notSupported': 'このデプロイではその機能を提供していません。',
+  'apiError.server':
+    'サーバー側で問題が起きました。データは失われていません。もう一度お試しください。',
   'account.title': 'アカウントに紐づけませんか？',
   'account.why':
     '誰も開かないまま {anonymous} 日経つとプレビューは削除されます。サインインすると {signedIn} 日になります。必須ではありません。',

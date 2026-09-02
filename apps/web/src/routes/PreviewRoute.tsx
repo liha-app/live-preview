@@ -41,6 +41,7 @@ import { COMMENT_POLL_MS } from '../lib/unseen.js';
 import { useUnseenComments } from '../lib/useUnseenComments.js';
 import type { Tool } from '../components/AnnotationLayer.js';
 import { appHome } from '../lib/ownPreview.js';
+import { describeError } from '../lib/apiMessage.js';
 
 interface AgentEvent {
   id: number;
@@ -300,7 +301,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       refresh();
       offerAccount();
     },
-    onError: (error) => setDialogError(messageOf(error)),
+    onError: (error) => setDialogError(describeError(error, t)),
   });
   const setCurrentVersion = useMutation({
     mutationFn: (versionId: string) => api.setCurrentVersion(slug, versionId),
@@ -308,7 +309,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setPinnedVersionId(null);
       refresh();
     },
-    onError: (error) => setDialogError(messageOf(error)),
+    onError: (error) => setDialogError(describeError(error, t)),
   });
   const updatePreview = useMutation({
     mutationFn: (input: { password?: string | null; title?: string }) =>
@@ -317,7 +318,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setDialogError(null);
       refresh();
     },
-    onError: (error) => setDialogError(messageOf(error)),
+    onError: (error) => setDialogError(describeError(error, t)),
   });
   /*
    * Retention counts from use, so the owner pushing it out by hand is the same
@@ -333,7 +334,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       refresh();
       offerAccount();
     },
-    onError: (error) => setDialogError(messageOf(error)),
+    onError: (error) => setDialogError(describeError(error, t)),
   });
 
   const extend = useMutation({
@@ -344,7 +345,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const deletePreview = useMutation({
     mutationFn: () => api.deletePreview(slug),
     onSuccess: () => navigate({ to: '/' }),
-    onError: (error) => setDialogError(messageOf(error)),
+    onError: (error) => setDialogError(describeError(error, t)),
   });
   const authenticate = useMutation({
     mutationFn: (password: string) => api.authenticate(slug, password),
@@ -352,7 +353,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setPasswordError(null);
       refresh();
     },
-    onError: (error) => setPasswordError(messageOf(error)),
+    onError: (error) => setPasswordError(describeError(error, t)),
   });
 
   const submitComment = useCallback(
@@ -810,7 +811,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       {(addComment.error || addReply.error || notifyError) && (
         <div className="toasts">
           <div className="toast toast--error" role="alert">
-            {notifyError ?? messageOf(addComment.error ?? addReply.error)}
+            {notifyError ?? describeError(addComment.error ?? addReply.error, t)}
           </div>
         </div>
       )}
@@ -836,10 +837,6 @@ export function PreviewRoute({ slug }: { slug: string }) {
       </div>
     </div>
   );
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong.';
 }
 
 export type { Preview, Comment };

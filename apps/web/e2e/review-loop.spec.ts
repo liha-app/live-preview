@@ -288,7 +288,8 @@ test.describe('the review loop in a real browser', () => {
 
     await page.getByPlaceholder('Password').fill('wrong');
     await page.getByRole('button', { name: 'Unlock' }).click();
-    await expect(page.getByText('Incorrect password.')).toBeVisible();
+    // The reader's language, not the API's. See apiMessage.ts.
+    await expect(page.getByRole('alert')).toHaveText('That password is not right.');
 
     await page.getByPlaceholder('Password').fill('open-sesame');
     await page.getByRole('button', { name: 'Unlock' }).click();

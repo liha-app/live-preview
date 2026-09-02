@@ -277,7 +277,11 @@ export function UploadVersionModal({
           value={label}
           onChange={(event) => setLabel(event.target.value)}
         />
-        {error && <div className="notice notice--error">{error}</div>}
+        {error && (
+          <div className="notice notice--error" role="alert">
+            {error}
+          </div>
+        )}
         <div className="modal__actions">
           <button type="button" className="btn" onClick={onClose}>
             {t('common.cancel')}
@@ -309,7 +313,11 @@ export function UploadVersionModal({
         value={label}
         onChange={(event) => setLabel(event.target.value)}
       />
-      {error && <div className="notice notice--error">{error}</div>}
+      {error && (
+        <div className="notice notice--error" role="alert">
+          {error}
+        </div>
+      )}
       <div className="modal__actions">
         <button type="button" className="btn" onClick={onClose}>
           {t('common.cancel')}
@@ -412,7 +420,11 @@ export function OwnerSettingsModal({
         </div>
       </div>
 
-      {error && <div className="notice notice--error">{error}</div>}
+      {error && (
+        <div className="notice notice--error" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="modal__actions" style={{ justifyContent: 'space-between' }}>
         {confirmDelete ? (
@@ -469,7 +481,11 @@ export function PasswordGate({
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        {error && <div className="notice notice--error">{error}</div>}
+        {error && (
+          <div className="notice notice--error" role="alert">
+            {error}
+          </div>
+        )}
         <button type="submit" className="btn btn--primary" disabled={!password || busy}>
           {busy && <span className="spinner" aria-hidden="true" />}
           {t('password.unlock')}

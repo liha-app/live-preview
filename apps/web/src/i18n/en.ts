@@ -7,6 +7,17 @@
  */
 export const en = {
   'app.name': 'Liha',
+  'apiError.network':
+    'Could not reach the server. Your connection may be down, or it may be restarting.',
+  'apiError.notFound': 'That preview no longer exists.',
+  'apiError.unauthorized': 'This needs the owner link for this preview.',
+  'apiError.forbidden': 'That owner link does not match this preview.',
+  'apiError.passwordRequired': 'This preview is password protected.',
+  'apiError.invalidPassword': 'That password is not right.',
+  'apiError.rateLimited': 'Too many requests in a short time. Try again in a few minutes.',
+  'apiError.unsupportedMedia': 'That kind of file cannot be previewed.',
+  'apiError.notSupported': 'This deployment does not offer that.',
+  'apiError.server': 'Something went wrong at the server. Nothing was lost; try again.',
   'account.title': 'Keep this on an account?',
   'account.why':
     'Previews are deleted after {anonymous} days without being opened. Signing in makes that {signedIn} — and none of it is required.',
