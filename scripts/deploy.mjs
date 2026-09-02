@@ -354,7 +354,7 @@ async function provisionStorage(env) {
  * properties of the code rather than of a deployment — the entry point, the
  * compatibility date — are read across so the two cannot drift.
  */
-function writeGeneratedConfig(config, databaseId) {
+function writeGeneratedConfig(config, databaseId, vapidPublicKey) {
   const source = fs.readFileSync(path.join(API_DIR, 'wrangler.toml'), 'utf8');
   const carry = (key) => source.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, 'm'))?.[1]?.trim();
 
@@ -379,6 +379,10 @@ function writeGeneratedConfig(config, databaseId) {
     `REVIEW_ORIGIN_TEMPLATE = "https://${config.servicePrefix ?? ''}{slug}.${config.contentDomain}"`,
     'MAX_VERSION_BYTES = "31457280"',
     'MAX_TOTAL_BYTES = "5368709120"',
+    // Notification permission is per origin and every preview has its own, so
+    // one origin asks once and its service worker covers all of them.
+    `NOTIFICATION_ORIGIN = "https://notification.${config.contentDomain}"`,
+    ...(vapidPublicKey ? [`VAPID_PUBLIC_KEY = "${vapidPublicKey}"`] : []),
     '',
     '[[d1_databases]]',
     'binding = "DB"',
@@ -442,6 +446,66 @@ async function ensureSigningKey(env) {
     input: crypto.randomBytes(32).toString('base64'),
   });
   done('Generated and stored CONTENT_SIGNING_KEY.');
+}
+
+/**
+ * The VAPID keypair that identifies this deployment to push services.
+ *
+ * Generated once and kept. The public key is what browsers subscribe with, so
+ * replacing it silently invalidates every subscription anyone has made — which
+ * is why this never regenerates over an existing key, and why the public half
+ * lives in the deploy state rather than being derived at deploy time.
+ *
+ * Only the private half is a secret. The public half is meant to be published.
+ */
+async function ensureVapidKeys(env, state) {
+  step('Notification signing key');
+
+  if (dryRun) {
+    planned('wrangler secret put VAPID_PRIVATE_KEY (if not already set)');
+    return state.vapidPublicKey ?? 'DRY-RUN-PLACEHOLDER';
+  }
+
+  const existing = await wrangler(['secret', 'list', '-c', GENERATED_CONFIG], {
+    cwd: API_DIR,
+    env,
+    capture: true,
+    allowFailure: true,
+  });
+  const hasSecret = existing.code === 0 && existing.stdout.includes('VAPID_PRIVATE_KEY');
+
+  if (hasSecret && state.vapidPublicKey) {
+    done('VAPID keys already set; left as they are.');
+    return state.vapidPublicKey;
+  }
+  if (hasSecret !== Boolean(state.vapidPublicKey)) {
+    // One half without the other cannot work, and quietly minting a new pair
+    // would turn every existing subscription into silence.
+    detail('Only half of the VAPID keypair was found; generating a new pair.');
+    detail('Anyone already subscribed will have to allow notifications again.');
+  }
+
+  // Same shapes as generateVapidKeys() in apps/api/src/push.ts: the public key
+  // is the raw uncompressed point, base64url; the private key is a JWK.
+  const pair = await crypto.webcrypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    true,
+    ['sign', 'verify'],
+  );
+  const raw = Buffer.from(await crypto.webcrypto.subtle.exportKey('raw', pair.publicKey));
+  const publicKey = raw.toString('base64url');
+  const privateKeyJwk = JSON.stringify(
+    await crypto.webcrypto.subtle.exportKey('jwk', pair.privateKey),
+  );
+
+  await wrangler(['secret', 'put', 'VAPID_PRIVATE_KEY', '-c', GENERATED_CONFIG], {
+    cwd: API_DIR,
+    env,
+    capture: true,
+    input: privateKeyJwk,
+  });
+  done('Generated and stored a VAPID keypair.');
+  return publicKey;
 }
 
 async function deployWorker(env) {
@@ -640,7 +704,8 @@ async function verify(config) {
 process.stdout.write(`\n${bold}Deploying Liha to Cloudflare${reset}\n`);
 if (dryRun) detail('Dry run: nothing is created, uploaded or changed.');
 
-const config = await collectConfiguration(readState());
+const previousState = readState();
+const config = await collectConfiguration(previousState);
 const auth = await authenticate();
 closeInput();
 
@@ -658,6 +723,10 @@ step('Configuration');
 writeGeneratedConfig(config, databaseId);
 
 await ensureSigningKey(env);
+// The public half is a plain var, so the config is written again now that it
+// is known. The first write is what lets wrangler talk to this Worker at all.
+const vapidPublicKey = await ensureVapidKeys(env, previousState);
+writeGeneratedConfig(config, databaseId, vapidPublicKey);
 await buildWebApp(config);
 await deployWorker(env);
 await configureDns(auth, config, zones);
@@ -666,7 +735,7 @@ await deployWebApp(config, auth, zones, env);
 const healthy = await waitForHealth(config);
 const verified = healthy ? await verify(config) : false;
 
-saveState({ ...config, lastDeployedAt: new Date().toISOString() });
+saveState({ ...config, vapidPublicKey, lastDeployedAt: new Date().toISOString() });
 
 process.stdout.write(`\n${bold}${dryRun ? 'Plan complete.' : 'Done.'}${reset}\n\n`);
 if (!dryRun) {

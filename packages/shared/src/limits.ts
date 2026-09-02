@@ -61,6 +61,14 @@ export const LIMITS = {
    * Uploads have no lifetime; they are somebody's work.
    */
   sampleLifetimeMs: 24 * 60 * 60 * 1000,
+  /**
+   * How long a notification grant is good for.
+   *
+   * Long enough to allow notifications on the page it opens — which may involve
+   * reading a browser prompt — and short enough that one left behind in a
+   * browser history is worth nothing.
+   */
+  watchTokenLifetimeMs: 10 * 60 * 1000,
   /** Lifetime of the signed review session issued after a correct password. */
   reviewSessionTtlMs: 12 * 60 * 60 * 1000,
   /** Lifetime of the signed URL token that lets an iframe load protected content. */

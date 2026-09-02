@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CreatePreviewResult } from '@liha/shared';
 import {
@@ -155,6 +157,30 @@ describe('a template that cannot be used', () => {
     });
 
     expect(warnings.join(' ')).toContain('NOT origin-isolated');
+  });
+
+  /*
+   * The development keypair is committed so `pnpm dev` works out of the box.
+   * Its private half is therefore public, and deploying it would let anyone
+   * send notifications to this deployment's subscribers.
+   */
+  it('refuses to be quiet about the development notification key', () => {
+    // Read from the config rather than repeated here: a key rotated in one
+    // place and not the other would turn this guard off without failing.
+    const toml = readFileSync(join(import.meta.dirname, '..', 'wrangler.toml'), 'utf8');
+    const devKey = /^VAPID_PUBLIC_KEY = "([\w-]+)"$/m.exec(toml)?.[1];
+    expect(devKey, 'wrangler.toml should carry a development VAPID key').toBeTruthy();
+
+    const warnings = assertProductionConfig({
+      DB: null as never,
+      BUCKET: null as never,
+      APP_ORIGIN: 'https://app.example.com',
+      CONTENT_SIGNING_KEY: 'x',
+      CONTENT_ORIGIN_TEMPLATE: 'https://{slug}-lp-v{version}.liha.review',
+      VAPID_PUBLIC_KEY: devKey!,
+    });
+
+    expect(warnings.join(' ')).toContain('development keypair');
   });
 
   it('says nothing when the template works', () => {

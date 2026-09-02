@@ -40,6 +40,12 @@ export const ID_PREFIXES = {
   version: 'vr',
   comment: 'cm',
   session: 'rs',
+  /**
+   * A push subscription. This id is also what the service worker presents to
+   * ask what it missed, so it is a credential as much as a name — which is why
+   * every id here is 22 random base58 characters rather than a counter.
+   */
+  push: 'ps',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -48,7 +54,7 @@ export function generateId(kind: IdKind): string {
   return `${ID_PREFIXES[kind]}_${randomString(22)}`;
 }
 
-const ID_PATTERN = /^(pv|vr|cm|rs)_[1-9A-HJ-NP-Za-km-z]{22}$/;
+const ID_PATTERN = /^(pv|vr|cm|rs|ps)_[1-9A-HJ-NP-Za-km-z]{22}$/;
 
 export function isValidId(value: string, kind?: IdKind): boolean {
   if (!ID_PATTERN.test(value)) return false;

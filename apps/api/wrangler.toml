@@ -13,6 +13,16 @@ ip = "127.0.0.1"
 APP_ORIGIN = "http://localhost:5173"
 CONTENT_ORIGIN_TEMPLATE = "http://{label}.localhost:8787"
 MAX_VERSION_BYTES = "31457280"
+# Notifications, locally. `localhost` is a secure context, so service workers
+# and push registration work here the same way they do in production.
+#
+# This keypair is a throwaway committed on purpose so `pnpm dev` has a working
+# notification flow out of the box. It is NOT the one production uses: the
+# deploy script generates a fresh pair and stores the private half as a Worker
+# secret, and the Worker warns loudly if it ever sees this one deployed.
+NOTIFICATION_ORIGIN = "http://notification.localhost:8787"
+VAPID_PUBLIC_KEY = "BGEpyIoPOQ31k9pUsOlL3sctXBT6DS46M5EeqBnauw1idMhVxtz7D9mx2WPhtqO5iHY8BH3P0N8XE3CBEFBaE7E"
+VAPID_PRIVATE_KEY = '{"key_ops":["sign"],"ext":true,"kty":"EC","x":"YSnIig85DfWT2lSw6Uvexy1cFPoNLjozkR6oGdq7DWI","y":"dMhVxtz7D9mx2WPhtqO5iHY8BH3P0N8XE3CBEFBaE7E","crv":"P-256","d":"xvHO2HqN2IkNvpl_w6lNMhPUi078Io94Ha7P-JsB414"}'
 
 [[d1_databases]]
 binding = "DB"

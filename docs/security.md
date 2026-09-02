@@ -173,6 +173,32 @@ validation and then resolves to `169.254.169.254` is not caught here. Mitigate
 at the network layer for deployments that care. This is stated in
 [SECURITY.md](../SECURITY.md) rather than quietly ignored.
 
+## Notifications
+
+- **The owner token never leaves its origin.** Setting up notifications happens
+  on a different origin, so the review screen trades the token for a grant that
+  authorises one thing — watching one preview — and expires in ten minutes. The
+  grant carries its own signature prefix, so a content grant can never be spent
+  as one and the other way round. It travels in the URL fragment, which browsers
+  do not send to servers and proxies do not log, and the page it lands on spends
+  it and removes it.
+- **Push messages carry nothing.** Payload encryption (RFC 8291) needs the
+  subscription's `p256dh` and `auth` keys; an empty push does not, so those keys
+  are never requested and never stored. Only the endpoint is held. A copy of the
+  database cannot be used to send anybody anything, and what a notification says
+  is fetched when it is shown rather than queued when it was sent.
+- **A push endpoint is a URL a client supplies and this server later fetches**,
+  which is the shape of every SSRF. It goes through the same check as URL
+  import, plus https only.
+- **Only the owner can ask to be notified**, and never about their own comment.
+- **The VAPID keypair is generated per deployment** and the private half is a
+  Worker secret. A development pair is committed so `pnpm dev` works out of the
+  box; the Worker warns loudly if it is ever seen in a deployment, and a test
+  fails if that guard stops matching the committed key.
+- The notification origin serves one page, its script and a service worker,
+  under `default-src 'none'; script-src 'self'` — an origin holding a
+  notification permission is not one to guard with `unsafe-inline`.
+
 ## Denial of service
 
 - 30 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).

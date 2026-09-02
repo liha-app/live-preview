@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import {
   CommentFilterSchema,
@@ -12,6 +12,7 @@ import {
   UpdatePreviewInputSchema,
   UrlValidationError,
   assertPasswordPolicy,
+  createWatchToken,
   formatBytes,
   generateId,
   generateOwnerToken,
@@ -21,6 +22,7 @@ import {
   hashToken,
   serializeTarget,
   verifyPassword,
+  verifyWatchToken,
 } from '@liha/shared';
 import {
   assertNotRateLimited,
@@ -32,6 +34,8 @@ import {
 import { matchContentHost, matchReviewHost, originWildcard } from './content-origin.js';
 import { matchContentPath, resolveViaReferer, serveVersionFile } from './content.js';
 import { DEMO_TITLE, demoComments, demoFiles } from './demo.js';
+import { isUsableEndpoint, notifyWatchers, pendingFor, vapidKeys } from './notify.js';
+import { serviceWorker, watchPage, watchScript } from './notification-site.js';
 import { resolveConfig, type Env, type ResolvedConfig } from './env.js';
 import { ApiError, badRequest, notFound, tooLarge } from './errors.js';
 import type { Database } from './ports.js';
@@ -42,6 +46,7 @@ import {
   createReviewSession,
   deleteReviewSessions,
   findComment,
+  findPreviewById,
   findPreviewBySlug,
   findValidReviewSession,
   findVersion,
@@ -49,8 +54,13 @@ import {
   insertPreview,
   insertVersion,
   listComments,
+  addPushWatch,
+  deletePushSubscription,
   expiredPreviews,
+  deleteWatchesFor,
   listVersions,
+  removePushWatch,
+  upsertPushSubscription,
   totalStoredBytes,
   nextVersionNumber,
   nowIso,
@@ -105,6 +115,21 @@ function corsHeaders(origin: string | null, config: ResolvedConfig): Record<stri
     'access-control-max-age': '600',
     vary: 'origin',
   };
+}
+
+/**
+ * Runs `work` after the response, when the runtime offers that.
+ *
+ * `c.executionCtx` throws rather than returning undefined when there is none —
+ * which is every test, and any runtime that is not a Worker. There it simply
+ * runs inline.
+ */
+async function after(c: Context<App>, work: Promise<void>): Promise<void> {
+  try {
+    c.executionCtx.waitUntil(work);
+  } catch {
+    await work;
+  }
 }
 
 export function createApp() {
@@ -539,8 +564,93 @@ export function createApp() {
     await requireOwner(c.req.raw, preview);
     await softDeletePreview(c.env.DB, preview.id);
     await deleteReviewSessions(c.env.DB, preview.id);
+    await deleteWatchesFor(c.env.DB, preview.id);
     await deleteStoredObjects(c.env, `previews/${preview.id}/`);
     return c.json({ deleted: true, previewId: preview.id }, 200, NO_STORE);
+  });
+
+  // --------------------------------------------------------------- push
+  //
+  // Notification permission is per origin, and every preview has its own — so
+  // the review screen cannot ask without asking again for the next preview.
+  // It sends you to the notification origin instead, carrying a grant that
+  // authorises exactly one thing: watching this preview. The owner token stays
+  // where it is.
+
+  app.post('/api/previews/:slug/watch-token', async (c) => {
+    const preview = await loadPreview(c);
+    await requireOwner(c.req.raw, preview);
+
+    const config = c.get('config');
+    if (!config.notificationOrigin || !vapidKeys(c.env)) {
+      throw new ApiError('not_supported', 'This deployment does not send notifications.');
+    }
+
+    const token = await createWatchToken(config.contentSigningKey, {
+      previewId: preview.id,
+      // Long enough to allow notifications on the page it opens, short enough
+      // that a grant left in a browser history is worth nothing.
+      exp: Date.now() + LIMITS.watchTokenLifetimeMs,
+    });
+    return c.json(
+      { token, notificationOrigin: config.notificationOrigin, title: preview.title },
+      200,
+      NO_STORE,
+    );
+  });
+
+  app.post('/api/push/subscribe', async (c) => {
+    const config = c.get('config');
+    if (!vapidKeys(c.env)) {
+      throw new ApiError('not_supported', 'This deployment does not send notifications.');
+    }
+
+    const body = (await c.req.json()) as { endpoint?: unknown; watchToken?: unknown };
+    if (typeof body.endpoint !== 'string' || typeof body.watchToken !== 'string') {
+      throw badRequest('endpoint and watchToken are required.');
+    }
+    /*
+     * This URL is supplied by a client and later fetched by this server, which
+     * is the shape of every SSRF. Same check the URL importer uses.
+     */
+    if (!isUsableEndpoint(body.endpoint)) throw badRequest('That is not a push endpoint.');
+
+    const grant = await verifyWatchToken(config.contentSigningKey, body.watchToken);
+    if (!grant) throw new ApiError('unauthorized', 'That notification link has expired.');
+
+    const preview = await findPreviewById(c.env.DB, grant.previewId);
+    if (!preview || preview.deleted_at) throw notFound('That preview no longer exists.');
+
+    const subscription = await upsertPushSubscription(c.env.DB, generateId('push'), body.endpoint);
+    await addPushWatch(c.env.DB, subscription.id, preview.id);
+
+    return c.json(
+      { subscriptionId: subscription.id, previewId: preview.id, title: preview.title },
+      200,
+      NO_STORE,
+    );
+  });
+
+  app.post('/api/push/pending', async (c) => {
+    const body = (await c.req.json()) as { subscriptionId?: unknown };
+    if (typeof body.subscriptionId !== 'string') throw badRequest('subscriptionId is required.');
+
+    // Say the same thing for an unknown id as for one with nothing waiting:
+    // this endpoint must not become a way to test whether an id exists.
+    const items = await pendingFor(c.env, c.get('config'), body.subscriptionId);
+    return c.json({ items }, 200, NO_STORE);
+  });
+
+  app.post('/api/push/unsubscribe', async (c) => {
+    const body = (await c.req.json()) as { subscriptionId?: unknown; previewId?: unknown };
+    if (typeof body.subscriptionId !== 'string') throw badRequest('subscriptionId is required.');
+
+    if (typeof body.previewId === 'string') {
+      await removePushWatch(c.env.DB, body.subscriptionId, body.previewId);
+    } else {
+      await deletePushSubscription(c.env.DB, body.subscriptionId);
+    }
+    return c.json({ ok: true }, 200, NO_STORE);
   });
 
   app.get('/api/previews/:slug/share', async (c) => {
@@ -724,6 +834,16 @@ export function createApp() {
     };
     await insertComment(c.env.DB, row);
     await recordRateEvent(c.env.DB, 'comment', key);
+
+    /*
+     * Telling people is not this request's job. It is a handful of round trips
+     * to push services that have nothing to do with whether the comment saved,
+     * so it runs after the response — and never for the owner's own comment,
+     * which would be their phone buzzing at them for typing.
+     */
+    if (!(await isOwner(c.req.raw, preview))) {
+      await after(c, notifyWatchers(c.env, c.get('config'), preview.id));
+    }
 
     const ctx = await viewContext(c, preview);
     return c.json({ comment: await commentView(ctx, preview, row) }, 201, NO_STORE);
@@ -974,6 +1094,7 @@ export async function sweepExpired(env: Env, limit = 100): Promise<number> {
   for (const preview of due) {
     await deleteStoredObjects(env, `previews/${preview.id}/`);
     await deleteReviewSessions(env.DB, preview.id);
+    await deleteWatchesFor(env.DB, preview.id);
     await softDeletePreview(env.DB, preview.id);
   }
 
@@ -981,9 +1102,84 @@ export async function sweepExpired(env: Env, limit = 100): Promise<number> {
   return due.length;
 }
 
-export async function handleRequest(request: Request, env: Env): Promise<Response> {
+/**
+ * The notification origin: one page, its script, and a service worker.
+ *
+ * Served from the Worker rather than the app bundle because it has to be told
+ * the VAPID public key and where the API is — and because a service worker only
+ * controls the scope it is served from, so `/sw.js` has to come from here.
+ */
+function serveNotificationSite(url: URL, env: Env, config: ResolvedConfig): Response | null {
+  const keys = vapidKeys(env);
+  if (!keys) return new Response('Notifications are not configured.', { status: 404 });
+
+  const pages = { vapidPublicKey: keys.publicKey, apiOrigin: config.apiOrigin };
+  const headers = (type: string, extra: Record<string, string> = {}) => ({
+    'content-type': type,
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    ...extra,
+  });
+
+  if (url.pathname === '/' || url.pathname === '/watch') {
+    return new Response(watchPage(), {
+      headers: headers('text/html; charset=utf-8', {
+        // This origin holds a notification permission, which is not something
+        // to guard with `unsafe-inline`.
+        'content-security-policy': [
+          "default-src 'none'",
+          "script-src 'self'",
+          "style-src 'unsafe-inline'",
+          'img-src data:',
+          `connect-src ${config.apiOrigin}`,
+          "base-uri 'none'",
+          "form-action 'none'",
+          "frame-ancestors 'none'",
+        ].join('; '),
+        // Permission cannot be requested from a cross-origin iframe anyway;
+        // this says so out loud.
+        'x-frame-options': 'DENY',
+      }),
+    });
+  }
+
+  if (url.pathname === '/app.js') {
+    return new Response(watchScript(pages), { headers: headers('text/javascript; charset=utf-8') });
+  }
+
+  if (url.pathname === '/sw.js') {
+    return new Response(serviceWorker(pages), {
+      headers: headers('text/javascript; charset=utf-8'),
+    });
+  }
+
+  return new Response('Not found', { status: 404, headers: headers('text/plain; charset=utf-8') });
+}
+
+/**
+ * The one thing this needs from a Worker's execution context.
+ *
+ * Declared rather than imported so the API's types do not drag in the Workers
+ * globals — the MCP server typechecks against these same sources.
+ */
+export interface DeferredWork {
+  waitUntil(promise: Promise<unknown>): void;
+}
+
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  executionCtx?: DeferredWork,
+): Promise<Response> {
   const url = new URL(request.url);
   const config = resolveConfig(env, url);
+
+  if (config.notificationOrigin && url.origin === config.notificationOrigin) {
+    const response = serveNotificationSite(url, env, config);
+    if (response) return response;
+  }
 
   const reviewSlug = matchReviewHost(config.reviewOriginTemplate, url.hostname);
   if (reviewSlug && !url.pathname.startsWith('/api/')) {
@@ -1012,7 +1208,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   }
 
   const app = getApp();
-  const response = await app.fetch(request, env);
+  const response = await app.fetch(request, env, executionCtx as never);
   if (response.status === 404 && !url.pathname.startsWith('/api/')) {
     const viaReferer = resolveViaReferer(url.pathname, request.headers.get('referer'));
     if (viaReferer) {

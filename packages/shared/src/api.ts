@@ -187,6 +187,8 @@ export const API_ERROR_CODES = [
   'payload_too_large',
   'unsupported_media_type',
   'conflict',
+  /** A deployment that is not configured for something optional, e.g. push. */
+  'not_supported',
   'internal_error',
 ] as const;
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

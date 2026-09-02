@@ -46,6 +46,21 @@ export interface Env {
    * Set to `0` to remove the ceiling.
    */
   MAX_TOTAL_BYTES?: string;
+  /**
+   * Where notifications are set up, e.g. `https://notification.liha.review`.
+   *
+   * Notification permission is per origin and every preview has its own, so
+   * asking on the review screen asks again for every preview anyone opens. One
+   * origin asks once and its service worker covers all of them. Unset means the
+   * deployment does not offer notifications.
+   */
+  NOTIFICATION_ORIGIN?: string;
+  /** VAPID public key, base64url. Browsers subscribe with it. */
+  VAPID_PUBLIC_KEY?: string;
+  /** VAPID private key as a JWK. A secret. */
+  VAPID_PRIVATE_KEY?: string;
+  /** The VAPID `sub` claim. Defaults to the app origin, which RFC 8292 allows. */
+  VAPID_SUBJECT?: string;
   /** Optional Cloudflare Browser Rendering binding used for URL screenshots. */
   BROWSER?: unknown;
 }
@@ -56,6 +71,7 @@ export interface ResolvedConfig {
   contentOriginTemplate: string | null;
   reviewOriginTemplate: string | null;
   contentSigningKey: string;
+  notificationOrigin: string | null;
   allowedOrigins: string[];
   maxVersionBytes: number;
   /** Null when the deployment has opted out of a global ceiling. */
@@ -63,6 +79,14 @@ export interface ResolvedConfig {
 }
 
 const DEV_SIGNING_KEY = 'liha-development-signing-key-do-not-use-in-production';
+
+/**
+ * The throwaway VAPID key committed in wrangler.toml so local development has a
+ * working notification flow. Deploying it would mean anyone could send push to
+ * this deployment's subscribers, so it is named here in order to be refused.
+ */
+const DEV_VAPID_PUBLIC_KEY =
+  'BGEpyIoPOQ31k9pUsOlL3sctXBT6DS46M5EeqBnauw1idMhVxtz7D9mx2WPhtqO5iHY8BH3P0N8XE3CBEFBaE7E';
 
 /** `0` means "no ceiling"; anything unparseable falls back to the default. */
 function parseCeiling(value: string | undefined): number | null | undefined {
@@ -87,7 +111,16 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
     contentOriginTemplate: env.CONTENT_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     reviewOriginTemplate: env.REVIEW_ORIGIN_TEMPLATE?.replace(/\/$/, '') ?? null,
     contentSigningKey: env.CONTENT_SIGNING_KEY ?? DEV_SIGNING_KEY,
-    allowedOrigins: [appOrigin, requestUrl.origin, ...extra],
+    notificationOrigin: env.NOTIFICATION_ORIGIN?.replace(/\/$/, '') ?? null,
+    // The notification origin calls this API to subscribe and to ask what a
+    // service worker missed, so it has to be allowed by name — it is not a
+    // review host and the template will not recognise it.
+    allowedOrigins: [
+      appOrigin,
+      requestUrl.origin,
+      ...(env.NOTIFICATION_ORIGIN ? [env.NOTIFICATION_ORIGIN.replace(/\/$/, '')] : []),
+      ...extra,
+    ],
     maxVersionBytes: Number.parseInt(env.MAX_VERSION_BYTES ?? '', 10) || LIMITS.maxVersionBytes,
     maxTotalBytes: parseCeiling(env.MAX_TOTAL_BYTES) ?? LIMITS.maxTotalBytes,
   };
@@ -97,6 +130,13 @@ export function resolveConfig(env: Env, requestUrl: URL): ResolvedConfig {
 export function assertProductionConfig(env: Env): string[] {
   const warnings: string[] = [];
   if (!env.CONTENT_SIGNING_KEY) warnings.push('CONTENT_SIGNING_KEY is not set.');
+  if (env.VAPID_PUBLIC_KEY === DEV_VAPID_PUBLIC_KEY) {
+    warnings.push(
+      'VAPID_PUBLIC_KEY is the development keypair committed to this repository. ' +
+        'Its private half is public, so anyone could send notifications to this ' +
+        "deployment's subscribers. Run scripts/deploy.mjs, which generates a real pair.",
+    );
+  }
   if (!env.APP_ORIGIN) warnings.push('APP_ORIGIN is not set.');
   if (!env.CONTENT_ORIGIN_TEMPLATE) {
     warnings.push('CONTENT_ORIGIN_TEMPLATE is not set; preview content is not origin-isolated.');

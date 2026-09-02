@@ -102,6 +102,11 @@ are looking:
   list, `E` resolves, `V P R D A` pick tools, `?` lists the rest.
 - **Drafts survive a reload**, and a comment link (`?comment=…`) reopens exactly
   that thread.
+- **Notifications, asked for once.** Every preview is its own origin and
+  notification permission is per origin, so the review screen sends you to one
+  notification origin instead of asking again for every preview. Allow it there
+  once and its service worker covers all of them. The owner token never goes
+  with you — it is traded for a grant good for ten minutes and one preview.
 - **The tab tells you what arrived while you were away.** The screen polls, and
   anything that turns up while it is behind another window shows up as a count
   on the tab's icon and title. It clears the moment you come back, because from

@@ -1,19 +1,20 @@
 import { assertProductionConfig, type Env } from './env.js';
-import { handleRequest, sweepExpired } from './app.js';
+import { handleRequest, sweepExpired, type DeferredWork } from './app.js';
 
 export type { Env };
 
 let warned = false;
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: DeferredWork): Promise<Response> {
     if (!warned) {
       warned = true;
       for (const warning of assertProductionConfig(env)) {
         console.warn(`[liha] ${warning}`);
       }
     }
-    return handleRequest(request, env);
+    // The context is how notification sending stays out of the response's way.
+    return handleRequest(request, env, ctx);
   },
 
   /**

@@ -418,3 +418,145 @@ export async function pruneExpired(db: Database, windowMs: number): Promise<void
     .bind(Date.now() - windowMs * 4)
     .run();
 }
+
+// ------------------------------------------------------------------- push
+
+export interface PushSubscriptionRow {
+  id: string;
+  endpoint: string;
+  created_at: string;
+  last_seen_at: string;
+}
+
+/**
+ * Records a subscription, or finds the one this browser already has.
+ *
+ * A browser keeps one subscription per origin and hands back the same endpoint
+ * every time, so subscribing to a second preview must not mint a second row —
+ * it would mean two pushes for one comment.
+ */
+export async function upsertPushSubscription(
+  db: Database,
+  id: string,
+  endpoint: string,
+): Promise<PushSubscriptionRow> {
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO push_subscriptions (id, endpoint, created_at, last_seen_at)
+         VALUES (?, ?, ?, ?)
+       ON CONFLICT (endpoint) DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+    )
+    .bind(id, endpoint, now, now)
+    .run();
+
+  const row = await db
+    .prepare('SELECT * FROM push_subscriptions WHERE endpoint = ?')
+    .bind(endpoint)
+    .first<PushSubscriptionRow>();
+  if (!row) throw new Error('subscription vanished immediately after being written');
+  return row;
+}
+
+export function findPushSubscription(db: Database, id: string) {
+  return db
+    .prepare('SELECT * FROM push_subscriptions WHERE id = ?')
+    .bind(id)
+    .first<PushSubscriptionRow>();
+}
+
+export async function deletePushSubscription(db: Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM push_watches WHERE subscription_id = ?').bind(id).run();
+  await db.prepare('DELETE FROM push_subscriptions WHERE id = ?').bind(id).run();
+}
+
+export async function addPushWatch(
+  db: Database,
+  subscriptionId: string,
+  previewId: string,
+): Promise<void> {
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO push_watches (subscription_id, preview_id, created_at, notified_at)
+         VALUES (?, ?, ?, ?)
+       ON CONFLICT (subscription_id, preview_id) DO NOTHING`,
+    )
+    .bind(subscriptionId, previewId, now, now)
+    .run();
+}
+
+export async function removePushWatch(
+  db: Database,
+  subscriptionId: string,
+  previewId: string,
+): Promise<void> {
+  await db
+    .prepare('DELETE FROM push_watches WHERE subscription_id = ? AND preview_id = ?')
+    .bind(subscriptionId, previewId)
+    .run();
+}
+
+/** Every subscription watching this preview. */
+export async function watchersOf(db: Database, previewId: string): Promise<PushSubscriptionRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT s.* FROM push_subscriptions s
+         JOIN push_watches w ON w.subscription_id = s.id
+        WHERE w.preview_id = ?`,
+    )
+    .bind(previewId)
+    .all<PushSubscriptionRow>();
+  return results;
+}
+
+export interface WatchedPreview {
+  preview_id: string;
+  notified_at: string;
+}
+
+export async function watchesOf(db: Database, subscriptionId: string): Promise<WatchedPreview[]> {
+  const { results } = await db
+    .prepare('SELECT preview_id, notified_at FROM push_watches WHERE subscription_id = ?')
+    .bind(subscriptionId)
+    .all<WatchedPreview>();
+  return results;
+}
+
+export async function markWatchNotified(
+  db: Database,
+  subscriptionId: string,
+  previewId: string,
+  at: string,
+): Promise<void> {
+  await db
+    .prepare('UPDATE push_watches SET notified_at = ? WHERE subscription_id = ? AND preview_id = ?')
+    .bind(at, subscriptionId, previewId)
+    .run();
+}
+
+export async function deleteWatchesFor(db: Database, previewId: string): Promise<void> {
+  await db.prepare('DELETE FROM push_watches WHERE preview_id = ?').bind(previewId).run();
+}
+
+/**
+ * Comments left on a preview since a moment.
+ *
+ * Strictly after, so the mark written when a worker was last told cannot cause
+ * the same comment to be announced twice.
+ */
+export async function listCommentsSince(
+  db: Database,
+  previewId: string,
+  since: string,
+): Promise<CommentRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT * FROM comments
+         WHERE preview_id = ? AND created_at > ?
+         ORDER BY created_at`,
+    )
+    .bind(previewId, since)
+    .all<CommentRow>();
+  return results;
+}

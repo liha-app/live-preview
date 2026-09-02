@@ -34,6 +34,7 @@ import {
 } from '../components/PreviewStage.js';
 import { ThemeToggle } from '../components/ThemeToggle.js';
 import { TopBar } from '../components/TopBar.js';
+import { pushSupported, watchUrl } from '../lib/notifications.js';
 import { COMMENT_POLL_MS } from '../lib/unseen.js';
 import { useUnseenComments } from '../lib/useUnseenComments.js';
 import type { Tool } from '../components/AnnotationLayer.js';
@@ -135,6 +136,32 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const versions = useMemo(() => versionsQuery.data?.versions ?? [], [versionsQuery.data]);
   const allComments = useMemo(() => commentsQuery.data?.comments ?? [], [commentsQuery.data]);
   const counts = commentsQuery.data?.counts ?? { open: 0, resolved: 0, total: 0 };
+
+  /**
+   * Sends the owner to the notification origin.
+   *
+   * A new tab, opened from their click so it is not a popup: permission cannot
+   * be asked for in a cross-origin iframe, and taking over this tab would lose
+   * their place in the review. The owner token is traded for a grant good only
+   * for watching this preview, so it never leaves this origin.
+   */
+  const startNotifications = useCallback(() => {
+    void (async () => {
+      try {
+        const granted = await api.requestWatchToken(slug);
+        const target = watchUrl(
+          granted.notificationOrigin,
+          granted.token,
+          granted.title,
+          window.location.href,
+        );
+        window.open(target, '_blank', 'noopener');
+        setDialog(null);
+      } catch {
+        setDialogError(t('owner.notificationsFailed'));
+      }
+    })();
+  }, [slug, t]);
 
   // What arrived while this tab did not have focus, shown on the tab itself.
   // `null` until the list has actually arrived, so the empty list this renders
@@ -719,6 +746,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
           onSetPassword={(password) => updatePreview.mutate({ password })}
           onSetCurrentVersion={(versionId) => setCurrentVersion.mutate(versionId)}
           onDelete={() => deletePreview.mutate()}
+          onNotifications={pushSupported() ? startNotifications : null}
         />
       )}
       {dialog === 'shortcuts' && <ShortcutsModal onClose={() => setDialog(null)} />}

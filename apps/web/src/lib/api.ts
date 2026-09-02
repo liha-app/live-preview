@@ -139,6 +139,19 @@ export const api = {
     return request<{ share: ShareInfo }>(`/api/previews/${slug}/share`, { slug });
   },
 
+  /**
+   * Trades the owner token for a grant good only for watching this preview.
+   *
+   * The notification origin is a different origin and the owner token is the
+   * credential for everything, so it stays here.
+   */
+  requestWatchToken(slug: string) {
+    return request<{ token: string; notificationOrigin: string; title: string }>(
+      `/api/previews/${slug}/watch-token`,
+      { method: 'POST', slug },
+    );
+  },
+
   updatePreview(slug: string, input: { title?: string; password?: string | null }) {
     return request<{ preview: Preview }>(`/api/previews/${slug}`, {
       method: 'PATCH',

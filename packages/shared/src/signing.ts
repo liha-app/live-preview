@@ -58,3 +58,48 @@ export async function verifyContentToken(
     return null;
   }
 }
+
+/**
+ * A grant to start watching one preview for notifications.
+ *
+ * The notification origin is not the review screen, and the owner token must
+ * not travel to it: it is the credential for everything. So the review screen
+ * trades it for this, which authorises exactly one thing — "add a push watch
+ * for this preview" — and expires in minutes.
+ *
+ * Its own prefix, so a content grant can never be presented as a watch grant
+ * and the other way round.
+ */
+export interface WatchGrant {
+  previewId: string;
+  /** Expiry, epoch milliseconds. */
+  exp: number;
+}
+
+const WATCH_PREFIX = 'w1';
+
+export async function createWatchToken(secret: string, grant: WatchGrant): Promise<string> {
+  const payload = bytesToBase64Url(utf8.encode(JSON.stringify(grant)));
+  const signature = await sign(secret, `${WATCH_PREFIX}.${payload}`);
+  return `${WATCH_PREFIX}.${payload}.${signature}`;
+}
+
+export async function verifyWatchToken(
+  secret: string,
+  token: string,
+  now = Date.now(),
+): Promise<WatchGrant | null> {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts[0] !== WATCH_PREFIX) return null;
+  const expected = await sign(secret, `${WATCH_PREFIX}.${parts[1]}`);
+  if (!timingSafeEqualStrings(expected, parts[2]!)) return null;
+  try {
+    const grant = JSON.parse(utf8.decode(base64UrlToBytes(parts[1]!))) as WatchGrant;
+    if (typeof grant.exp !== 'number' || grant.exp < now) return null;
+    if (typeof grant.previewId !== 'string') return null;
+    return grant;
+  } catch {
+    return null;
+  }
+}

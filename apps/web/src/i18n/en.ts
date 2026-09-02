@@ -118,6 +118,12 @@ export const en = {
   'owner.set': 'Set',
   'owner.remove': 'Remove',
   'owner.delete': 'Delete preview',
+  'owner.notifications': 'Notifications',
+  'owner.notificationsSet': 'Notify me about comments',
+  'owner.notificationsWhy': 'Set up once, for every preview.',
+  'owner.notificationsUnavailable':
+    'This browser cannot receive notifications. On iPhone, add the page to your Home Screen first.',
+  'owner.notificationsFailed': 'Could not start setting up notifications.',
   'owner.deleteConfirm': 'Delete permanently',
 
   'password.protected': 'This preview is password protected.',
