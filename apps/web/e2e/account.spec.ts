@@ -41,6 +41,19 @@ test.describe('what this browser is involved in', () => {
   });
 
   /*
+   * Hiding the way in is the claim that needs evidence. The first version
+   * treated "no answer yet" as "not offered", so a blocked or slow /api/me
+   * removed the only door with nothing to show that anything was wrong.
+   */
+  test('keeps the way in when the server will not say', async ({ page }) => {
+    await skipIntro(page);
+    await page.route('**/api/me', (route) => route.abort());
+
+    await page.goto('/');
+    await expect(page.getByRole('link', { name: /sign in with google/i })).toBeVisible();
+  });
+
+  /*
    * A control that vanishes with nothing where it was reads as a bug rather
    * than as success, and signing in is exactly when it vanishes.
    */

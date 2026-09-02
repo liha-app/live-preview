@@ -71,13 +71,25 @@ export function useAccount(): AccountState {
   const me = useQuery({ queryKey: ['me'], queryFn: () => api.getMe() });
 
   const signedIn = me.data?.account?.signedIn ?? false;
-  const available = me.data?.googleAvailable ?? false;
+
+  /*
+   * Absent an answer, assume sign-in is offered.
+   *
+   * The first version treated "do not know yet" as "not available", so a slow
+   * or blocked /api/me removed the only way in with no sign that anything was
+   * wrong — a door that disappears rather than a page that fails. Hiding it is
+   * the claim that needs evidence, not showing it: on a deployment with no
+   * Google client the answer arrives in a moment and says so.
+   */
+  const available = me.isSuccess ? me.data.googleAvailable : true;
 
   return {
     signedIn,
     email: me.data?.account?.email ?? null,
     available,
-    worthAsking: available && !signedIn && !dismissedForever(),
+    // The offer is a different matter: interrupting somebody on a guess is
+    // worse than not interrupting them, so that one waits to be sure.
+    worthAsking: me.isSuccess && available && !signedIn && !dismissedForever(),
     retentionDays: me.data?.retentionDays ?? { anonymous: 7, signedIn: 30 },
     signInHref: (returnTo: string) =>
       `${API_URL}/api/auth/google/start?return=${encodeURIComponent(returnTo)}`,
