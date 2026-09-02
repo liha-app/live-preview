@@ -300,6 +300,15 @@ export function PreviewRoute({ slug }: { slug: string }) {
     },
     onError: (error) => setDialogError(messageOf(error)),
   });
+  /*
+   * Retention counts from use, so the owner pushing it out by hand is the same
+   * operation the server does when anyone opens it — just deliberate.
+   */
+  const extend = useMutation({
+    mutationFn: () => api.extendPreview(slug),
+    onSuccess: refresh,
+  });
+
   const deletePreview = useMutation({
     mutationFn: () => api.deletePreview(slug),
     onSuccess: () => navigate({ to: '/' }),
@@ -623,6 +632,8 @@ export function PreviewRoute({ slug }: { slug: string }) {
           setDialogError(null);
           setDialog('settings');
         }}
+        extending={extend.isPending}
+        onExtend={() => extend.mutate()}
       >
         <LocaleToggle />
         <ThemeToggle theme={theme} onChange={setTheme} />

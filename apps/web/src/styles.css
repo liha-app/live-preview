@@ -202,7 +202,21 @@ code,
 }
 
 /* Quiet by design: it is a fact about the preview, not a warning. */
+button.topbar__expiry {
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+}
+button.topbar__expiry:disabled {
+  cursor: default;
+}
+button.topbar__expiry:not(:disabled):hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+
 .topbar__expiry {
+  background: none;
   align-items: center;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -213,6 +227,93 @@ code,
   gap: 4px;
   padding: 2px 8px 2px 6px;
   white-space: nowrap;
+}
+
+/* ------------------------------------------------------- what I am in */
+
+/*
+ * A workspace, not a front door: the same plain surface as the review screen
+ * rather than the landing page's paper.
+ */
+.me {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.me__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.me__body {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 32px 20px 64px;
+  width: 100%;
+}
+
+.me__title {
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+.me__list {
+  border-top: 1px solid var(--line);
+}
+
+.me__list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.me__row {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  gap: 12px;
+  padding: 11px 4px;
+  text-decoration: none;
+}
+
+.me__row:hover {
+  background: var(--bg-soft);
+}
+
+.me__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me__meta {
+  color: var(--fg-muted);
+  flex: none;
+  font-size: 12.5px;
+}
+
+@media (max-width: 620px) {
+  /* The name is what you are looking for; the rest can wrap under it. */
+  .me__row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+  }
+
+  .me__name {
+    flex: 1 1 100%;
+  }
 }
 
 .workspace {
@@ -279,7 +380,11 @@ code,
   border-radius: var(--radius);
   border: 1px solid var(--line-strong);
   background: transparent;
+  color: inherit;
   cursor: pointer;
+  /* Sign-in is a link, because it leaves for another site. It should still
+     look like every other button on the row. */
+  text-decoration: none;
   white-space: nowrap;
 }
 

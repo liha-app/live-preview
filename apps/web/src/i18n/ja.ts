@@ -9,6 +9,19 @@ import type { Messages } from './en.js';
  */
 export const ja: Messages = {
   'app.name': 'Liha',
+  'me.signIn': 'Google でサインイン',
+  'me.signOut': 'サインアウト',
+  'me.previews': 'プレビュー',
+  'me.activity': 'アクティビティ',
+  'me.owner': '自分のもの',
+  'me.reviewer': '参加中',
+  'me.openComments': '未解決 {count}',
+  'me.left': 'あと{days}日',
+  'me.noPreviews': 'まだありません。公開するとここに出ます。',
+  'me.noActivity': 'まだありません。誰かがコメントするとここに出ます。',
+  'me.nothingYet': 'このブラウザにはまだ何も紐づいていません。',
+  'me.retention':
+    '誰も開かないまま {anonymous} 日経つと削除されます。サインインすると {signedIn} 日になり、この一覧が他のブラウザでも見られます。',
   'app.tagline':
     'ビルド成果物・デザイン・ドキュメントを固定URLで共有。レビュアーが見たままに指摘を書き込み、AIエージェントがその文脈を構造化データとして読み取って、同じURLに修正版を届けます。',
 
@@ -39,10 +52,13 @@ export const ja: Messages = {
   'topbar.ownerSettings': 'オーナー設定',
   'topbar.shortcuts': 'キーボードショートカット',
   'topbar.passwordProtected': 'パスワード保護',
+  'topbar.expiresDays': 'あと{days}日',
   'topbar.expiresHours': 'あと{hours}時間',
   'topbar.expiresMinutes': 'あと{minutes}分',
   'topbar.expiresNote':
-    'このサンプルは作成から24時間で削除されます。自分でアップロードしたものは残ります。',
+    'しばらく誰も開かなかったプレビューは削除されます。開くたびに期限は延びます。',
+  'topbar.extend': '保持期間を延ばす',
+  'topbar.extendNote': '{label}で削除されます。クリックすると期限が延びます。',
   'topbar.agentConnected': 'WebMCP 経由でエージェントがこのページを操作できます',
 
   'tool.inspect': '要素を選択',
@@ -174,6 +190,7 @@ export const ja: Messages = {
   'shortcuts.theme': 'テーマを切り替え',
   'shortcuts.thisList': 'この一覧',
 
+  'home.mine': '自分のプレビュー',
   'home.howTo': 'つかいかた',
   'home.modeDrop': 'ドロップして共有',
   'home.modeUrl': 'URLをレビューする',

@@ -14,6 +14,9 @@ interface Props {
   agentActive: boolean;
   /** The version the compare button flips to, if there is one to flip to. */
   compareWith: Version | null;
+  /** True while the expiry is being pushed out. */
+  extending: boolean;
+  onExtend(): void;
   onVersionChange(versionId: string): void;
   onShare(): void;
   onUpload(): void;
@@ -29,6 +32,8 @@ export function TopBar({
   isOwner,
   agentActive,
   compareWith,
+  extending,
+  onExtend,
   onVersionChange,
   onShare,
   onUpload,
@@ -38,6 +43,13 @@ export function TopBar({
   const t = useT();
   const remaining = timeLeft(preview.expiresAt);
   const narrow = useNarrow();
+  const remainingLabel = !remaining
+    ? ''
+    : remaining.days >= 1
+      ? t('topbar.expiresDays', { days: String(remaining.days) })
+      : remaining.hours >= 1
+        ? t('topbar.expiresHours', { hours: String(remaining.hours) })
+        : t('topbar.expiresMinutes', { minutes: String(remaining.minutes) });
 
   return (
     <header className="topbar">
@@ -52,16 +64,24 @@ export function TopBar({
       )}
       {remaining && (
         /*
-         * A sample is a real preview that the visitor owns, and nothing else
-         * about it says it goes away. Finding that out by coming back to a 404
-         * is the worst way to learn it.
+         * Nothing else about a preview says it is temporary, and finding out by
+         * coming back to a 404 is the worst way to learn it. For the owner this
+         * is also the way to push it out — the thing you want is right where
+         * the thing you are worried about is.
          */
-        <span className="topbar__expiry" title={t('topbar.expiresNote')}>
+        <button
+          type="button"
+          className="topbar__expiry"
+          onClick={onExtend}
+          disabled={!isOwner || extending}
+          title={
+            isOwner ? t('topbar.extendNote', { label: remainingLabel }) : t('topbar.expiresNote')
+          }
+          aria-label={isOwner ? t('topbar.extend') : undefined}
+        >
           <Clock size={12} strokeWidth={1.75} aria-hidden="true" />
-          {remaining.hours >= 1
-            ? t('topbar.expiresHours', { hours: String(remaining.hours) })
-            : t('topbar.expiresMinutes', { minutes: String(remaining.minutes) })}
-        </span>
+          {remainingLabel}
+        </button>
       )}
       {/*
         Always offered, not only when WebMCP is present: someone whose browser

@@ -1,4 +1,5 @@
 import type {
+  ActivityItem,
   Comment,
   CommentFilter,
   CommentTarget,
@@ -44,7 +45,13 @@ interface RequestOptions {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {};
+  /*
+   * The session cookie has to be `SameSite=None` — review screens are on a
+   * different site from the API — so it would otherwise ride along on requests
+   * this app did not make. The API only honours it when this header is present,
+   * which a cross-site form or image cannot set.
+   */
+  const headers: Record<string, string> = { 'x-liha-app': '1' };
   if (options.slug) {
     const owner = ownerTokens.get(options.slug);
     if (owner) headers['x-liha-owner-token'] = owner;
@@ -58,6 +65,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     response = await fetch(`${API_URL}${path}`, {
       method: options.method ?? 'GET',
       headers,
+      // The account lives in a cookie on the API origin, which is the only
+      // origin the app and every review screen share.
+      credentials: 'include',
       body: options.json !== undefined ? JSON.stringify(options.json) : options.body,
       signal: options.signal ?? null,
     });
@@ -150,6 +160,40 @@ export const api = {
       `/api/previews/${slug}/watch-token`,
       { method: 'POST', slug },
     );
+  },
+
+  /** Who is asking, and whether this deployment offers signing in. */
+  getMe() {
+    return request<{
+      account: {
+        id: string;
+        signedIn: boolean;
+        email: string | null;
+        displayName: string | null;
+      } | null;
+      googleAvailable: boolean;
+      retentionDays: { anonymous: number; signedIn: number };
+    }>('/api/me');
+  },
+
+  listMyPreviews() {
+    return request<{ previews: (Preview & { role: 'owner' | 'reviewer' })[] }>('/api/me/previews');
+  },
+
+  listMyActivity() {
+    return request<{ activity: ActivityItem[] }>('/api/me/activity');
+  },
+
+  signOut() {
+    return request<{ ok: true }>('/api/auth/signout', { method: 'POST' });
+  },
+
+  /** Pushes a preview's expiry out by a full window. */
+  extendPreview(slug: string) {
+    return request<{ expiresAt: string | null }>(`/api/previews/${slug}/extend`, {
+      method: 'POST',
+      slug,
+    });
   },
 
   updatePreview(slug: string, input: { title?: string; password?: string | null }) {

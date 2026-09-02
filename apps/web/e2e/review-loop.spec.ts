@@ -64,8 +64,10 @@ test.describe('the review loop in a real browser', () => {
     // Root-absolute assets resolve, so the stylesheet actually applied.
     await expect(content.locator('button.cta')).toHaveCSS('font-size', '22px');
 
-    // Somebody's work is kept. Only samples count down.
-    await expect(page.locator('.topbar__expiry')).toHaveCount(0);
+    // Everything expires now, counted from when it was last used — an upload
+    // gets a week, a sample a day. Saying so is the point: nothing else on the
+    // screen tells you a preview is temporary.
+    await expect(page.locator('.topbar__expiry')).toHaveText(/6 days left/);
   });
 
   test('clicking an element captures its DOM context into a comment', async ({ page }) => {

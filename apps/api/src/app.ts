@@ -135,9 +135,16 @@ function corsHeaders(origin: string | null, config: ResolvedConfig): Record<stri
   return {
     // Non-browser clients (CLI, MCP server) send no Origin and are unaffected.
     'access-control-allow-origin': allowed ? origin : config.appOrigin,
+    /*
+     * The account lives in a cookie on this origin, and a browser discards a
+     * credentialed response that does not say so. Only for an origin actually
+     * recognised: promising this for the fallback would be promising it for
+     * everyone, which a browser rightly refuses alongside a wildcard.
+     */
+    ...(allowed ? { 'access-control-allow-credentials': 'true' } : {}),
     'access-control-allow-methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'access-control-allow-headers':
-      'content-type,authorization,x-liha-owner-token,x-liha-review-session',
+      'content-type,authorization,x-liha-app,x-liha-owner-token,x-liha-review-session',
     'access-control-expose-headers': 'x-liha-review-session',
     'access-control-max-age': '600',
     vary: 'origin',

@@ -75,6 +75,20 @@ export const PreviewSchema = z.object({
 });
 export type Preview = z.infer<typeof PreviewSchema>;
 
+/** One thing somebody else did on a preview you take part in. */
+export const ActivityItemSchema = z.object({
+  commentId: z.string(),
+  slug: z.string(),
+  previewTitle: z.string(),
+  authorName: z.string(),
+  authorKind: z.enum(['human', 'agent']),
+  body: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
+  url: z.string(),
+});
+export type ActivityItem = z.infer<typeof ActivityItemSchema>;
+
 export const CommentSchema = z.object({
   id: z.string(),
   previewId: z.string(),

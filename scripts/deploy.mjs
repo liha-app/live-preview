@@ -22,6 +22,7 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import { buildHeaders } from './lib/headers.mjs';
@@ -354,7 +355,7 @@ async function provisionStorage(env) {
  * properties of the code rather than of a deployment — the entry point, the
  * compatibility date — are read across so the two cannot drift.
  */
-function writeGeneratedConfig(config, databaseId, vapidPublicKey) {
+function writeGeneratedConfig(config, databaseId, vapidPublicKey, googleClientId) {
   const source = fs.readFileSync(path.join(API_DIR, 'wrangler.toml'), 'utf8');
   const carry = (key) => source.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, 'm'))?.[1]?.trim();
 
@@ -383,6 +384,8 @@ function writeGeneratedConfig(config, databaseId, vapidPublicKey) {
     // one origin asks once and its service worker covers all of them.
     `NOTIFICATION_ORIGIN = "https://notification.${config.contentDomain}"`,
     ...(vapidPublicKey ? [`VAPID_PUBLIC_KEY = "${vapidPublicKey}"`] : []),
+    // Public by design: it appears in every authorize URL.
+    ...(googleClientId ? [`GOOGLE_CLIENT_ID = "${googleClientId}"`] : []),
     '',
     '[[d1_databases]]',
     'binding = "DB"',
@@ -506,6 +509,60 @@ async function ensureVapidKeys(env, state) {
   });
   done('Generated and stored a VAPID keypair.');
   return publicKey;
+}
+
+/**
+ * Google sign-in, which is optional.
+ *
+ * The client id is a plain var — it is in every authorize URL and is not a
+ * secret. The client secret is read from a file rather than a flag or a
+ * prompt, so it never reaches a shell history or a terminal scrollback, and is
+ * piped straight to wrangler without being printed.
+ */
+async function ensureGoogleSignIn(env, state) {
+  step('Google sign-in');
+
+  const clientId = process.env.GOOGLE_CLIENT_ID ?? state.googleClientId ?? null;
+  const secretFile =
+    process.env.LIHA_GOOGLE_SECRET_FILE ?? path.join(os.homedir(), '.liha-google-secret');
+  const hasSecretFile = fs.existsSync(secretFile);
+
+  if (!clientId) {
+    detail('No GOOGLE_CLIENT_ID; sign-in is off and everything else is unaffected.');
+    return null;
+  }
+
+  if (dryRun) {
+    planned('wrangler secret put GOOGLE_CLIENT_SECRET');
+    return clientId;
+  }
+
+  const existing = await wrangler(['secret', 'list', '-c', GENERATED_CONFIG], {
+    cwd: API_DIR,
+    env,
+    capture: true,
+    allowFailure: true,
+  });
+  const hasSecret = existing.code === 0 && existing.stdout.includes('GOOGLE_CLIENT_SECRET');
+
+  if (hasSecret && !hasSecretFile) {
+    done('GOOGLE_CLIENT_SECRET already set; left as it is.');
+    return clientId;
+  }
+  if (!hasSecretFile) {
+    detail(`No ${path.relative(os.homedir(), secretFile)} in your home directory;`);
+    detail('sign-in stays off. Write the client secret there to turn it on.');
+    return null;
+  }
+
+  await wrangler(['secret', 'put', 'GOOGLE_CLIENT_SECRET', '-c', GENERATED_CONFIG], {
+    cwd: API_DIR,
+    env,
+    capture: true,
+    input: fs.readFileSync(secretFile, 'utf8').trim(),
+  });
+  done(`Stored GOOGLE_CLIENT_SECRET from ${secretFile}.`);
+  return clientId;
 }
 
 async function deployWorker(env) {
@@ -726,7 +783,8 @@ await ensureSigningKey(env);
 // The public half is a plain var, so the config is written again now that it
 // is known. The first write is what lets wrangler talk to this Worker at all.
 const vapidPublicKey = await ensureVapidKeys(env, previousState);
-writeGeneratedConfig(config, databaseId, vapidPublicKey);
+const googleClientId = await ensureGoogleSignIn(env, previousState);
+writeGeneratedConfig(config, databaseId, vapidPublicKey, googleClientId);
 await buildWebApp(config);
 await deployWorker(env);
 await configureDns(auth, config, zones);
@@ -735,7 +793,12 @@ await deployWebApp(config, auth, zones, env);
 const healthy = await waitForHealth(config);
 const verified = healthy ? await verify(config) : false;
 
-saveState({ ...config, vapidPublicKey, lastDeployedAt: new Date().toISOString() });
+saveState({
+  ...config,
+  vapidPublicKey,
+  ...(googleClientId ? { googleClientId } : {}),
+  lastDeployedAt: new Date().toISOString(),
+});
 
 process.stdout.write(`\n${bold}${dryRun ? 'Plan complete.' : 'Done.'}${reset}\n\n`);
 if (!dryRun) {

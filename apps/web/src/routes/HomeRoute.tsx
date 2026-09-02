@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CreatePreviewResult } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
@@ -55,6 +55,8 @@ function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
 }
 
 export function HomeRoute() {
+  // Only to decide whether the door to it is worth showing.
+  const mine = useQuery({ queryKey: ['me', 'previews'], queryFn: () => api.listMyPreviews() });
   const t = useT();
   const stageRef = useRef<HTMLDivElement>(null);
   const [registration, setRegistration] = useState<RegistrationHandle | null>(null);
@@ -172,6 +174,15 @@ export function HomeRoute() {
         <header className="paper__head">
           <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
           <div className="paper__nav">
+            {/*
+              Only once there is something behind it. A door to an empty room is
+              worse than no door, and this browser may never have made anything.
+            */}
+            {(mine.data?.previews.length ?? 0) > 0 && (
+              <a className="paper-link" href="/me">
+                {t('home.mine')}
+              </a>
+            )}
             <button type="button" className="paper-link" onClick={() => setIntro(true)}>
               {t('home.howTo')}
             </button>

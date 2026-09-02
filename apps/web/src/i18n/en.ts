@@ -7,6 +7,19 @@
  */
 export const en = {
   'app.name': 'Liha',
+  'me.signIn': 'Sign in with Google',
+  'me.signOut': 'Sign out',
+  'me.previews': 'Previews',
+  'me.activity': 'Activity',
+  'me.owner': 'yours',
+  'me.reviewer': 'reviewing',
+  'me.openComments': '{count} open',
+  'me.left': '{days} days left',
+  'me.noPreviews': 'Nothing yet. Publish something and it will show up here.',
+  'me.noActivity': 'Nothing yet. When somebody comments, it appears here.',
+  'me.nothingYet': 'Nothing is tied to this browser yet.',
+  'me.retention':
+    'Previews are deleted after {anonymous} days without being opened. Signing in makes that {signedIn}, and carries this list to your other browsers.',
   'app.tagline':
     'Share a build, a design or a document at a stable URL. Reviewers mark up what they see; an AI agent reads that feedback with structured context and ships the fix to the same link.',
 
@@ -37,10 +50,13 @@ export const en = {
   'topbar.ownerSettings': 'Owner settings',
   'topbar.shortcuts': 'Keyboard shortcuts',
   'topbar.passwordProtected': 'Password protected',
+  'topbar.expiresDays': '{days} days left',
   'topbar.expiresHours': 'Expires in {hours}h',
   'topbar.expiresMinutes': 'Expires in {minutes}m',
   'topbar.expiresNote':
-    'This sample is deleted 24 hours after it was created. Uploads of your own are kept.',
+    'Previews are deleted when nobody has opened them for a while. Opening one starts the clock again.',
+  'topbar.extend': 'Keep for longer',
+  'topbar.extendNote': 'Deleted in {label}. Click to start the clock again.',
   'topbar.agentConnected': 'An agent can act on this page through WebMCP',
 
   'tool.inspect': 'Inspect',
@@ -172,6 +188,7 @@ export const en = {
   'shortcuts.theme': 'Cycle the colour theme',
   'shortcuts.thisList': 'This list',
 
+  'home.mine': 'Your previews',
   'home.howTo': 'How it works',
   'home.modeDrop': 'Drop and share',
   'home.modeUrl': 'Review a URL',

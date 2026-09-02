@@ -8,6 +8,12 @@ describe('how long a preview has left', () => {
     expect(timeLeft(null)).toBeNull();
   });
 
+  it('counts whole days once there is more than one', () => {
+    expect(timeLeft(inMs(7 * 86_400_000 - 1_000))?.days).toBe(6);
+    expect(timeLeft(inMs(30 * 86_400_000 - 1_000))?.days).toBe(29);
+    expect(timeLeft(inMs(20 * 3_600_000))?.days).toBe(0);
+  });
+
   it('counts down in whole hours while there are hours left', () => {
     expect(timeLeft(inMs(24 * 3_600_000 - 1_000))?.hours).toBe(23);
     expect(timeLeft(inMs(90 * 60_000))?.hours).toBe(1);

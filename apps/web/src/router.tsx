@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { HomeRoute } from './routes/HomeRoute.js';
+import { MeRoute } from './routes/MeRoute.js';
 import { PreviewRoute, PreviewRouteFromPath } from './routes/PreviewRoute.js';
 import { ownPreviewSlug } from './lib/ownPreview.js';
 
@@ -31,6 +32,17 @@ const previewRoute = createRoute({
  * A dedicated host serves the app for any path, so the router has to render
  * something for all of them rather than a not-found.
  */
+/**
+ * Everything this browser is involved in. Served from any of this deployment's
+ * origins, since the account it reads lives in a cookie on the API rather than
+ * in one origin's storage.
+ */
+const meRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/me',
+  component: MeRoute,
+});
+
 const catchAllRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '$',
@@ -38,7 +50,7 @@ const catchAllRoute = createRoute({
 });
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, previewRoute, catchAllRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, previewRoute, meRoute, catchAllRoute]),
   defaultPreload: false,
 });
 
