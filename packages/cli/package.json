@@ -1,6 +1,6 @@
 {
   "name": "@liha-cli/live-preview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Share build artifacts for review and close the feedback loop from your terminal or your coding agent.",
   "license": "MIT",
   "type": "module",
