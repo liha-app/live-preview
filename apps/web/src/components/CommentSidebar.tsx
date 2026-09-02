@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MessageSquarePlus } from 'lucide-react';
+import { Bell, MessageSquarePlus } from 'lucide-react';
 import type { Comment, CommentFilter } from '@liha/shared';
 import { CommentComposer } from './CommentComposer.js';
 import { CommentThread } from './CommentThread.js';
@@ -28,6 +28,11 @@ interface Props {
   replyingTo: string | null;
   replyBody: string;
   replySubmitting: boolean;
+  /**
+   * Opens notification setup. Not an owner's privilege: it is the reviewers who
+   * are waiting on a reply.
+   */
+  onNotifications(): void;
   onFilterChange(filter: CommentFilter): void;
   onSelect(id: string | null): void;
   onHover(id: string | null): void;
@@ -77,6 +82,28 @@ export function CommentSidebar(props: Props) {
             </button>
           ))}
         </div>
+        <span className="spacer" />
+        {
+          /*
+            Here rather than in the top bar: this is about the comments, the bar
+            has no width to spare on a phone, and owner settings would put it
+            behind a door most reviewers never open.
+
+            No on/off state: the subscription lives on the notification origin
+            and this one cannot see it. A cookie on the shared parent domain
+            could, but that domain carries other services, and pressing this
+            twice is harmless anyway.
+          */
+          <button
+            type="button"
+            className="btn btn--icon btn--quiet sidebar__bell"
+            onClick={props.onNotifications}
+            aria-label={t('notify.start')}
+            title={t('notify.start')}
+          >
+            <Bell size={14} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        }
       </div>
 
       <ul className="comment-list list-reset" ref={listRef}>

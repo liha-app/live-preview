@@ -105,8 +105,10 @@ are looking:
 - **Notifications, asked for once.** Every preview is its own origin and
   notification permission is per origin, so the review screen sends you to one
   notification origin instead of asking again for every preview. Allow it there
-  once and its service worker covers all of them. The owner token never goes
-  with you — it is traded for a grant good for ten minutes and one preview.
+  once and its service worker covers all of them. Anyone who can read the
+  feedback can ask to be told about it — it is the reviewers who are waiting on
+  a reply. No token goes with you: it is traded for a grant good for ten
+  minutes and one preview.
 - **The tab tells you what arrived while you were away.** The screen polls, and
   anything that turns up while it is behind another window shows up as a count
   on the tab's icon and title. It clears the moment you come back, because from

@@ -55,6 +55,7 @@ import {
   insertVersion,
   listComments,
   addPushWatch,
+  countWatchers,
   deletePushSubscription,
   expiredPreviews,
   deleteWatchesFor,
@@ -579,7 +580,33 @@ export function createApp() {
 
   app.post('/api/previews/:slug/watch-token', async (c) => {
     const preview = await loadPreview(c);
-    await requireOwner(c.req.raw, preview);
+    /*
+     * Whoever can read the feedback can ask to be told about it. Being
+     * notified is not an owner's privilege — it is the reviewers who are
+     * waiting on a reply, and a password-protected preview is still gated
+     * because this is the same check that gates reading it.
+     */
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
+
+    const key = await clientKey(c.req.raw);
+    if (
+      (await countRateEvents(c.env.DB, 'watch', key, LIMITS.commentWindowMs)) >=
+      LIMITS.watchesPerWindow
+    ) {
+      throw new ApiError('rate_limited', 'Too many notification setups. Try again shortly.');
+    }
+
+    /*
+     * One comment wakes every watcher, so the number of watchers is the fan-out
+     * of a single request into requests at other people's servers. Anyone with
+     * the link can now add one, so it needs a ceiling.
+     */
+    if ((await countWatchers(c.env.DB, preview.id)) >= LIMITS.watchersPerPreview) {
+      throw new ApiError(
+        'rate_limited',
+        'This preview already has as many people watching it as it can notify.',
+      );
+    }
 
     const config = c.get('config');
     if (!config.notificationOrigin || !vapidKeys(c.env)) {
@@ -592,6 +619,7 @@ export function createApp() {
       // that a grant left in a browser history is worth nothing.
       exp: Date.now() + LIMITS.watchTokenLifetimeMs,
     });
+    await recordRateEvent(c.env.DB, 'watch', key);
     return c.json(
       { token, notificationOrigin: config.notificationOrigin, title: preview.title },
       200,

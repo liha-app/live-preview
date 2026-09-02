@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Check, Copy, Files, FolderOpen, Lock } from 'lucide-react';
+import { Check, Copy, Files, FolderOpen, Lock } from 'lucide-react';
 import type { Preview, ShareInfo, Version } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
 import { filesFromDataTransfer, pickFiles, type UploadSelection } from '../lib/files.js';
@@ -283,7 +283,6 @@ export function OwnerSettingsModal({
   onSetPassword,
   onSetCurrentVersion,
   onDelete,
-  onNotifications,
 }: {
   preview: Preview;
   versions: Version[];
@@ -293,8 +292,6 @@ export function OwnerSettingsModal({
   onSetPassword(password: string | null): void;
   onSetCurrentVersion(versionId: string): void;
   onDelete(): void;
-  /** Absent when this deployment or this browser cannot do push at all. */
-  onNotifications: (() => void) | null;
 }) {
   const { t, locale } = useI18n();
   const [password, setPassword] = useState('');
@@ -359,27 +356,6 @@ export function OwnerSettingsModal({
             </button>
           )}
         </div>
-      </div>
-
-      <div className="stack" style={{ gap: 6 }}>
-        <span className="muted" style={{ fontSize: 12 }}>
-          {t('owner.notifications')}
-        </span>
-        {onNotifications ? (
-          <div className="row">
-            <button type="button" className="btn" disabled={busy} onClick={onNotifications}>
-              <Bell size={13} strokeWidth={1.75} aria-hidden="true" />
-              {t('owner.notificationsSet')}
-            </button>
-            <span className="muted" style={{ fontSize: 12 }}>
-              {t('owner.notificationsWhy')}
-            </span>
-          </div>
-        ) : (
-          <span className="muted" style={{ fontSize: 12 }}>
-            {t('owner.notificationsUnavailable')}
-          </span>
-        )}
       </div>
 
       {error && <div className="notice notice--error">{error}</div>}

@@ -452,8 +452,7 @@ test.describe('setting up notifications', () => {
       }) as typeof window.open;
     });
 
-    await page.getByRole('button', { name: 'Owner settings' }).click();
-    await page.getByRole('button', { name: /notify me about comments/i }).click();
+    await page.getByRole('button', { name: /notify me about new comments/i }).click();
 
     // The screen trades the owner token for the grant first, so the handover
     // happens a round trip after the click.
@@ -484,12 +483,32 @@ test.describe('setting up notifications', () => {
     expect(href).not.toContain('liha_ot_');
   });
 
-  test('is offered only to the owner', async ({ page }) => {
+  /*
+   * Being told is not an owner's privilege — it is the reviewers who are waiting
+   * on a reply. Whoever can read the feedback can ask to be told about it.
+   */
+  test('is offered to a reviewer, not just the owner', async ({ page }) => {
     const created = await createPreview(SITE, 'Acme');
     await page.goto(`/p/${created.preview.slug}`);
     await expect(page.locator('iframe[title="Preview content"]')).toBeVisible();
+    // Not an owner: there is no owner-only control on this screen at all.
+    await expect(page.getByRole('button', { name: 'Update' })).toHaveCount(0);
 
-    // No owner, no settings dialog to put it in.
-    await expect(page.getByRole('button', { name: 'Owner settings' })).toHaveCount(0);
+    await page.evaluate(() => {
+      (window as unknown as { opened: string[] }).opened = [];
+      window.open = ((url: string) => {
+        (window as unknown as { opened: string[] }).opened.push(String(url));
+        return null;
+      }) as typeof window.open;
+    });
+    await page.getByRole('button', { name: /notify me about new comments/i }).click();
+
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { opened: string[] }).opened.length))
+      .toBe(1);
+    const href = await page.evaluate(
+      () => (window as unknown as { opened: string[] }).opened[0] ?? '',
+    );
+    expect(new URLSearchParams(new URL(href).hash.slice(1)).get('t')).toMatch(/^w1\./);
   });
 });

@@ -82,6 +82,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
     'share' | 'upload' | 'settings' | 'shortcuts' | 'agent' | null
   >(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [announcement, setAnnouncement] = useState('');
@@ -146,6 +147,12 @@ export function PreviewRoute({ slug }: { slug: string }) {
    * for watching this preview, so it never leaves this origin.
    */
   const startNotifications = useCallback(() => {
+    // Shown even where it cannot work, because "the button is missing" is not
+    // an explanation — and on iPhone the answer is a specific thing to do.
+    if (!pushSupported()) {
+      setNotifyError(t('notify.unsupported'));
+      return;
+    }
     void (async () => {
       try {
         const granted = await api.requestWatchToken(slug);
@@ -156,9 +163,8 @@ export function PreviewRoute({ slug }: { slug: string }) {
           window.location.href,
         );
         window.open(target, '_blank', 'noopener');
-        setDialog(null);
       } catch {
-        setDialogError(t('owner.notificationsFailed'));
+        setNotifyError(t('notify.failed'));
       }
     })();
   }, [slug, t]);
@@ -683,6 +689,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
           replyingTo={replyingTo}
           replyBody={replyBody}
           replySubmitting={addReply.isPending}
+          onNotifications={startNotifications}
           onFilterChange={setFilter}
           onSelect={selectComment}
           onHover={highlight}
@@ -746,7 +753,6 @@ export function PreviewRoute({ slug }: { slug: string }) {
           onSetPassword={(password) => updatePreview.mutate({ password })}
           onSetCurrentVersion={(versionId) => setCurrentVersion.mutate(versionId)}
           onDelete={() => deletePreview.mutate()}
-          onNotifications={pushSupported() ? startNotifications : null}
         />
       )}
       {dialog === 'shortcuts' && <ShortcutsModal onClose={() => setDialog(null)} />}
@@ -754,10 +760,10 @@ export function PreviewRoute({ slug }: { slug: string }) {
         <AgentPanel registration={registration} onClose={() => setDialog(null)} />
       )}
 
-      {(addComment.error || addReply.error) && (
+      {(addComment.error || addReply.error || notifyError) && (
         <div className="toasts">
           <div className="toast toast--error" role="alert">
-            {messageOf(addComment.error ?? addReply.error)}
+            {notifyError ?? messageOf(addComment.error ?? addReply.error)}
           </div>
         </div>
       )}

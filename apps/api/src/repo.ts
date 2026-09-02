@@ -560,3 +560,11 @@ export async function listCommentsSince(
     .all<CommentRow>();
   return results;
 }
+
+export async function countWatchers(db: Database, previewId: string): Promise<number> {
+  const row = await db
+    .prepare('SELECT count(*) AS n FROM push_watches WHERE preview_id = ?')
+    .bind(previewId)
+    .first<{ n: number }>();
+  return Number(row?.n ?? 0);
+}

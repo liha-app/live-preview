@@ -62,6 +62,16 @@ export const LIMITS = {
    */
   sampleLifetimeMs: 24 * 60 * 60 * 1000,
   /**
+   * How many people one preview can notify.
+   *
+   * A single comment wakes every watcher, so this is the fan-out of one request
+   * into requests at other people's servers. Anyone holding the share link can
+   * add themselves, which is the point — and the reason there is a ceiling.
+   */
+  watchersPerPreview: 50,
+  /** New notification setups per client, per `commentWindowMs`. */
+  watchesPerWindow: 10,
+  /**
    * How long a notification grant is good for.
    *
    * Long enough to allow notifications on the page it opens — which may involve

@@ -190,7 +190,12 @@ at the network layer for deployments that care. This is stated in
 - **A push endpoint is a URL a client supplies and this server later fetches**,
   which is the shape of every SSRF. It goes through the same check as URL
   import, plus https only.
-- **Only the owner can ask to be notified**, and never about their own comment.
+- **Anyone who can read a preview can ask to be notified about it** — the same
+  check that gates reading gates this, so a password-protected preview stays
+  gated. The owner is never told about their own comment.
+- **One comment wakes every watcher**, so the watcher count is the fan-out of
+  one request into requests at other people's servers. Fifty per preview, and
+  ten new setups per client per five minutes.
 - **The VAPID keypair is generated per deployment** and the private half is a
   Worker secret. A development pair is committed so `pnpm dev` works out of the
   box; the Worker warns loudly if it is ever seen in a deployment, and a test

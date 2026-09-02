@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { CreatePreviewResult } from '@liha/shared';
+import { LIMITS, type CreatePreviewResult } from '@liha/shared';
 import { generateVapidKeys } from '../src/push.js';
 import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
 
@@ -53,14 +53,18 @@ function captureSends() {
 }
 
 describe('asking to be notified', () => {
-  it('hands out a grant to the owner and nobody else', async () => {
+  /*
+   * Being told is not an owner's privilege: it is the reviewers who are waiting
+   * on a reply. Whoever can read the feedback can ask to be told about it.
+   */
+  it('hands out a grant to anyone who can read the preview', async () => {
     const server = await serverWithPush();
     const created = await newPreview(server);
 
-    const refused = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
+    const anyone = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
       method: 'POST',
     });
-    expect(refused.status).toBe(401);
+    expect(anyone.status).toBe(200);
 
     const granted = await watchToken(server, created);
     expect(granted.notificationOrigin).toBe('https://notification.test');
@@ -77,6 +81,71 @@ describe('asking to be notified', () => {
       headers: ownerHeaders(created.ownerToken),
     });
     expect(response.status).toBe(501);
+  });
+
+  it('still gates a password-protected preview', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+    await server.fetch(`/api/previews/${created.preview.slug}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+      body: JSON.stringify({ password: 'a-good-enough-password' }),
+    });
+
+    const refused = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
+      method: 'POST',
+    });
+    expect(refused.status).toBe(401);
+  });
+
+  /*
+   * One comment wakes every watcher, so the number of watchers is the fan-out
+   * of one request into requests at other people's servers. Anyone with the
+   * link can add one, which is the point — and the reason for a ceiling.
+   */
+  it('stops one preview from becoming a fan-out', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+
+    // Fifty watchers means fifty people, so each one is a different client —
+    // otherwise the per-client rate limit stops this long before the ceiling
+    // does, and the test would be measuring the wrong guard.
+    const asPerson = (n: number) => ({ 'cf-connecting-ip': `203.0.113.${n}` });
+
+    for (let i = 0; i < LIMITS.watchersPerPreview; i += 1) {
+      const granted = await server.json<{ token: string }>(
+        `/api/previews/${created.preview.slug}/watch-token`,
+        { method: 'POST', headers: asPerson(i) },
+      );
+      const response = await subscribe(server, granted.token, `https://push.test/sub-${i}`);
+      expect(response.status, `subscription ${i}`).toBe(200);
+    }
+
+    const refused = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
+      method: 'POST',
+      headers: asPerson(200),
+    });
+    expect(refused.status).toBe(429);
+  });
+
+  it('rate limits one client setting up over and over', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+    const me = { 'cf-connecting-ip': '198.51.100.7' };
+
+    for (let i = 0; i < LIMITS.watchesPerWindow; i += 1) {
+      const response = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
+        method: 'POST',
+        headers: me,
+      });
+      expect(response.status, `attempt ${i}`).toBe(200);
+    }
+
+    const refused = await server.fetch(`/api/previews/${created.preview.slug}/watch-token`, {
+      method: 'POST',
+      headers: me,
+    });
+    expect(refused.status).toBe(429);
   });
 
   /*

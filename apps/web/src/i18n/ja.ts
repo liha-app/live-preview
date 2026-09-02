@@ -61,6 +61,10 @@ export const ja: Messages = {
   'filter.open': '未解決',
   'filter.resolved': '解決済み',
   'filter.all': 'すべて',
+  'notify.start': '新しいコメントを通知する',
+  'notify.failed': '通知の設定を開始できませんでした。',
+  'notify.unsupported':
+    'このブラウザは通知を受け取れません。iPhone ではホーム画面に追加してからお試しください。',
   'filter.label': 'コメントの絞り込み',
 
   'comments.title': 'レビューコメント',
@@ -120,12 +124,6 @@ export const ja: Messages = {
   'owner.set': '設定',
   'owner.remove': '解除',
   'owner.delete': 'プレビューを削除',
-  'owner.notifications': '通知',
-  'owner.notificationsSet': 'コメントを通知する',
-  'owner.notificationsWhy': '一度設定すれば、以降のプレビューにも効きます。',
-  'owner.notificationsUnavailable':
-    'このブラウザは通知を受け取れません。iPhone ではホーム画面に追加してからお試しください。',
-  'owner.notificationsFailed': '通知の設定を開始できませんでした。',
   'owner.deleteConfirm': '完全に削除する',
 
   'password.protected': 'このプレビューはパスワードで保護されています。',
