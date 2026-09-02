@@ -18,7 +18,7 @@ export const ja: Messages = {
   'account.later': 'あとで',
   'account.never': '今後表示しない',
   'account.open': 'アカウント',
-  'me.signIn': 'Google でサインイン',
+  'me.signIn': 'Google でログイン',
   'me.signOut': 'サインアウト',
   'me.previews': 'プレビュー',
   'me.activity': 'アクティビティ',

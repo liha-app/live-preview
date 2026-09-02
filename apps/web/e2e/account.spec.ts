@@ -73,6 +73,13 @@ test.describe('what this browser is involved in', () => {
     const signIn = page.getByRole('link', { name: /sign in with google/i });
     await expect(signIn).toBeVisible();
     await expect(signIn).toHaveAttribute('href', /\/api\/auth\/google\/start\?return=/);
+
+    // Google's mark, in Google's colours, on Google's surface — the landing
+    // page restyles everything on it, and this is the one thing it may not.
+    await expect(signIn.locator('svg path')).toHaveCount(4);
+    expect(await signIn.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
+      'rgb(255, 255, 255)',
+    );
   });
 
   test('lists what I made and what happened on it', async ({ page }) => {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { Modal } from './Dialogs.js';
+import { GoogleSignIn } from './GoogleSignIn.js';
 import { useT } from '../i18n/index.js';
 import { dismissForever, type AccountState } from '../lib/account.js';
 
@@ -14,7 +14,6 @@ import { dismissForever, type AccountState } from '../lib/account.js';
  */
 export function AccountModal({ account, onClose }: { account: AccountState; onClose(): void }) {
   const t = useT();
-  const [busy, setBusy] = useState(false);
 
   return (
     <Modal title={t('account.title')} onClose={onClose}>
@@ -46,14 +45,7 @@ export function AccountModal({ account, onClose }: { account: AccountState; onCl
           <button type="button" className="btn btn--quiet" onClick={onClose}>
             {t('account.later')}
           </button>
-          <a
-            className="btn btn--primary"
-            href={account.signInHref(window.location.href)}
-            onClick={() => setBusy(true)}
-            aria-disabled={busy}
-          >
-            {t('me.signIn')}
-          </a>
+          <GoogleSignIn href={account.signInHref(window.location.href)} />
         </div>
       </div>
     </Modal>

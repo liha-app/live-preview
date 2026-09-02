@@ -5,6 +5,7 @@ import type { CreatePreviewResult } from '@liha/shared';
 import { formatBytes } from '@liha/shared';
 import { api } from '../lib/api.js';
 import { AccountModal } from '../components/AccountModal.js';
+import { GoogleSignIn } from '../components/GoogleSignIn.js';
 import { askedAlready, markAsked, useAccount } from '../lib/account.js';
 import { ownerTokens, seenIntro } from '../lib/storage.js';
 import { useTheme } from '../lib/useTheme.js';
@@ -213,9 +214,7 @@ export function HomeRoute() {
               dismissed prompt must not be the only way in.
             */}
             {account.available && !account.signedIn && (
-              <a className="paper-link" href={account.signInHref(window.location.href)}>
-                {t('me.signIn')}
-              </a>
+              <GoogleSignIn href={account.signInHref(window.location.href)} />
             )}
             <button type="button" className="paper-link" onClick={() => setIntro(true)}>
               {t('home.howTo')}

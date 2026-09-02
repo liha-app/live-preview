@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -31,5 +32,31 @@ describe.each([
     const available = new Set(defined);
     const missing = [...new Set(named(css).filter((name) => !available.has(name)))];
     expect(missing).toEqual([]);
+  });
+});
+
+/*
+ * Google's mark is Google's. Their guidelines allow it to be placed, not
+ * adjusted — so the button must not pick up this app's colours, and the mark
+ * must not pick up anything at all.
+ */
+describe('the Google button', () => {
+  const block = /\.gbtn \{([^}]*)\}/.exec(BASE)?.[1] ?? '';
+
+  it('sets its own colours rather than inheriting the page it sits on', () => {
+    // It appears on the landing page, which restyles everything on it.
+    for (const property of ['background', 'color', 'border', 'font-family', 'text-decoration']) {
+      expect(block, property).toContain(`${property}:`);
+    }
+    expect(block).not.toContain('var(--');
+  });
+
+  it('keeps the mark in Google’s four colours', () => {
+    const component = readFileSync(join(process.cwd(), 'src/components/GoogleSignIn.tsx'), 'utf8');
+    for (const colour of ['#EA4335', '#4285F4', '#FBBC05', '#34A853']) {
+      expect(component, colour).toContain(colour);
+    }
+    // Nothing recolours or reshapes it.
+    expect(/\.gbtn__mark \{([^}]*)\}/.exec(BASE)?.[1] ?? '').not.toMatch(/fill|filter|opacity/);
   });
 });

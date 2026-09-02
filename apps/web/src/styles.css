@@ -229,6 +229,72 @@ button.topbar__expiry:not(:disabled):hover {
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------- sign in with Google */
+
+/*
+ * Google's button, to Google's guidelines: their colours, their proportions,
+ * their wordmark. Every property is set rather than inherited, because this
+ * appears on the landing page too, and the landing page is a sheet of graph
+ * paper that restyles everything on it. A trademark is not somewhere to express
+ * a house style.
+ */
+.gbtn {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #747775;
+  border-radius: 4px;
+  box-shadow: none;
+  color: #1f1f1f;
+  display: inline-flex;
+  flex: none;
+  font-family:
+    'Roboto',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 10px;
+  height: 40px;
+  letter-spacing: 0.25px;
+  padding: 0 12px;
+  text-decoration: none;
+  transform: none;
+  white-space: nowrap;
+}
+
+.gbtn:hover {
+  background: #f8f9fa;
+  text-decoration: none;
+}
+
+.gbtn__mark {
+  display: block;
+  flex: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .gbtn {
+    background: #131314;
+    border-color: #8e918f;
+    color: #e3e3e3;
+  }
+  :root:not([data-theme='light']) .gbtn:hover {
+    background: #1e1f20;
+  }
+}
+
+:root[data-theme='dark'] .gbtn {
+  background: #131314;
+  border-color: #8e918f;
+  color: #e3e3e3;
+}
+:root[data-theme='dark'] .gbtn:hover {
+  background: #1e1f20;
+}
+
 /* ------------------------------------------------------- what I am in */
 
 /*
