@@ -322,6 +322,19 @@ export function PreviewRoute({ slug }: { slug: string }) {
    * Retention counts from use, so the owner pushing it out by hand is the same
    * operation the server does when anyone opens it — just deliberate.
    */
+  const refetch = useMutation({
+    mutationFn: (input: { url: string; label: string }) =>
+      api.refetchVersion(slug, input.url, input.label || undefined),
+    onSuccess: () => {
+      setPinnedVersionId(null);
+      setDialog(null);
+      setDialogError(null);
+      refresh();
+      offerAccount();
+    },
+    onError: (error) => setDialogError(messageOf(error)),
+  });
+
   const extend = useMutation({
     mutationFn: () => api.extendPreview(slug),
     onSuccess: refresh,
@@ -767,10 +780,12 @@ export function PreviewRoute({ slug }: { slug: string }) {
       )}
       {dialog === 'upload' && (
         <UploadVersionModal
-          busy={addVersion.isPending}
+          busy={addVersion.isPending || refetch.isPending}
           error={dialogError}
+          sourceUrl={preview.manifest?.sourceUrl ?? null}
           onClose={() => setDialog(null)}
           onSubmit={(selection, label) => addVersion.mutate({ selection, label })}
+          onRefetch={(url, label) => refetch.mutate({ url, label })}
         />
       )}
       {dialog === 'settings' && (

@@ -140,6 +140,10 @@ export const ja: Messages = {
   'upload.files': 'ファイル',
   'upload.folder': 'フォルダ',
   'upload.label': 'ラベル（任意）',
+  'upload.explainUrl':
+    '共有URLは変わりません。既存のコメントは、書かれた時点のバージョンに紐づいたまま残ります。',
+  'upload.sourceUrl': '取得するページ',
+  'upload.refetch': '再取得して公開',
   'upload.publish': '公開',
   'upload.fileCount': '{count} ファイル|{count} ファイル',
 

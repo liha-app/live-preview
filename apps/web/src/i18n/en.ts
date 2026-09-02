@@ -138,6 +138,10 @@ export const en = {
   'upload.files': 'Files',
   'upload.folder': 'Folder',
   'upload.label': 'Label (optional)',
+  'upload.explainUrl':
+    'The share URL does not change. Existing comments stay attached to the version they were written on.',
+  'upload.sourceUrl': 'Page to fetch',
+  'upload.refetch': 'Fetch again',
   'upload.publish': 'Publish',
   'upload.fileCount': '{count} file|{count} files',
 

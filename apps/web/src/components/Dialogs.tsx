@@ -230,17 +230,71 @@ export function ShareModal({
 export function UploadVersionModal({
   busy,
   error,
+  sourceUrl,
   onClose,
   onSubmit,
+  onRefetch,
 }: {
   busy: boolean;
   error: string | null;
+  /**
+   * Where this preview was imported from, when it was. Present means the
+   * useful thing here is fetching that page again, not picking files — a
+   * preview made from a URL had no way to be brought up to date at all.
+   */
+  sourceUrl: string | null;
   onClose(): void;
   onSubmit(selection: UploadSelection, label: string): void;
+  onRefetch(url: string, label: string): void;
 }) {
   const t = useT();
   const [selection, setSelection] = useState<UploadSelection | null>(null);
   const [label, setLabel] = useState('');
+  const [url, setUrl] = useState(sourceUrl ?? '');
+
+  if (sourceUrl !== null) {
+    return (
+      <Modal title={t('upload.title')} onClose={onClose}>
+        <p className="muted" style={{ margin: 0 }}>
+          {t('upload.explainUrl')}
+        </p>
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {t('upload.sourceUrl')}
+          </span>
+          {/* Editable: the next version of a site is often a different page of it. */}
+          <input
+            className="field"
+            aria-label={t('upload.sourceUrl')}
+            value={url}
+            onChange={(event) => setUrl(event.target.value)}
+          />
+        </div>
+        <input
+          className="field"
+          placeholder={t('upload.label')}
+          aria-label={t('upload.label')}
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+        />
+        {error && <div className="notice notice--error">{error}</div>}
+        <div className="modal__actions">
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={!url.trim() || busy}
+            onClick={() => onRefetch(url.trim(), label)}
+          >
+            {busy && <span className="spinner" aria-hidden="true" />}
+            {t('upload.refetch')}
+          </button>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal title={t('upload.title')} onClose={onClose}>

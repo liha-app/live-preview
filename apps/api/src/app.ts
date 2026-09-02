@@ -998,6 +998,100 @@ export function createApp() {
     );
   });
 
+  /**
+   * Fetches the source again as a new version.
+   *
+   * A preview made from a URL had no way to be brought up to date: the update
+   * dialog only took files, so the only way to see the page as it is now was a
+   * new preview — and a new share URL, which is the one thing this promises not
+   * to change.
+   *
+   * The URL defaults to the one the current version came from, and may be
+   * changed to another page on the way past.
+   */
+  app.post('/api/previews/:slug/versions/from-url', async (c) => {
+    const config = c.get('config');
+    const preview = await loadPreview(c);
+    await requireOwner(c.req.raw, preview);
+
+    if (preview.type !== 'url') {
+      throw badRequest('This preview was not made from a URL.');
+    }
+
+    const body = (await c.req.json().catch(() => ({}))) as { url?: unknown; label?: unknown };
+    const current = preview.current_version_id
+      ? await findVersion(c.env.DB, preview.id, preview.current_version_id)
+      : null;
+    const previousSource = current
+      ? ((JSON.parse(current.manifest) as { sourceUrl?: string }).sourceUrl ?? null)
+      : null;
+
+    const requested = typeof body.url === 'string' && body.url.trim() !== '' ? body.url : null;
+    const target = requested ?? previousSource;
+    if (!target) throw badRequest('This preview does not remember where it came from.');
+
+    // An outbound request on the caller's behalf, same as creating one.
+    const rateKey = await clientKey(c.req.raw);
+    if (
+      (await countRateEvents(c.env.DB, 'preview', rateKey, LIMITS.commentWindowMs)) >=
+      LIMITS.previewsPerWindow
+    ) {
+      throw new ApiError('rate_limited', 'Too many imports. Try again in a few minutes.');
+    }
+
+    const existingVersions = await listVersions(c.env.DB, preview.id);
+    if (existingVersions.length >= LIMITS.maxVersionsPerPreview) {
+      throw tooLarge(
+        `This preview already has ${LIMITS.maxVersionsPerPreview} versions. ` +
+          'Create a new preview for further builds.',
+      );
+    }
+
+    const imported = await importUrlPreview(target);
+    await assertRoomToStore(c.env.DB, config, imported.manifest.totalBytes);
+
+    const versionId = generateId('version');
+    for (const file of imported.files) {
+      await c.env.BUCKET.put(
+        `previews/${preview.id}/versions/${versionId}/files/${file.path}`,
+        file.bytes,
+        { httpMetadata: { contentType: file.contentType } },
+      );
+    }
+    await c.env.BUCKET.put(
+      `previews/${preview.id}/versions/${versionId}/manifest.json`,
+      JSON.stringify(imported.manifest),
+      { httpMetadata: { contentType: 'application/json' } },
+    );
+
+    await insertVersion(c.env.DB, {
+      id: versionId,
+      preview_id: preview.id,
+      number: await nextVersionNumber(c.env.DB, preview.id),
+      label: typeof body.label === 'string' && body.label.trim() !== '' ? body.label.trim() : null,
+      entry_path: imported.manifest.entryPath,
+      manifest: JSON.stringify(imported.manifest),
+      file_count: imported.manifest.files.length,
+      byte_size: imported.manifest.totalBytes,
+      source: 'url',
+      created_at: nowIso(),
+    });
+    await updatePreviewFields(c.env.DB, preview.id, { current_version_id: versionId });
+    await recordRateEvent(c.env.DB, 'preview', rateKey);
+
+    const updated = (await findPreviewBySlug(c.env.DB, preview.slug))!;
+    const ctx = await viewContext(c, updated);
+    const version = (await findVersion(c.env.DB, preview.id, versionId))!;
+    return c.json(
+      {
+        preview: await previewView(ctx, updated),
+        version: await versionView(ctx, updated, version),
+      },
+      201,
+      NO_STORE,
+    );
+  });
+
   app.post('/api/previews/:slug/current-version', async (c) => {
     const preview = await loadPreview(c);
     await requireOwner(c.req.raw, preview);

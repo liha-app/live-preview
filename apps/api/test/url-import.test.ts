@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { CreatePreviewResult } from '@liha/shared';
 import { importUrlPreview } from '../src/url-import.js';
+import { createTestServer, ownerHeaders, uploadBody } from './harness.js';
 
 /*
  * A snapshot is the same document served from somewhere else, and the things
@@ -72,5 +74,126 @@ describe('snapshotting a page', () => {
   it('leaves other meta tags where they are', async () => {
     const { html } = await snapshotOf(PAGE);
     expect(html).toContain('<meta charset="utf-8">');
+  });
+});
+
+/*
+ * A preview made from a URL had no way to be brought up to date: the update
+ * dialog only took files, so the only way to see the page as it is now was a
+ * new preview — and a new share URL, which is the one thing a preview promises
+ * not to change.
+ */
+describe('bringing an imported preview up to date', () => {
+  const page = (body: string) =>
+    `<!doctype html><html><head><title>Site</title></head><body>${body}</body></html>`;
+
+  async function serving(html: string, run: () => Promise<void>) {
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(html, {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      })) as typeof fetch;
+    try {
+      await run();
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+
+  it('fetches the same page again, at the same share URL', async () => {
+    const server = createTestServer();
+    let created!: CreatePreviewResult;
+
+    await serving(page('<h1>Before</h1>'), async () => {
+      created = await server.json<CreatePreviewResult>('/api/previews/url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: 'https://example.com/' }),
+      });
+    });
+
+    let updated!: { preview: { slug: string; shareUrl: string }; version: { number: number } };
+    await serving(page('<h1>After</h1>'), async () => {
+      updated = await server.json(`/api/previews/${created.preview.slug}/versions/from-url`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+        body: JSON.stringify({ label: 'today' }),
+      });
+    });
+
+    expect(updated.version.number).toBe(2);
+    expect(updated.preview.shareUrl).toBe(created.preview.shareUrl);
+
+    const html = await (
+      await server.fetchAbsolute(`http://${created.preview.slug}--2.content.test/index.html`)
+    ).text();
+    expect(html).toContain('After');
+  });
+
+  it('remembers where it came from, so the URL need not be given again', async () => {
+    const server = createTestServer();
+    let created!: CreatePreviewResult;
+    await serving(page('<h1>One</h1>'), async () => {
+      created = await server.json<CreatePreviewResult>('/api/previews/url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: 'https://example.com/' }),
+      });
+    });
+    expect(created.preview.manifest?.sourceUrl).toBe('https://example.com/');
+  });
+
+  it('is the owner’s to do, and only for previews made from a URL', async () => {
+    const server = createTestServer();
+    let created!: CreatePreviewResult;
+    await serving(page('<h1>One</h1>'), async () => {
+      created = await server.json<CreatePreviewResult>('/api/previews/url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: 'https://example.com/' }),
+      });
+    });
+
+    const anyone = await server.fetch(`/api/previews/${created.preview.slug}/versions/from-url`, {
+      method: 'POST',
+    });
+    expect(anyone.status).toBe(401);
+
+    const uploaded = await server.json<CreatePreviewResult>('/api/previews', {
+      method: 'POST',
+      ...uploadBody([{ path: 'index.html', content: '<h1>Mine</h1>', type: 'text/html' }]),
+    });
+    const refused = await server.fetch(`/api/previews/${uploaded.preview.slug}/versions/from-url`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...ownerHeaders(uploaded.ownerToken) },
+      body: JSON.stringify({ url: 'https://example.com/' }),
+    });
+    expect(refused.status).toBe(400);
+  });
+
+  /* The same check as creating one: this makes an outbound request. */
+  it('refuses a source pointed at this network', async () => {
+    const server = createTestServer();
+    let created!: CreatePreviewResult;
+    await serving(page('<h1>One</h1>'), async () => {
+      created = await server.json<CreatePreviewResult>('/api/previews/url', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: 'https://example.com/' }),
+      });
+    });
+
+    for (const hostile of ['http://127.0.0.1/', 'https://169.254.169.254/']) {
+      const response = await server.fetch(
+        `/api/previews/${created.preview.slug}/versions/from-url`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+          body: JSON.stringify({ url: hostile }),
+        },
+      );
+      expect(response.status, hostile).toBe(400);
+    }
   });
 });

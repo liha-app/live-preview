@@ -188,6 +188,19 @@ export const api = {
     return request<{ ok: true }>('/api/auth/signout', { method: 'POST' });
   },
 
+  /**
+   * Fetches a URL-imported preview's source again, as a new version.
+   *
+   * The share URL does not change, which is the whole point: a new preview
+   * would be a new link for everybody who already has this one.
+   */
+  refetchVersion(slug: string, url: string, label?: string) {
+    return request<{ preview: Preview; version: Version }>(
+      `/api/previews/${slug}/versions/from-url`,
+      { method: 'POST', slug, json: { url, label } },
+    );
+  },
+
   /** Pushes a preview's expiry out by a full window. */
   extendPreview(slug: string) {
     return request<{ expiresAt: string | null }>(`/api/previews/${slug}/extend`, {
