@@ -213,6 +213,10 @@ export function HomeRoute() {
               Permanent, because the offer can be dismissed forever and a
               dismissed prompt must not be the only way in.
             */}
+            <button type="button" className="paper-link" onClick={() => setIntro(true)}>
+              {t('home.howTo')}
+            </button>
+            <PageChrome onAgentPanel={() => setShowAgent(true)} />
             {/*
               Signed in, the button has done its job and goes — so something has
               to take its place. A control that vanishes with nothing where it
@@ -225,10 +229,6 @@ export function HomeRoute() {
             ) : (
               account.available && <GoogleSignIn href={account.signInHref(window.location.href)} />
             )}
-            <button type="button" className="paper-link" onClick={() => setIntro(true)}>
-              {t('home.howTo')}
-            </button>
-            <PageChrome onAgentPanel={() => setShowAgent(true)} />
           </div>
         </header>
 

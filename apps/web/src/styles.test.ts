@@ -51,6 +51,21 @@ describe('the Google button', () => {
     expect(block).not.toContain('var(--');
   });
 
+  /*
+   * Google's guidelines fix the mark, the three surface colours, the wording
+   * and the padding. They say nothing about the corner or the height, so the
+   * landing page may adjust those to sit level with its own controls — and
+   * nothing else.
+   */
+  it('lets the landing page change the shape but never the colours', () => {
+    const override = /\.paper \.gbtn \{([^}]*)\}/.exec(PAPER)?.[1] ?? '';
+    expect(override, 'the landing page should adjust the button').toBeTruthy();
+
+    for (const property of ['background', 'color', 'border-color', 'fill', 'font-family']) {
+      expect(override, property).not.toContain(property);
+    }
+  });
+
   it('keeps the mark in Google’s four colours', () => {
     const component = readFileSync(join(process.cwd(), 'src/components/GoogleSignIn.tsx'), 'utf8');
     for (const colour of ['#EA4335', '#4285F4', '#FBBC05', '#34A853']) {

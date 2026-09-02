@@ -1065,3 +1065,16 @@
 .paper .muted {
   color: var(--paper-faint);
 }
+
+/*
+ * Google's button, sitting on graph paper.
+ *
+ * Their guidelines fix the mark, the three surface colours, the wording and the
+ * padding; they say nothing about the corner or the height. So it takes the
+ * same corner and the same height as the controls beside it, and nothing else
+ * about it changes.
+ */
+.paper .gbtn {
+  border-radius: var(--rough-d);
+  height: 30px;
+}
