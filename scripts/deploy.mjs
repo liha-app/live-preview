@@ -630,12 +630,12 @@ async function buildWebApp(config) {
 
   const apiOrigin = `https://${config.apiHost}`;
   if (dryRun) {
-    planned(`VITE_API_URL=${apiOrigin} pnpm --filter @liha/web build`);
+    planned(`VITE_API_URL=${apiOrigin} pnpm --filter liha-web build`);
     planned(`write apps/web/dist/_headers for ${apiOrigin} and *.${config.contentDomain}`);
     return;
   }
 
-  await run('pnpm', ['--filter', '@liha/web', 'build'], { env: { VITE_API_URL: apiOrigin } });
+  await run('pnpm', ['--filter', 'liha-web', 'build'], { env: { VITE_API_URL: apiOrigin } });
 
   // Written after the build so the placeholders in public/_headers can never
   // reach a deployment. This is the landing page's policy; the review screen

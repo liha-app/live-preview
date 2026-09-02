@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITS, type CreatePreviewResult } from '@liha/shared';
+import { LIMITS, type CreatePreviewResult } from '@liha-cli/shared';
 import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
 
 const PAGE = { path: 'index.html', content: '<!doctype html><h1>Build</h1>', type: 'text/html' };

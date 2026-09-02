@@ -1,5 +1,5 @@
 {
-  "name": "@liha/api",
+  "name": "liha-api",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -14,7 +14,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply liha-live-preview --remote"
   },
   "dependencies": {
-    "@liha/shared": "workspace:*",
+    "@liha-cli/shared": "workspace:*",
     "fflate": "^0.8.2",
     "hono": "^4.6.20",
     "zod": "^3.24.1"

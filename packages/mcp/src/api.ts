@@ -6,7 +6,7 @@ import type {
   Preview,
   ReviewSummary,
   Version,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import type { Workspace, WorkspaceFile } from './workspace.js';
 
 /**

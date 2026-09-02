@@ -7,7 +7,7 @@ import {
   type ShareInfo,
   type Version,
   type VersionManifest,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import type { ResolvedConfig } from './env.js';
 import { contentBaseUrl } from './content-origin.js';
 import type { CommentRow, PreviewRow, VersionRow } from './repo.js';

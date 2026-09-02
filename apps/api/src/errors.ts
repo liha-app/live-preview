@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from '@liha/shared';
+import type { ApiErrorCode } from '@liha-cli/shared';
 
 const STATUS_BY_CODE: Record<ApiErrorCode, number> = {
   bad_request: 400,

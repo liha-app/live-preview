@@ -193,8 +193,8 @@ that mints share URLs pointing at your laptop.
 ```bash
 openssl rand -base64 32 | wrangler secret put CONTENT_SIGNING_KEY
 
-pnpm --filter @liha/api db:migrate:remote
-pnpm --filter @liha/api deploy
+pnpm --filter liha-api db:migrate:remote
+pnpm --filter liha-api deploy
 
 curl https://api.liha.example.com/api/health
 ```
@@ -202,7 +202,7 @@ curl https://api.liha.example.com/api/health
 ### Deploy the web app
 
 ```bash
-VITE_API_URL=https://api.liha.example.com pnpm --filter @liha/web build
+VITE_API_URL=https://api.liha.example.com pnpm --filter liha-web build
 wrangler pages deploy apps/web/dist --project-name liha
 ```
 

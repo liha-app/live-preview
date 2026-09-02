@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, Sparkles } from 'lucide-react';
-import type { RegistrationHandle } from '@liha/webmcp';
+import type { RegistrationHandle } from '@liha-cli/webmcp';
 import { Modal } from './Dialogs.js';
 import { useT } from '../i18n/index.js';
 import type { MessageKey } from '../i18n/en.js';

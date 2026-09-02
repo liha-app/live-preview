@@ -1,4 +1,4 @@
-import { formatBytes } from '@liha/shared';
+import { formatBytes } from '@liha-cli/shared';
 import { flagString, type ParsedArgs } from '../args.js';
 import { assertUploadable, collectFiles, totalBytes } from '../files.js';
 import { CliError, EXIT, table, type ExitCode, type Reporter } from '../output.js';

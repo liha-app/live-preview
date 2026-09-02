@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, LogOut, MessageSquare, Sparkles } from 'lucide-react';
-import { formatBytes } from '@liha/shared';
+import { formatBytes } from '@liha-cli/shared';
 import { API_URL, api } from '../lib/api.js';
 import { useI18n, useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';

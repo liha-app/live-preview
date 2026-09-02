@@ -1,4 +1,4 @@
-import type { ElementContext, Point } from '@liha/shared';
+import type { ElementContext, Point } from '@liha-cli/shared';
 
 /** Mirror of the messages emitted by the bridge script injected into previews. */
 export interface BridgeMetrics {

@@ -8,7 +8,7 @@ import type {
   ReviewSummary,
   ShareInfo,
   Version,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import { CliError, EXIT } from './output.js';
 
 export interface ClientOptions {

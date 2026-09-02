@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Annotation, Comment, ElementContext, Preview, Version } from '@liha/shared';
+import type { Annotation, Comment, ElementContext, Preview, Version } from '@liha-cli/shared';
 import {
   DEFAULT_METRICS,
   isBridgeMessage,

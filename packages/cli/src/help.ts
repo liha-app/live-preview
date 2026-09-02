@@ -24,7 +24,8 @@ COMMANDS
 COMMON OPTIONS
   --json                  Emit a single JSON document on stdout. Nothing else.
   --quiet                 Suppress progress output on stderr.
-  --api <url>             API base URL (default: $LIHA_API_URL or http://localhost:8787).
+  --api <url>             API base URL (default: $LIHA_API_URL, the project's
+                          .liha.json, or https://api-livepreview.liha.dev).
   --preview <id|slug>     Target a specific preview instead of the linked one.
   --token <ownerToken>    Owner token (default: $LIHA_OWNER_TOKEN or the credential store).
 

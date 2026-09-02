@@ -1,5 +1,5 @@
 {
-  "name": "@liha/live-preview",
+  "name": "@liha-cli/live-preview",
   "version": "0.1.0",
   "description": "Share build artifacts for review and close the feedback loop from your terminal or your coding agent.",
   "license": "MIT",
@@ -27,16 +27,28 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@liha/mcp": "workspace:*",
-    "@liha/shared": "workspace:*"
+    "@liha-cli/mcp": "workspace:*",
+    "@liha-cli/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5",
-    "@liha/api": "workspace:*"
+    "liha-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liha-app/live-preview.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/liha-app/live-preview#readme",
+  "bugs": {
+    "url": "https://github.com/liha-app/live-preview/issues"
   }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { annotationBounds, type Annotation, type Comment, type Point } from '@liha/shared';
+import { annotationBounds, type Annotation, type Comment, type Point } from '@liha-cli/shared';
 import type { Projection } from '../lib/projection.js';
 
 export type Tool = 'cursor' | 'pin' | 'rect' | 'freehand' | 'arrow';

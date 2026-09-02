@@ -1,5 +1,5 @@
 {
-  "name": "@liha/webmcp",
+  "name": "@liha-cli/webmcp",
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -20,10 +21,30 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@liha/shared": "workspace:*"
+    "@liha-cli/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
+  },
+  "description": "Registers a review page’s tools with a WebMCP-capable browser.",
+  "keywords": [
+    "webmcp",
+    "mcp",
+    "browser",
+    "agent",
+    "review"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liha-app/live-preview.git",
+    "directory": "packages/webmcp"
+  },
+  "homepage": "https://github.com/liha-app/live-preview#readme",
+  "bugs": {
+    "url": "https://github.com/liha-app/live-preview/issues"
   }
 }

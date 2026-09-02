@@ -11,7 +11,7 @@ import {
   type ArtifactKind,
   type VersionFile,
   type VersionManifest,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import { ApiError, badRequest, tooLarge } from './errors.js';
 import type { ObjectStore } from './ports.js';
 

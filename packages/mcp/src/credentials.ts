@@ -3,7 +3,19 @@ import { dirname, join, resolve } from 'node:path';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-export const DEFAULT_API_URL = 'http://localhost:8787';
+/**
+ * Where this talks to when nothing says otherwise.
+ *
+ * The hosted instance, so `npx @liha-cli/live-preview deploy .` works with
+ * nothing configured — which is the whole promise of that line. Anything more
+ * specific wins: `--api`, `LIHA_API_URL`, the project's own `.liha.json`, or
+ * `~/.config/liha/config.json`. Running against your own deployment is one
+ * environment variable.
+ *
+ * Because this default sends somebody's build somewhere, every command that
+ * publishes prints where it is publishing to before it does.
+ */
+export const DEFAULT_API_URL = 'https://api-livepreview.liha.dev';
 export const PROJECT_FILE = '.liha.json';
 
 export interface PreviewCredential {

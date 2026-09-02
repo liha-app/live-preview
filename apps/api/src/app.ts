@@ -23,7 +23,7 @@ import {
   serializeTarget,
   verifyPassword,
   verifyWatchToken,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import {
   assertNotRateLimited,
   clientKey,

@@ -1,5 +1,5 @@
 import { relative } from 'node:path';
-import { formatBytes } from '@liha/shared';
+import { formatBytes } from '@liha-cli/shared';
 import { flagBool, flagString, type ParsedArgs } from '../args.js';
 import { LihaClient } from '../client.js';
 import { rememberPreview, readProjectLink, writeProjectLink } from '../config.js';
@@ -65,12 +65,16 @@ export async function deployCommand(args: ParsedArgs, reporter: Reporter): Promi
       'output_not_found',
     );
   }
-  reporter.step(`Publishing ${relative(process.cwd(), outputDir) || '.'}`);
-
   const files = await collectFiles(outputDir);
   assertUploadable(files);
 
   const apiUrl = await resolveApiUrl(args);
+  /*
+   * Named before the bytes leave, not after. The default is a hosted instance,
+   * so "where is this going" must never be something you find out from the
+   * share URL once it has already gone.
+   */
+  reporter.step(`Publishing ${relative(process.cwd(), outputDir) || '.'} to ${apiUrl}`);
   const link = await readProjectLink(project.root);
   const isUpdate = Boolean(link) || Boolean(flagString(args, 'preview'));
 

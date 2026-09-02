@@ -39,7 +39,7 @@ export const ANNOTATION_TYPES: AnnotationType[] = ['pin', 'rect', 'freehand', 'a
  * What a reviewer clicked inside an HTML preview. Captured by the bridge script
  * so an agent can map a comment back to source without guessing from pixels.
  */
-export const ElementContextSchema = z.object({
+export const ElementContextSchema = z.strictObject({
   selector: z.string().max(2000),
   tagName: z.string().max(64),
   id: z.string().max(256).optional(),
@@ -69,7 +69,15 @@ export type Viewport = z.infer<typeof ViewportSchema>;
  * Everything a comment is attached to. Every field is optional so a plain
  * "general note on this version" comment is representable too.
  */
-export const CommentTargetSchema = z.object({
+/*
+ * Strict, because the DOM context is the product.
+ *
+ * Zod drops unknown keys by default, so `dom` where the field is `element`
+ * stored an empty target and answered 201 — the caller is told their feedback
+ * landed, and what makes it worth anything is gone. An agent writing to this
+ * API cannot see that; it has to be told.
+ */
+export const CommentTargetSchema = z.strictObject({
   annotation: AnnotationSchema.nullish(),
   /** 1-based page number for PDF previews. */
   page: z.number().int().min(1).max(10_000).nullish(),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Comment, Version } from '@liha/shared';
+import type { Comment, Version } from '@liha-cli/shared';
 import { boxProjection } from '../lib/projection.js';
 import { AnnotationLayer, type PlacedAnnotation, type Tool } from './AnnotationLayer.js';
 import { EMPTY_DRAFT, type DraftTarget } from './PreviewStage.js';

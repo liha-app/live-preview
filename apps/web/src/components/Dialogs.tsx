@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Copy, Files, FolderOpen, Lock } from 'lucide-react';
-import type { Preview, ShareInfo, Version } from '@liha/shared';
-import { formatBytes } from '@liha/shared';
+import type { Preview, ShareInfo, Version } from '@liha-cli/shared';
+import { formatBytes } from '@liha-cli/shared';
 import { filesFromDataTransfer, pickFiles, type UploadSelection } from '../lib/files.js';
 import { useI18n, useT } from '../i18n/index.js';
 

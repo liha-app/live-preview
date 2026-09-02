@@ -14,14 +14,14 @@ without a login system.
 
 ## Components
 
-| Package              | Runtime                | Responsibility                                                                                                                    |
-| -------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `@liha/shared`       | Workers, Node, browser | Zod schemas, ids and slugs, token/password crypto, path sanitizing, SSRF validation. The security-critical code lives here, once. |
-| `@liha/api`          | Cloudflare Workers     | JSON API and sandboxed content serving.                                                                                           |
-| `@liha/web`          | Browser                | Review UI, annotation layer, WebMCP host.                                                                                         |
-| `@liha/webmcp`       | Browser                | `document.modelContext` tool definitions. No framework dependency.                                                                |
-| `@liha/mcp`          | Node                   | stdio MCP server, plus the credential store both local tools share.                                                               |
-| `@liha/live-preview` | Node                   | The `liha-preview` CLI.                                                                                                           |
+| Package                  | Runtime                | Responsibility                                                                                                                    |
+| ------------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `@liha-cli/shared`       | Workers, Node, browser | Zod schemas, ids and slugs, token/password crypto, path sanitizing, SSRF validation. The security-critical code lives here, once. |
+| `liha-api`               | Cloudflare Workers     | JSON API and sandboxed content serving.                                                                                           |
+| `liha-web`               | Browser                | Review UI, annotation layer, WebMCP host.                                                                                         |
+| `@liha-cli/webmcp`       | Browser                | `document.modelContext` tool definitions. No framework dependency.                                                                |
+| `@liha-cli/mcp`          | Node                   | stdio MCP server, plus the credential store both local tools share.                                                               |
+| `@liha-cli/live-preview` | Node                   | The `liha-preview` CLI.                                                                                                           |
 
 ## Ports at the infrastructure boundary
 

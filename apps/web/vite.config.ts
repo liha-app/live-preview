@@ -9,8 +9,8 @@ export default defineConfig({
   resolve: {
     alias: {
       // Point workspace packages at source so `pnpm dev` needs no build step.
-      '@liha/shared': resolve('../../packages/shared/src/index.ts'),
-      '@liha/webmcp': resolve('../../packages/webmcp/src/index.ts'),
+      '@liha-cli/shared': resolve('../../packages/shared/src/index.ts'),
+      '@liha-cli/webmcp': resolve('../../packages/webmcp/src/index.ts'),
     },
   },
   server: {

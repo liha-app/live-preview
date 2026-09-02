@@ -1,4 +1,4 @@
-import type { Point } from '@liha/shared';
+import type { Point } from '@liha-cli/shared';
 import type { BridgeMetrics } from './bridge-client.js';
 
 /**

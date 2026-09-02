@@ -90,7 +90,7 @@ export async function run(argv: string[]): Promise<ExitCode> {
       }
       case 'mcp': {
         // Imported lazily so the MCP SDK is not loaded for ordinary commands.
-        const { startMcpServer } = await import('@liha/mcp');
+        const { startMcpServer } = await import('@liha-cli/mcp');
         await startMcpServer({
           apiUrl: flagString(args, 'api') ?? process.env.LIHA_API_URL,
           projectRoot: flagString(args, 'root') ?? process.cwd(),

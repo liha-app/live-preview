@@ -15,7 +15,7 @@ That is the whole point: the human and the agent are looking at one screen.
 ## Registration
 
 ```ts
-import { registerLihaTools, isWebMcpAvailable } from '@liha/webmcp';
+import { registerLihaTools, isWebMcpAvailable } from '@liha-cli/webmcp';
 
 const handle = registerLihaTools(host); // host: LihaWebMcpHost
 handle.available; // false without browser support

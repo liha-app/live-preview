@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { base64UrlToBytes, utf8 } from '@liha/shared';
+import { base64UrlToBytes, utf8 } from '@liha-cli/shared';
 import { generateVapidKeys, sendPush, vapidHeader } from '../src/push.js';
 
 /*

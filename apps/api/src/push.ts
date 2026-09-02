@@ -1,4 +1,4 @@
-import { bytesToBase64Url, utf8 } from '@liha/shared';
+import { bytesToBase64Url, utf8 } from '@liha-cli/shared';
 
 /**
  * Web Push, with nothing in the envelope.

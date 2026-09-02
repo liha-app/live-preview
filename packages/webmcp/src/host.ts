@@ -5,7 +5,7 @@ import type {
   Preview,
   ShareInfo,
   Version,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 
 export interface AddCommentInput {
   body: string;

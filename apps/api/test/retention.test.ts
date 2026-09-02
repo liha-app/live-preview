@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CreatePreviewResult } from '@liha/shared';
-import { LIMITS } from '@liha/shared';
+import type { CreatePreviewResult } from '@liha-cli/shared';
+import { LIMITS } from '@liha-cli/shared';
 import { sweepExpired } from '../src/app.js';
 import { createTestServer, uploadBody, type TestServer } from './harness.js';
 

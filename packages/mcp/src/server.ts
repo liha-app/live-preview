@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import type { Comment } from '@liha/shared';
+import type { Comment } from '@liha-cli/shared';
 import { LihaApi, ApiError } from './api.js';
 import {
   DEFAULT_API_URL,

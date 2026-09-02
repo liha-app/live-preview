@@ -1,4 +1,4 @@
-import { formatBytes } from '@liha/shared';
+import { formatBytes } from '@liha-cli/shared';
 import { flagString, type ParsedArgs } from '../args.js';
 import { LihaClient } from '../client.js';
 import { rememberPreview, writeProjectLink } from '../config.js';

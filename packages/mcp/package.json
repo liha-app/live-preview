@@ -1,7 +1,7 @@
 {
-  "name": "@liha/mcp",
+  "name": "@liha-cli/mcp",
   "version": "0.1.0",
-  "description": "Local MCP server for Liha Live Preview \u2014 lets a coding agent read review feedback and publish fixes.",
+  "description": "MCP server for Liha Live Preview: read review feedback and publish new versions from a coding agent.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -10,7 +10,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
@@ -18,7 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@liha/shared": "workspace:*",
+    "@liha-cli/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "zod": "^3.24.1"
   },
@@ -26,7 +27,7 @@
     "@types/node": "^22.10.5",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5",
-    "@liha/api": "workspace:*"
+    "liha-api": "workspace:*"
   },
   "engines": {
     "node": ">=20.11"
@@ -40,5 +41,24 @@
       "types": "./dist/credentials.d.ts",
       "default": "./dist/credentials.js"
     }
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "preview",
+    "review",
+    "agent"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liha-app/live-preview.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/liha-app/live-preview#readme",
+  "bugs": {
+    "url": "https://github.com/liha-app/live-preview/issues"
   }
 }

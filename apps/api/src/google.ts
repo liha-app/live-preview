@@ -1,5 +1,5 @@
-import { base64UrlToBytes, bytesToBase64Url, randomString, utf8 } from '@liha/shared';
-import { createContentToken, verifyContentToken } from '@liha/shared';
+import { base64UrlToBytes, bytesToBase64Url, randomString, utf8 } from '@liha-cli/shared';
+import { createContentToken, verifyContentToken } from '@liha-cli/shared';
 import type { ResolvedConfig } from './env.js';
 
 /**

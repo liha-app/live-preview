@@ -5,7 +5,7 @@ import {
   type Preview,
   type ReviewSummary,
   type Version,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import { contentBaseUrl } from './content-origin.js';
 import type { ResolvedConfig } from './env.js';
 import type { Database } from './ports.js';

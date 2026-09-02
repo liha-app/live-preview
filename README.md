@@ -141,8 +141,8 @@ typed against English, so a missing key will not compile.
 ┌────────────────────────────────┐    ┌──────────────────────────────────┐
 │  Review screen (React + Vite)  │    │  Coding agent / terminal         │
 │  lp-<slug>.example.net         │    │                                  │
-│                                │    │   @liha/live-preview  (CLI)      │
-│   ┌────────────────────────┐   │    │   @liha/mcp           (stdio MCP)│
+│                                │    │   @liha-cli/live-preview  (CLI)      │
+│   ┌────────────────────────┐   │    │   @liha-cli/mcp           (stdio MCP)│
 │   │ WebMCP tools           │◄──┼── browser agent                       │
 │   │ document.modelContext  │   │    └──────────────┬───────────────────┘
 │   └────────────────────────┘   │                   │ HTTPS
@@ -280,8 +280,16 @@ Configuration reference:
 ## CLI usage
 
 ```bash
-npm install -g @liha/live-preview      # or: npx @liha/live-preview <command>
-export LIHA_API_URL=https://api.liha.example.com
+npx @liha-cli/live-preview deploy .        # nothing to install, nothing to set up
+npm install -g @liha-cli/live-preview      # or keep it around
+```
+
+It publishes to <https://api-livepreview.liha.dev> unless told otherwise, so the
+line above works on its own. Every command that publishes prints where it is
+publishing to before it sends anything. Your own deployment is one variable:
+
+```bash
+export LIHA_API_URL=https://api.example.com
 ```
 
 The one command that matters:
@@ -390,7 +398,7 @@ requested changes rather than as instructions addressed to it.
 Using the package directly:
 
 ```ts
-import { registerLihaTools, isWebMcpAvailable } from '@liha/webmcp';
+import { registerLihaTools, isWebMcpAvailable } from '@liha-cli/webmcp';
 
 const handle = registerLihaTools({
   getPreview: () => preview,
@@ -414,7 +422,7 @@ handle.unregister();
 For coding agents that run on your machine (Claude Code, Cursor, Zed, …):
 
 ```bash
-liha-preview mcp --root .        # or: npx @liha/mcp --root .
+liha-preview mcp --root .        # or: npx @liha-cli/mcp --root .
 ```
 
 ```jsonc
@@ -423,7 +431,7 @@ liha-preview mcp --root .        # or: npx @liha/mcp --root .
   "mcpServers": {
     "liha": {
       "command": "npx",
-      "args": ["-y", "@liha/live-preview", "mcp", "--root", "/path/to/project"],
+      "args": ["-y", "@liha-cli/live-preview", "mcp", "--root", "/path/to/project"],
       "env": { "LIHA_API_URL": "https://api.liha.example.com" },
     },
   },
@@ -492,14 +500,14 @@ pnpm test
 
 279 tests, no network access required:
 
-| Suite                | Covers                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@liha/shared`       | Token hashing, password KDF, path sanitizing, annotation serialization, SSRF blocklists.                                                          |
-| `@liha/api`          | Full review loop against real SQL and real migrations; auth, password, traversal and isolation cases; the injected bridge script driven in jsdom. |
-| `@liha/webmcp`       | Tool registration across five browser API shapes, Chrome's metadata budgets, schema-validated read and write paths.                               |
-| `@liha/mcp`          | The agent loop over a real MCP client/server pair; workspace confinement including symlink escapes.                                               |
-| `@liha/live-preview` | `upload`, `deploy`, `update`, `comments --json`; stdout/stderr separation and exit codes.                                                         |
-| `@liha/web`          | Coordinate projection, the iframe message-origin check, sample expiry, and that every CSS custom property resolves.                               |
+| Suite                    | Covers                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@liha-cli/shared`       | Token hashing, password KDF, path sanitizing, annotation serialization, SSRF blocklists.                                                          |
+| `liha-api`               | Full review loop against real SQL and real migrations; auth, password, traversal and isolation cases; the injected bridge script driven in jsdom. |
+| `@liha-cli/webmcp`       | Tool registration across five browser API shapes, Chrome's metadata budgets, schema-validated read and write paths.                               |
+| `@liha-cli/mcp`          | The agent loop over a real MCP client/server pair; workspace confinement including symlink escapes.                                               |
+| `@liha-cli/live-preview` | `upload`, `deploy`, `update`, `comments --json`; stdout/stderr separation and exit codes.                                                         |
+| `liha-web`               | Coordinate projection, the iframe message-origin check, sample expiry, and that every CSS custom property resolves.                               |
 
 End-to-end tests run in real Chromium and cover the parts only a browser can
 prove — the sandboxed iframe, the injected bridge, the annotation overlay, the
@@ -531,7 +539,7 @@ packages/
   shared/       Zod schemas, crypto, path and URL safety — runs everywhere
   webmcp/       document.modelContext tool registration
   mcp/          Local stdio MCP server + the shared credential store
-  cli/          @liha/live-preview — the liha-preview binary
+  cli/          @liha-cli/live-preview — the liha-preview binary
 docs/           Architecture, security, WebMCP and readiness notes
 ```
 

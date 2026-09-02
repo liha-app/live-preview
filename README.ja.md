@@ -99,8 +99,8 @@ Webプレビューで要素をクリックすると、座標以上のものが�
 ┌────────────────────────────────┐    ┌──────────────────────────────────┐
 │  レビュー画面 (React+Vite)     │    │  コーディングエージェント / 端末 │
 │  lp-<slug>.example.net         │    │                                  │
-│                                │    │   @liha/live-preview  (CLI)      │
-│   ┌────────────────────────┐   │    │   @liha/mcp        (stdio MCP)   │
+│                                │    │   @liha-cli/live-preview  (CLI)      │
+│   ┌────────────────────────┐   │    │   @liha-cli/mcp        (stdio MCP)   │
 │   │ WebMCP tools           │◄──┼── ブラウザ内エージェント              │
 │   │ document.modelContext  │   │    └──────────────┬───────────────────┘
 │   └────────────────────────┘   │                   │ HTTPS
@@ -204,7 +204,7 @@ pnpm verify:deployment --api https://api.example.com --app https://liha.example.
 ## CLI の使い方
 
 ```bash
-npm install -g @liha/live-preview
+npm install -g @liha-cli/live-preview
 export LIHA_API_URL=https://api.liha.example.com
 ```
 
@@ -284,7 +284,7 @@ liha-preview mcp --root .
   "mcpServers": {
     "liha": {
       "command": "npx",
-      "args": ["-y", "@liha/live-preview", "mcp", "--root", "/path/to/project"],
+      "args": ["-y", "@liha-cli/live-preview", "mcp", "--root", "/path/to/project"],
       "env": { "LIHA_API_URL": "https://api.liha.example.com" },
     },
   },

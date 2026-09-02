@@ -410,3 +410,28 @@ describe('argument handling', () => {
     expect(JSON.parse(streams.stdout()).error.code).toBe('network_error');
   });
 });
+
+/*
+ * The default sends somebody's build somewhere. Which somewhere is not
+ * something to find out from the share URL once it has already gone.
+ */
+describe('where a publish is going', () => {
+  it('is named before the bytes leave', async () => {
+    await writeFile(join(workDir, 'index.html'), '<html><body>hi</body></html>');
+    const { exitCode, stderr } = await cli('deploy', '.', '--skip-build');
+    expect(exitCode).toBe(EXIT.ok);
+
+    // Before the upload starts, not in the summary afterwards.
+    const said = stderr.indexOf(server.url);
+    const sending = stderr.indexOf('Creating a preview');
+    expect(said, 'the destination should be reported').toBeGreaterThanOrEqual(0);
+    expect(sending).toBeGreaterThanOrEqual(0);
+    expect(said).toBeLessThan(sending);
+  });
+
+  it('defaults to somewhere that exists, not to a local port', async () => {
+    const { DEFAULT_API_URL } = await import('@liha-cli/mcp');
+    expect(DEFAULT_API_URL).toMatch(/^https:\/\//);
+    expect(DEFAULT_API_URL).not.toContain('localhost');
+  });
+});

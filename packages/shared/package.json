@@ -1,5 +1,5 @@
 {
-  "name": "@liha/shared",
+  "name": "@liha-cli/shared",
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -25,5 +26,23 @@
   "devDependencies": {
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
+  },
+  "description": "Shared types, validation and hashing for Liha Live Preview.",
+  "keywords": [
+    "liha",
+    "preview",
+    "review"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liha-app/live-preview.git",
+    "directory": "packages/shared"
+  },
+  "homepage": "https://github.com/liha-app/live-preview#readme",
+  "bugs": {
+    "url": "https://github.com/liha-app/live-preview/issues"
   }
 }

@@ -1,4 +1,4 @@
-import { assertPublicHttpUrl } from '@liha/shared';
+import { assertPublicHttpUrl } from '@liha-cli/shared';
 import type { Env, ResolvedConfig } from './env.js';
 import { sendPush, type VapidKeys } from './push.js';
 import {

@@ -3,7 +3,7 @@ import {
   contentTypeForPath,
   safeFetch,
   type VersionManifest,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import { ApiError, badRequest } from './errors.js';
 
 /** Cap on the fetched document; a review snapshot does not need more than this. */

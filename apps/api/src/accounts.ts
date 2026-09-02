@@ -1,4 +1,4 @@
-import { LIMITS, generateId, hashToken, randomString } from '@liha/shared';
+import { LIMITS, generateId, hashToken, randomString } from '@liha-cli/shared';
 import type { Database } from './ports.js';
 import type { ResolvedConfig } from './env.js';
 import {

@@ -20,4 +20,4 @@ export {
   type GlobalConfig,
   type PreviewCredential,
   type ProjectLink,
-} from '@liha/mcp/credentials';
+} from '@liha-cli/mcp/credentials';

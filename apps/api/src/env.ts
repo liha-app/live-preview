@@ -1,4 +1,4 @@
-import { LIMITS } from '@liha/shared';
+import { LIMITS } from '@liha-cli/shared';
 import { parseTemplate } from './content-origin.js';
 import type { Database, ObjectStore } from './ports.js';
 

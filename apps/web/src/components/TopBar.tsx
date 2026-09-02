@@ -9,7 +9,7 @@ import {
   Sparkles,
   Upload,
 } from 'lucide-react';
-import type { Preview, Version } from '@liha/shared';
+import type { Preview, Version } from '@liha-cli/shared';
 import { useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';
 import { appHome } from '../lib/ownPreview.js';

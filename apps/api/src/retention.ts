@@ -1,4 +1,4 @@
-import { LIMITS } from '@liha/shared';
+import { LIMITS } from '@liha-cli/shared';
 import type { Database } from './ports.js';
 import { findAccount, setPreviewExpiry, type PreviewRow } from './repo.js';
 

@@ -1,4 +1,4 @@
-import { LIMITS, hashToken, verifyToken } from '@liha/shared';
+import { LIMITS, hashToken, verifyToken } from '@liha-cli/shared';
 import { ApiError, forbidden, unauthorized } from './errors.js';
 import type { Database } from './ports.js';
 import { countRecentFailures, findValidReviewSession, type PreviewRow } from './repo.js';

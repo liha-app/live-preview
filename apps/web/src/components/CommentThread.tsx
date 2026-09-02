@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, CornerDownRight, MessageSquare, RotateCcw, Sparkles } from 'lucide-react';
-import type { Comment } from '@liha/shared';
+import type { Comment } from '@liha-cli/shared';
 import { CommentComposer } from './CommentComposer.js';
 import { formatRelativeTime, useI18n, useT } from '../i18n/index.js';
 

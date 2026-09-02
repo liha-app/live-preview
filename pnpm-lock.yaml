@@ -17,7 +17,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@liha/shared':
+      '@liha-cli/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       fflate:
@@ -51,10 +51,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@liha/shared':
+      '@liha-cli/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@liha/webmcp':
+      '@liha-cli/webmcp':
         specifier: workspace:*
         version: link:../../packages/webmcp
       '@tanstack/react-query':
@@ -112,14 +112,14 @@ importers:
 
   packages/cli:
     dependencies:
-      '@liha/mcp':
+      '@liha-cli/mcp':
         specifier: workspace:*
         version: link:../mcp
-      '@liha/shared':
+      '@liha-cli/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
-      '@liha/api':
+      'liha-api':
         specifier: workspace:*
         version: link:../../apps/api
       '@types/node':
@@ -134,7 +134,7 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@liha/shared':
+      '@liha-cli/shared':
         specifier: workspace:*
         version: link:../shared
       '@modelcontextprotocol/sdk':
@@ -144,7 +144,7 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
-      '@liha/api':
+      'liha-api':
         specifier: workspace:*
         version: link:../../apps/api
       '@types/node':
@@ -172,7 +172,7 @@ importers:
 
   packages/webmcp:
     dependencies:
-      '@liha/shared':
+      '@liha-cli/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:

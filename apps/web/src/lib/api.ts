@@ -8,7 +8,7 @@ import type {
   ReviewSummary,
   ShareInfo,
   Version,
-} from '@liha/shared';
+} from '@liha-cli/shared';
 import { ownerTokens, reviewSessions } from './storage.js';
 
 export const API_URL = (

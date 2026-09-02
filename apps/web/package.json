@@ -1,5 +1,5 @@
 {
-  "name": "@liha/web",
+  "name": "liha-web",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -13,8 +13,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@liha/shared": "workspace:*",
-    "@liha/webmcp": "workspace:*",
+    "@liha-cli/shared": "workspace:*",
+    "@liha-cli/webmcp": "workspace:*",
     "@tanstack/react-query": "^5.64.1",
     "@tanstack/react-router": "^1.97.3",
     "lucide-react": "^0.469.0",

@@ -1,7 +1,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
-import { LIMITS, formatBytes, sanitizeRelativePath } from '@liha/shared';
+import { LIMITS, formatBytes, sanitizeRelativePath } from '@liha-cli/shared';
 import { CliError, EXIT } from './output.js';
 import type { LocalFile } from './client.js';
 

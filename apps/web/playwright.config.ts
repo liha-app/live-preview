@@ -26,14 +26,14 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: 'pnpm --filter @liha/api db:migrate && pnpm --filter @liha/api dev',
+      command: 'pnpm --filter liha-api db:migrate && pnpm --filter liha-api dev',
       url: 'http://localhost:8787/api/health',
       cwd: '../..',
       reuseExistingServer: true,
       timeout: 120_000,
     },
     {
-      command: 'pnpm --filter @liha/web dev',
+      command: 'pnpm --filter liha-web dev',
       url: 'http://localhost:5173',
       cwd: '../..',
       reuseExistingServer: true,

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LIMITS, type CreatePreviewResult } from '@liha/shared';
+import { LIMITS, type CreatePreviewResult } from '@liha-cli/shared';
 import { generateVapidKeys } from '../src/push.js';
 import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
 

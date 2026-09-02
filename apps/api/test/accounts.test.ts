@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITS, type CreatePreviewResult } from '@liha/shared';
+import { LIMITS, type CreatePreviewResult } from '@liha-cli/shared';
 import { APP_HEADER } from '../src/accounts.js';
 import { safeReturn } from '../src/google.js';
 import { resolveConfig } from '../src/env.js';

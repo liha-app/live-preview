@@ -1,4 +1,4 @@
-import { describeTarget, type Comment, type CommentFilter } from '@liha/shared';
+import { describeTarget, type Comment, type CommentFilter } from '@liha-cli/shared';
 import { filterComments, type LihaWebMcpHost, type ViewportName } from './host.js';
 import type { ToolDescriptor, ToolResult } from './types.js';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Comment, CreatePreviewResult } from '@liha/shared';
-import { LIMITS } from '@liha/shared';
+import type { Comment, CreatePreviewResult } from '@liha-cli/shared';
+import { LIMITS } from '@liha-cli/shared';
 import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
 
 const PAGE = { path: 'index.html', content: '<html><body>hi</body></html>', type: 'text/html' };

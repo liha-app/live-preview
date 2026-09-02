@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import type { CreatePreviewResult } from '@liha/shared';
-import { formatBytes, isPublicHttpUrl, withDefaultScheme } from '@liha/shared';
+import type { CreatePreviewResult } from '@liha-cli/shared';
+import { formatBytes, isPublicHttpUrl, withDefaultScheme } from '@liha-cli/shared';
 import { api } from '../lib/api.js';
 import { AccountModal } from '../components/AccountModal.js';
 import { GoogleSignIn } from '../components/GoogleSignIn.js';
@@ -16,7 +16,7 @@ import { ThemeToggle } from '../components/ThemeToggle.js';
 import { PaperDecor } from '../components/PaperDecor.js';
 import { Onboarding } from '../components/Onboarding.js';
 import { useT } from '../i18n/index.js';
-import { registerLihaTools, type RegistrationHandle } from '@liha/webmcp';
+import { registerLihaTools, type RegistrationHandle } from '@liha-cli/webmcp';
 import { AgentPanel } from '../components/AgentPanel.js';
 
 /** What the create sheet is about to make. */
@@ -330,11 +330,11 @@ export function HomeRoute() {
 
             {mode === 'cli' && (
               <div className="paper-cli">
-                <div className="paper-cli__cmd">npx @liha/live-preview deploy .</div>
+                <div className="paper-cli__cmd">npx @liha-cli/live-preview deploy .</div>
                 <div className="paper-cli__note"># build, publish, print the share URL</div>
-                <div className="paper-cli__cmd">npx @liha/live-preview comments --json</div>
+                <div className="paper-cli__cmd">npx @liha-cli/live-preview comments --json</div>
                 <div className="paper-cli__note"># what reviewers asked for</div>
-                <div className="paper-cli__cmd">npx @liha/live-preview update ./dist</div>
+                <div className="paper-cli__cmd">npx @liha-cli/live-preview update ./dist</div>
                 <div className="paper-cli__note"># same URL, new version</div>
               </div>
             )}

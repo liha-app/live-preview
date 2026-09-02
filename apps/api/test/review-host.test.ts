@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CreatePreviewResult } from '@liha/shared';
+import type { CreatePreviewResult } from '@liha-cli/shared';
 import { createTestServer, uploadBody } from './harness.js';
 
 /**

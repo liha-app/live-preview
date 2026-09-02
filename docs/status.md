@@ -13,7 +13,7 @@ immutable version → same URL. D1 schema and migrations, R2 storage with a
 per-version manifest, owner tokens (hashed), password protection (PBKDF2 + review
 sessions + rate limiting), CORS, the full JSON API.
 
-**Tests.** 48 unit tests in `@liha/shared`; 118 API tests covering the review loop
+**Tests.** 48 unit tests in `@liha-cli/shared`; 118 API tests covering the review loop
 end to end plus owner auth, password flow, path traversal, content isolation,
 zip handling, deletion, sample expiry, concurrent version writes, and push —
 including verifying the VAPID signature the way a push service does.
@@ -33,9 +33,9 @@ on every scroll from bridge metrics. Element-context capture through the injecte
 bridge script: unique CSS selector, ancestor path, text, HTML snippet, bounding
 rect and viewport.
 
-**Tests.** Annotation serialization and bounds in `@liha/shared`; 12 jsdom tests
+**Tests.** Annotation serialization and bounds in `@liha-cli/shared`; 12 jsdom tests
 driving the real bridge script through its postMessage protocol; projection unit
-tests in `@liha/web`.
+tests in `liha-web`.
 
 **Remaining.** Highlight is in the schema and renders, but has no toolbar button.
 
@@ -66,7 +66,7 @@ separation and exit codes.
 
 ## Phase 4 — WebMCP
 
-**Implemented.** `@liha/webmcp` registers nine tools on
+**Implemented.** `@liha-cli/webmcp` registers nine tools on
 `document.modelContext`: `get_preview_info`, `get_share_info`, `list_comments`,
 `get_comment`, `add_comment`, `resolve_comment`, `list_versions`,
 `get_review_summary`, and `create_preview_from_url`. Full input schemas,
@@ -89,7 +89,7 @@ framing, the owner-token refusal, host failures and the no-support case.
 
 ## Phase 5 — Local MCP
 
-**Implemented.** `@liha/mcp` serves seven tools over stdio using the official
+**Implemented.** `@liha-cli/mcp` serves seven tools over stdio using the official
 SDK: `get_preview_info`, `list_comments`, `get_comment`, `list_versions`,
 `create_preview`, `update_preview`, `resolve_comment`. Started with
 `liha-preview mcp --root <dir>` or the `liha-mcp` binary. Every path is resolved

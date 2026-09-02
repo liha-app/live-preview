@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
-import type { Comment, CreatePreviewResult, Preview } from '@liha/shared';
-import { LIMITS } from '@liha/shared';
+import type { Comment, CreatePreviewResult, Preview } from '@liha-cli/shared';
+import { LIMITS } from '@liha-cli/shared';
 import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
 
 const PAGE = {
@@ -322,6 +322,48 @@ describe('deletion', () => {
 });
 
 describe('comment validation', () => {
+  /*
+   * Zod drops unknown keys by default, so a misspelled field used to store an
+   * empty target and answer 201 — the caller told their feedback landed, and
+   * the thing that makes it worth anything silently gone. An agent writing to
+   * this API cannot see that happen; it has to be told.
+   */
+  it('refuses a target it does not recognise rather than dropping it', async () => {
+    const server = createTestServer();
+    const created = await server.json<CreatePreviewResult>('/api/previews', {
+      method: 'POST',
+      ...uploadBody([{ path: 'index.html', content: '<h1>Hi</h1>', type: 'text/html' }]),
+    });
+
+    for (const target of [
+      { dom: { selector: '#cta', tagName: 'BUTTON' } },
+      { element: { css: '#cta', tagName: 'BUTTON' } },
+      { element: { selector: '#cta', tagName: 'BUTTON' }, viewpoint: { width: 390 } },
+    ]) {
+      const response = await server.fetch(`/api/previews/${created.preview.slug}/comments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ authorName: 'Mika', body: 'Too big.', target }),
+      });
+      expect(response.status, JSON.stringify(target)).toBe(400);
+    }
+
+    // The shape it does recognise still goes through, with the context intact.
+    const ok = await server.json<{ comment: { target: { element: { selector: string } } } }>(
+      `/api/previews/${created.preview.slug}/comments`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          authorName: 'Mika',
+          body: 'Too big.',
+          target: { element: { selector: '#cta', tagName: 'BUTTON' } },
+        }),
+      },
+    );
+    expect(ok.comment.target.element.selector).toBe('#cta');
+  });
+
   it('rejects malformed annotations and oversized bodies', async () => {
     const server = createTestServer();
     const created = await create(server);

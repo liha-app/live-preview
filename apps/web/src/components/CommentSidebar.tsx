@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Bell, MessageSquarePlus, UserRound } from 'lucide-react';
-import type { Comment, CommentFilter } from '@liha/shared';
+import type { Comment, CommentFilter } from '@liha-cli/shared';
 import { CommentComposer } from './CommentComposer.js';
 import { CommentThread } from './CommentThread.js';
 import { useT } from '../i18n/index.js';

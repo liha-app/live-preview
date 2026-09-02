@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Comment, Preview, ShareInfo, Version } from '@liha/shared';
+import type { Comment, Preview, ShareInfo, Version } from '@liha-cli/shared';
 import { registerLihaTools } from './register.js';
 import { isWebMcpAvailable } from './types.js';
 import type { LihaWebMcpHost } from './host.js';

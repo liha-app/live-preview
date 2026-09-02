@@ -1,4 +1,4 @@
-import type { CommentFilter } from '@liha/shared';
+import type { CommentFilter } from '@liha-cli/shared';
 import { flagBool, flagString, type ParsedArgs } from './args.js';
 import { LihaClient } from './client.js';
 import {

@@ -1,4 +1,4 @@
-import { decodeAndSanitizePath, verifyContentToken } from '@liha/shared';
+import { decodeAndSanitizePath, verifyContentToken } from '@liha-cli/shared';
 import { injectBridge } from './bridge.js';
 import type { ResolvedConfig } from './env.js';
 import { notFound } from './errors.js';

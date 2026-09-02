@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { Comment, CreatePreviewResult, Preview, ReviewSummary, Version } from '@liha/shared';
+import type {
+  Comment,
+  CreatePreviewResult,
+  Preview,
+  ReviewSummary,
+  Version,
+} from '@liha-cli/shared';
 import { TINY_PNG, createTestServer, ownerHeaders, uploadBody } from './harness.js';
 
 const SITE = [
