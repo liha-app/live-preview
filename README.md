@@ -116,6 +116,13 @@ are looking:
   then on the sidebar is the answer. The tab also carries the preview's name, so
   several open at once stay tellable apart.
 
+### Which way to publish
+
+|                                                       |                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Drop a file or folder**, or `liha-preview deploy .` | Your own build. Everything is served from one origin, so nothing is lost — fonts, module scripts, the lot. This is the path the rest of this README is about.                                                                                                                                                                                            |
+| **Review a URL**                                      | Something already deployed that you cannot build — a client's site, a staging link you do not own. The layout and the copy come across. Web fonts and module scripts usually do not: a browser fetches those in CORS mode, and the origin site has to allow other origins to use them. The review screen marks such a preview as a snapshot and says so. |
+
 ### Themes and languages
 
 Light, dark, or follow the system — switched from the top bar or with `T`, and

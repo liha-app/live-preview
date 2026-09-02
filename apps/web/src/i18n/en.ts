@@ -253,7 +253,7 @@ export const en = {
   'home.urlInvalid':
     'That does not look like a web address. Try example.com or https://example.com/page.',
   'home.urlHint':
-    'Liha snapshots the page HTML so reviewers can mark it up. Private and internal addresses are rejected.',
+    'Snapshots the page so reviewers can mark it up. Layout and copy come across; web fonts and module scripts usually do not, since the site has to allow other origins to use them. For your own build, dropping it or using the CLI loses nothing. Private and internal addresses are rejected.',
 
   'created.title': 'Preview created',
   'created.body':
