@@ -1,3 +1,15 @@
+import { createRequire } from 'node:module';
+
+/*
+ * Read, not repeated.
+ *
+ * This was a literal, and it stopped being true at the first release: the
+ * package said 0.1.1 and the server still announced 0.1.0 to everything that
+ * asked. `src/` and `dist/` are both one level under the package root, so this
+ * resolves the same whether it runs from source or from a build.
+ */
+const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -56,7 +68,7 @@ function errorResult(message: string) {
 export async function createMcpServer(options: McpServerOptions = {}): Promise<McpServer> {
   const workspace = new Workspace(options.projectRoot ?? process.cwd());
   const server = new McpServer(
-    { name: 'liha-live-preview', version: '0.1.0' },
+    { name: 'liha-live-preview', version },
     {
       instructions:
         'Liha Live Preview lets humans review a deployed artifact and leave anchored comments. ' +

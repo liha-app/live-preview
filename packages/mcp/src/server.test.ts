@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mkdtemp, mkdir, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -326,5 +327,26 @@ describe('owner permissions', () => {
     const { call } = await connect(projectRoot);
     const result = await call('create_preview', { path: 'dist' });
     expect(result.text).not.toContain('liha_ot_');
+  });
+});
+
+/*
+ * The version was a literal, and it stopped being true at the first release:
+ * the package said 0.1.1 while the server still announced 0.1.0 to everything
+ * that asked. A client asking what it is talking to has to be told the truth.
+ */
+describe('what the server says it is', () => {
+  it('reports the version its package actually has', async () => {
+    const { version } = JSON.parse(
+      readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8'),
+    ) as { version: string };
+
+    const server = await createMcpServer({ projectRoot: process.cwd() });
+    // The SDK keeps what it was constructed with here.
+    const info = (server.server as unknown as { _serverInfo: { name: string; version: string } })
+      ._serverInfo;
+
+    expect(info.name).toBe('liha-live-preview');
+    expect(info.version).toBe(version);
   });
 });

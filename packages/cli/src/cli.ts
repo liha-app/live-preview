@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { flagBool, flagString, parseArgs } from './args.js';
 import { CliError, EXIT, Reporter, type ExitCode } from './output.js';
 import { HELP } from './help.js';
@@ -35,7 +36,13 @@ const VALUE_FLAGS = new Set([
   'root',
 ]);
 
-export const VERSION = '0.1.0';
+/*
+ * Read, not repeated. The literal it replaced went stale at the first release.
+ * `src/` and `dist/` are both one level under the package root, so this
+ * resolves the same either way.
+ */
+export const VERSION = (createRequire(import.meta.url)('../package.json') as { version: string })
+  .version;
 
 export async function run(argv: string[]): Promise<ExitCode> {
   let reporter = new Reporter({ json: false, quiet: false });

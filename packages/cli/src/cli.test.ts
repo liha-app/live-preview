@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -433,5 +434,21 @@ describe('where a publish is going', () => {
     const { DEFAULT_API_URL } = await import('@liha-cli/mcp');
     expect(DEFAULT_API_URL).toMatch(/^https:\/\//);
     expect(DEFAULT_API_URL).not.toContain('localhost');
+  });
+});
+
+/*
+ * `--version` was a literal, and it stopped being true at the first release.
+ * Somebody reporting a bug reads this number out.
+ */
+describe('--version', () => {
+  it('reports the version its package actually has', async () => {
+    const { version } = JSON.parse(
+      readFileSync(join(import.meta.dirname, '..', 'package.json'), 'utf8'),
+    ) as { version: string };
+
+    const { exitCode, stdout } = await cli('--version');
+    expect(exitCode).toBe(EXIT.ok);
+    expect(stdout.trim()).toBe(version);
   });
 });
