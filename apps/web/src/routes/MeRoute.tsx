@@ -52,7 +52,7 @@ export function MeRoute() {
         {account?.signedIn ? (
           <>
             <span className="muted" style={{ fontSize: 13 }}>
-              {account.email ?? account.displayName}
+              {account.email ?? account.displayName ?? t('me.signedIn')}
             </span>
             <button
               type="button"

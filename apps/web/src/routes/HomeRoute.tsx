@@ -213,8 +213,17 @@ export function HomeRoute() {
               Permanent, because the offer can be dismissed forever and a
               dismissed prompt must not be the only way in.
             */}
-            {account.available && !account.signedIn && (
-              <GoogleSignIn href={account.signInHref(window.location.href)} />
+            {/*
+              Signed in, the button has done its job and goes — so something has
+              to take its place. A control that vanishes with nothing where it
+              was reads as a bug, not as success.
+            */}
+            {account.signedIn ? (
+              <a className="paper-link" href="/me" title={account.email ?? undefined}>
+                {account.email ?? t('me.signedIn')}
+              </a>
+            ) : (
+              account.available && <GoogleSignIn href={account.signInHref(window.location.href)} />
             )}
             <button type="button" className="paper-link" onClick={() => setIntro(true)}>
               {t('home.howTo')}

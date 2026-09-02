@@ -41,6 +41,27 @@ test.describe('what this browser is involved in', () => {
   });
 
   /*
+   * A control that vanishes with nothing where it was reads as a bug rather
+   * than as success, and signing in is exactly when it vanishes.
+   */
+  test('says so where the button was, once signed in', async ({ page }) => {
+    await skipIntro(page);
+    await page.route('**/api/me', async (route) => {
+      await route.fulfill({
+        json: {
+          account: { id: 'ac_x', signedIn: true, email: 'sam@example.com', displayName: 'Sam' },
+          googleAvailable: true,
+          retentionDays: { anonymous: 7, signedIn: 30 },
+        },
+      });
+    });
+
+    await page.goto('/');
+    await expect(page.getByRole('link', { name: 'sam@example.com' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /sign in with google/i })).toHaveCount(0);
+  });
+
+  /*
    * The offer is made once somebody has published something — the first moment
    * there is anything to keep — and never again once they say so. Which is why
    * signing in also has a permanent home: a dismissed prompt must not be the

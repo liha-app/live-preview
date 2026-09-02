@@ -17,6 +17,7 @@ export const en = {
   'account.never': 'Don’t ask again',
   'account.open': 'Account',
   'me.signIn': 'Sign in with Google',
+  'me.signedIn': 'Signed in',
   'me.signOut': 'Sign out',
   'me.previews': 'Previews',
   'me.activity': 'Activity',
