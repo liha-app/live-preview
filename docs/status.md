@@ -203,3 +203,33 @@ actually holds — once the composer is on screen, it holds the caret.
 | Packages                 | 6                                                           |
 | Migrations               | 5                                                           |
 | Languages                | English, Japanese                                           |
+
+---
+
+## Phase 12 — Retention, notifications and accounts
+
+**Shipped.** Nothing is kept forever any more. Retention counts from when a
+preview was last used rather than from when it was made, so a review still
+being read cannot vanish in the middle of it: a day for a sample, a week
+anonymously, a month signed in, and the owner can push any of them out by
+pressing the countdown.
+
+Notifications ask for permission once, on one origin. Every preview is its own
+host and notification permission is per origin, so a per-preview prompt would
+have been a prompt per build. Push messages carry no payload, which keeps RFC
+8291 encryption out of the product and means the subscription's `p256dh` and
+`auth` keys are never requested or stored.
+
+Accounts are minted anonymously the first time somebody acts — never when they
+only read. They buy a list of what you are involved in and a feed of what other
+people said on it. Signing in with Google links the same account rather than
+making a second one. Everything works without any of it.
+
+**Known issues.** Signing in fails in at least one Firefox: the cross-origin
+document navigation to the API host is answered with an empty 403 in
+milliseconds, and succeeds on reload. It reproduces in no other browser and
+under no combination of headers via curl, and every other request that Firefox
+makes to the same host works — so the shape of it is Cloudflare's edge
+challenging that one navigation, not the application. A WAF rule skipping bot
+checks for the API hostname is the fix; it has not been applied, because
+signing in is optional and nothing else depends on it.
