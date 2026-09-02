@@ -155,6 +155,13 @@
   flex: 0 0 auto;
 }
 
+/* The one nav item that opens something, so it carries its mark. */
+.paper-link--agent {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
 .paper__wordmark {
   font-family: var(--hand);
   font-size: 17px;

@@ -120,3 +120,29 @@ test.describe('the introduction', () => {
     );
   });
 });
+
+/*
+ * This is a WebMCP entry, and the landing page is where somebody decides what
+ * it is. "An agent reads your feedback" is something an API integration could
+ * also claim; that the agent is in the same tab, acting on your screen, is the
+ * part that is only true here — and it was the part the page did not say.
+ */
+test.describe('what the landing page claims', () => {
+  test('says the agent is in this browser, and names the door to it', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/');
+
+    await expect(page.locator('.paper__lede')).toContainText(/in the same browser tab/i);
+    await expect(page.locator('.decor-comments')).toContainText(/in this tab/i);
+
+    /*
+     * A judge does not click an unlabelled sparkle beside a theme toggle. The
+     * name has to be on the page, not only in a title attribute — which is
+     * where an accessible-name assertion alone would have been satisfied.
+     */
+    const agent = page.locator('.paper-link--agent');
+    await expect(agent).toHaveText(/agent tools/i);
+    await agent.click();
+    await expect(page.getByRole('dialog')).toContainText(/WebMCP/);
+  });
+});

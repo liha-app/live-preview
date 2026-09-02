@@ -33,7 +33,7 @@ export const en = {
   'me.retention':
     'Previews are deleted after {anonymous} days without being opened. Signing in makes that {signedIn}, and carries this list to your other browsers.',
   'app.tagline':
-    'Share a build, a design or a document at a stable URL. Reviewers mark up what they see; an AI agent reads that feedback with structured context and ships the fix to the same link.',
+    'Share a build, a design or a document at a stable URL. Reviewers mark up what they see, and an agent in the same browser tab reads that feedback as structured context — then ships the fix to the same link.',
 
   'common.cancel': 'Cancel',
   'common.done': 'Done',
@@ -193,6 +193,7 @@ export const en = {
   'agent.readOnly': 'read',
   'agent.writes': 'acts',
   'agent.open': 'Agent tools',
+  'agent.navLabel': 'Agent tools',
 
   'shortcuts.title': 'Keyboard shortcuts',
   'shortcuts.tools': 'Tools',
@@ -218,7 +219,8 @@ export const en = {
   'decor.scrawl': 'text too small here',
   'decor.specOk': 'p.3 OK',
   'decor.sticky': 'Reviewers draw\nstraight on\nthe screen',
-  'decor.comments': 'An agent reads it and\nships the fix to the same URL',
+  'decor.comments':
+    'the agent is in this tab\nit scrolls your screen to a comment\nand answers in the thread',
   'decor.password': 'you can password-protect it',
   'decor.dropLabel': 'drag & drop',
   'decor.urlLabel': 'a URL that never changes',

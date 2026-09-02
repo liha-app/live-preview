@@ -35,7 +35,7 @@ export const ja: Messages = {
   'me.retention':
     '誰も開かないまま {anonymous} 日経つと削除されます。サインインすると {signedIn} 日になり、この一覧が他のブラウザでも見られます。',
   'app.tagline':
-    'ビルド成果物・デザイン・ドキュメントを固定URLで共有。レビュアーが見たままに指摘を書き込み、AIエージェントがその文脈を構造化データとして読み取って、同じURLに修正版を届けます。',
+    'ビルド成果物・デザイン・ドキュメントを固定URLで共有。レビュアーが見たままに指摘を書き込み、同じタブにいるAIエージェントがその文脈を構造化データとして読み取って、同じURLに修正版を届けます。',
 
   'common.cancel': 'キャンセル',
   'common.done': '完了',
@@ -195,6 +195,7 @@ export const ja: Messages = {
   'agent.readOnly': '読み取り',
   'agent.writes': '操作',
   'agent.open': 'エージェントツール',
+  'agent.navLabel': 'エージェント',
 
   'shortcuts.title': 'キーボードショートカット',
   'shortcuts.tools': 'ツール',
@@ -220,7 +221,8 @@ export const ja: Messages = {
   'decor.scrawl': 'ここ、文字小さい',
   'decor.specOk': 'p.3 OK',
   'decor.sticky': 'クライアントは\n画面の上に直接\nペンで書ける',
-  'decor.comments': 'AIエージェントが読み取り、\n同じURLに修正版が出る',
+  'decor.comments':
+    'エージェントは同じタブにいる\n画面をコメントまでスクロールし\nスレッドに返信する',
   'decor.password': 'パスワードもかけられる',
   'decor.dropLabel': 'ドラッグ&ドロップ',
   'decor.urlLabel': '固定URLができる',

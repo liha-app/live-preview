@@ -41,14 +41,19 @@ function PageChrome({ onAgentPanel }: { onAgentPanel?(): void }) {
   return (
     <>
       {onAgentPanel && (
+        /*
+         * Named, not just drawn. This is the door to what the page publishes to
+         * an agent, and an unlabelled sparkle beside a theme toggle is not a
+         * door anyone opens.
+         */
         <button
           type="button"
-          className="btn btn--icon btn--quiet"
+          className="paper-link paper-link--agent"
           onClick={onAgentPanel}
-          aria-label={t('agent.open')}
           title={t('agent.open')}
         >
-          <Sparkles size={15} strokeWidth={1.75} aria-hidden="true" />
+          <Sparkles size={13} strokeWidth={1.75} aria-hidden="true" />
+          {t('agent.navLabel')}
         </button>
       )}
       <LocaleToggle />
