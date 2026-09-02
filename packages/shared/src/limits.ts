@@ -62,6 +62,27 @@ export const LIMITS = {
    */
   sampleLifetimeMs: 24 * 60 * 60 * 1000,
   /**
+   * How long an upload lasts, counted from when it was last used rather than
+   * from when it was made.
+   *
+   * A review that is still being read must not disappear in the middle of it,
+   * and a preview nobody has opened in a week is not one anybody is waiting on.
+   * Signing in buys a longer window, and the owner can push it out by hand at
+   * any time — nothing here deletes something somebody is still using.
+   */
+  anonymousLifetimeMs: 7 * 24 * 60 * 60 * 1000,
+  signedInLifetimeMs: 30 * 24 * 60 * 60 * 1000,
+  /**
+   * How stale `last_used_at` may get before it is worth a write.
+   *
+   * Sliding retention means every read could touch the database. At an hour's
+   * granularity a week-long window is still a week-long window, and a busy
+   * preview costs one write an hour instead of one per page load.
+   */
+  useTouchIntervalMs: 60 * 60 * 1000,
+  /** Sessions, which slide the same way. */
+  sessionLifetimeMs: 400 * 24 * 60 * 60 * 1000,
+  /**
    * How many people one preview can notify.
    *
    * A single comment wakes every watcher, so this is the fan-out of one request

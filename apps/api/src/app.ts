@@ -36,6 +36,25 @@ import { matchContentPath, resolveViaReferer, serveVersionFile } from './content
 import { DEMO_TITLE, demoComments, demoFiles } from './demo.js';
 import { isUsableEndpoint, notifyWatchers, pendingFor, vapidKeys, watchedBy } from './notify.js';
 import { serviceWorker, watchPage, watchScript } from './notification-site.js';
+import {
+  APP_HEADER,
+  clearCookie,
+  readCaller,
+  readCookie,
+  requireCaller,
+  signInWithGoogle,
+  startSession,
+  SESSION_COOKIE,
+} from './accounts.js';
+import { extendPreview, touchPreview } from './retention.js';
+import {
+  exchangeCode,
+  googleConfig,
+  OAUTH_COOKIE,
+  readPending,
+  safeReturn,
+  startSignIn,
+} from './google.js';
 import { resolveConfig, type Env, type ResolvedConfig } from './env.js';
 import { ApiError, badRequest, notFound, tooLarge } from './errors.js';
 import type { Database } from './ports.js';
@@ -54,11 +73,18 @@ import {
   insertPreview,
   insertVersion,
   listComments,
+  activityFor,
   addPushWatch,
   countWatchers,
   deletePushSubscription,
   expiredPreviews,
+  deleteSession,
   deleteWatchesFor,
+  mergeAccounts,
+  previewsFor,
+  recordInvolvement,
+  setPreviewAccount,
+  type AccountRow,
   listVersions,
   removePushWatch,
   upsertPushSubscription,
@@ -73,7 +99,7 @@ import {
   updatePreviewFields,
   type PreviewRow,
 } from './repo.js';
-import { ownerUrl, toShareInfo } from './serialize.js';
+import { ownerUrl, shareUrl, toShareInfo } from './serialize.js';
 import { entriesFromFormData, prepareUpload, storeVersionFiles } from './uploads.js';
 import {
   commentView,
@@ -85,7 +111,7 @@ import {
   type ViewContext,
 } from './views.js';
 
-type Variables = { config: ResolvedConfig };
+type Variables = { config: ResolvedConfig; caller: AccountRow | null };
 type App = { Bindings: Env; Variables: Variables };
 
 const NO_STORE = { 'cache-control': 'no-store' } as const;
@@ -139,6 +165,11 @@ export function createApp() {
   app.use('*', async (c, next) => {
     const config = resolveConfig(c.env, new URL(c.req.url));
     c.set('config', config);
+    /*
+     * Only ever read here; an account is minted where one is actually needed,
+     * so somebody who only reads a shared link is never given one.
+     */
+    c.set('caller', (await readCaller(c.env.DB, c.req.raw, config)).account);
     await next();
     for (const [key, value] of Object.entries(
       corsHeaders(c.req.header('origin') ?? null, config),
@@ -233,7 +264,32 @@ export function createApp() {
   const loadPreview = async (c: { env: Env; req: { param: (k: string) => string } }) => {
     const preview = await findPreviewBySlug(c.env.DB, c.req.param('slug'));
     if (!preview) throw notFound('Preview not found.');
+    // Retention counts from use, so opening a review is itself use. Bounded to
+    // once an hour, or a busy preview would be a write per page load.
+    await touchPreview(c.env.DB, preview);
     return preview;
+  };
+
+  /**
+   * Attaches whoever is asking to a preview, minting an anonymous account if
+   * this is the first thing they have done.
+   *
+   * Called where somebody acts — making a preview, leaving a comment — never
+   * where they only read, so a passer-by following a shared link is not given
+   * an identity for looking.
+   */
+  const attach = async (
+    c: Context<App>,
+    previewId: string,
+    role: 'owner' | 'reviewer',
+  ): Promise<AccountRow | null> => {
+    const caller = await requireCaller(c.env.DB, c.req.raw, c.get('config'));
+    if (!caller.account) return null;
+    if (caller.setCookie) c.header('set-cookie', caller.setCookie, { append: true });
+
+    await recordInvolvement(c.env.DB, caller.account.id, previewId, role);
+    if (role === 'owner') await setPreviewAccount(c.env.DB, previewId, caller.account.id);
+    return caller.account;
   };
 
   const viewContext = async (
@@ -293,6 +349,9 @@ export function createApp() {
       updated_at: timestamp,
       deleted_at: null,
       expires_at: null,
+      account_id: null,
+      last_used_at: null,
+      is_sample: 0,
     });
     await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
@@ -316,6 +375,8 @@ export function createApp() {
       authorized: true,
     };
     const version = (await findVersion(c.env.DB, previewId, versionId))!;
+
+    await attach(c, previewId, 'owner');
 
     return c.json(
       {
@@ -372,6 +433,9 @@ export function createApp() {
       deleted_at: null,
       // A sample is minted per visitor and nobody comes back to one.
       expires_at: new Date(Date.now() + LIMITS.sampleLifetimeMs).toISOString(),
+      account_id: null,
+      last_used_at: null,
+      is_sample: 1,
     });
     await insertVersion(c.env.DB, {
       id: versionId,
@@ -414,6 +478,8 @@ export function createApp() {
         created_at: seededAt(index),
         resolved_at: null,
         resolved_by: null,
+        // Nobody left these; they are part of the sample.
+        account_id: null,
       });
       createdIds.push(id);
     }
@@ -428,6 +494,8 @@ export function createApp() {
       authorized: true,
     };
     const version = (await findVersion(c.env.DB, previewId, versionId))!;
+    await attach(c, previewId, 'owner');
+
     return c.json(
       {
         preview: await previewView(ctx, preview),
@@ -490,6 +558,9 @@ export function createApp() {
       updated_at: timestamp,
       deleted_at: null,
       expires_at: null,
+      account_id: null,
+      last_used_at: null,
+      is_sample: 0,
     });
     await recordRateEvent(c.env.DB, 'preview', rateKey);
     await insertVersion(c.env.DB, {
@@ -513,6 +584,8 @@ export function createApp() {
       authorized: true,
     };
     const version = (await findVersion(c.env.DB, previewId, versionId))!;
+    await attach(c, previewId, 'owner');
+
     return c.json(
       {
         preview: await previewView(ctx, preview),
@@ -568,6 +641,146 @@ export function createApp() {
     await deleteWatchesFor(c.env.DB, preview.id);
     await deleteStoredObjects(c.env, `previews/${preview.id}/`);
     return c.json({ deleted: true, previewId: preview.id }, 200, NO_STORE);
+  });
+
+  // ------------------------------------------------------------ accounts
+  //
+  // Everything above works without any of this. An account is minted the first
+  // time somebody acts, so what it buys is a list and an activity feed; signing
+  // in with Google is what carries them to another browser.
+
+  app.get('/api/me', async (c) => {
+    const caller = c.get('caller');
+    const config = c.get('config');
+    return c.json(
+      {
+        account: caller
+          ? {
+              id: caller.id,
+              signedIn: caller.google_sub !== null,
+              email: caller.email,
+              displayName: caller.display_name,
+            }
+          : null,
+        googleAvailable: googleConfig(c.env) !== null,
+        retentionDays: {
+          anonymous: Math.round(LIMITS.anonymousLifetimeMs / 86_400_000),
+          signedIn: Math.round(LIMITS.signedInLifetimeMs / 86_400_000),
+        },
+      },
+      200,
+      NO_STORE,
+    );
+  });
+
+  app.get('/api/me/previews', async (c) => {
+    const caller = c.get('caller');
+    if (!caller) return c.json({ previews: [] }, 200, NO_STORE);
+
+    const config = c.get('config');
+    const rows = await previewsFor(c.env.DB, caller.id);
+    const previews = await Promise.all(
+      rows.map(async (row) => ({
+        ...(await previewView(
+          {
+            db: c.env.DB,
+            config,
+            requestUrl: new URL(c.req.url),
+            authorized: false,
+          },
+          row,
+        )),
+        role: row.role === 'owner' ? ('owner' as const) : ('reviewer' as const),
+      })),
+    );
+    return c.json({ previews }, 200, NO_STORE);
+  });
+
+  app.get('/api/me/activity', async (c) => {
+    const caller = c.get('caller');
+    if (!caller) return c.json({ activity: [] }, 200, NO_STORE);
+
+    const config = c.get('config');
+    const rows = await activityFor(c.env.DB, caller.id);
+    return c.json(
+      {
+        activity: rows.map((row) => ({
+          commentId: row.id,
+          slug: row.slug,
+          previewTitle: row.preview_title,
+          authorName: row.author_name,
+          authorKind: row.author_kind === 'agent' ? 'agent' : 'human',
+          body: row.body,
+          status: row.status,
+          createdAt: row.created_at,
+          url: `${shareUrl(config, row.slug)}?comment=${row.id}`,
+        })),
+      },
+      200,
+      NO_STORE,
+    );
+  });
+
+  /** Pushes a preview's expiry out. The owner holds the proof already. */
+  app.post('/api/previews/:slug/extend', async (c) => {
+    const preview = await loadPreview(c);
+    await requireOwner(c.req.raw, preview);
+    const expiresAt = await extendPreview(c.env.DB, preview);
+    return c.json({ expiresAt }, 200, NO_STORE);
+  });
+
+  // ------------------------------------------------------------ sign-in
+
+  app.get('/api/auth/google/start', async (c) => {
+    const google = googleConfig(c.env);
+    const config = c.get('config');
+    if (!google) {
+      throw new ApiError('not_supported', 'This deployment does not offer Google sign-in.');
+    }
+
+    const returnTo = safeReturn(c.req.query('return') ?? null, config);
+    const { authorizeUrl, cookie } = await startSignIn(google, config, returnTo);
+    c.header('set-cookie', cookie, { append: true });
+    return c.redirect(authorizeUrl, 302);
+  });
+
+  app.get('/api/auth/google/callback', async (c) => {
+    const google = googleConfig(c.env);
+    const config = c.get('config');
+    if (!google) {
+      throw new ApiError('not_supported', 'This deployment does not offer Google sign-in.');
+    }
+
+    const pending = await readPending(config, readCookie(c.req.raw, OAUTH_COOKIE));
+    const state = c.req.query('state');
+    const code = c.req.query('code');
+
+    // The state in the URL has to match the one in the cookie: that comparison
+    // is the whole CSRF defence of this flow.
+    if (!pending || !state || pending.state !== state || !code) {
+      return c.redirect(`${config.appOrigin}/?signin=failed`, 302);
+    }
+
+    const profile = await exchangeCode(google, config, code, pending.verifier);
+    if (!profile) return c.redirect(`${config.appOrigin}/?signin=failed`, 302);
+
+    const current = (await readCaller(c.env.DB, c.req.raw, config)).account;
+    const { account, merged } = await signInWithGoogle(c.env.DB, current, profile);
+    // Signing in on a second browser must not strand what the first one made.
+    if (merged) await mergeAccounts(c.env.DB, merged, account.id);
+
+    c.header('set-cookie', await startSession(c.env.DB, account.id, config), { append: true });
+    c.header('set-cookie', `${OAUTH_COOKIE}=; Path=/api/auth; Max-Age=0; HttpOnly`, {
+      append: true,
+    });
+    return c.redirect(pending.returnTo, 302);
+  });
+
+  app.post('/api/auth/signout', async (c) => {
+    const token = readCookie(c.req.raw, SESSION_COOKIE);
+    if (token) await deleteSession(c.env.DB, await hashToken(token));
+    c.header('set-cookie', clearCookie(c.get('config')), { append: true });
+    return c.json({ ok: true }, 200, NO_STORE);
   });
 
   // --------------------------------------------------------------- push
@@ -869,9 +1082,15 @@ export function createApp() {
       created_at: nowIso(),
       resolved_at: null,
       resolved_by: null,
+      account_id: null as string | null,
     };
+    const author = await attach(c, preview.id, 'reviewer');
+    row.account_id = author?.id ?? null;
     await insertComment(c.env.DB, row);
     await recordRateEvent(c.env.DB, 'comment', key);
+
+    // Somebody is using this preview, so its clock restarts.
+    await touchPreview(c.env.DB, preview);
 
     /*
      * Telling people is not this request's job. It is a handful of round trips

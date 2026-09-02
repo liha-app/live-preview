@@ -1,3 +1,4 @@
+import { LIMITS } from '@liha/shared';
 import type { Database } from './ports.js';
 
 export interface PreviewRow {
@@ -13,6 +14,12 @@ export interface PreviewRow {
   deleted_at: string | null;
   /** When this preview stops existing, or null if it does not. */
   expires_at: string | null;
+  /** The account that made it, if it was made through the app. */
+  account_id: string | null;
+  /** When it was last read or written; retention counts from here. */
+  last_used_at: string | null;
+  /** Samples keep a flat 24 hours and do not slide. */
+  is_sample: number;
 }
 
 export interface VersionRow {
@@ -41,6 +48,8 @@ export interface CommentRow {
   created_at: string;
   resolved_at: string | null;
   resolved_by: string | null;
+  /** Who left it, when they were signed in to anything — including anonymously. */
+  account_id: string | null;
 }
 
 export const nowIso = (): string => new Date().toISOString();
@@ -49,8 +58,9 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
   await db
     .prepare(
       `INSERT INTO previews (id, slug, title, type, current_version_id, owner_token_hash,
-        password_hash, created_at, updated_at, deleted_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+        password_hash, created_at, updated_at, deleted_at, expires_at,
+        account_id, last_used_at, is_sample)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
     )
     .bind(
       row.id,
@@ -63,6 +73,9 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
       row.created_at,
       row.updated_at,
       row.expires_at,
+      row.account_id,
+      row.last_used_at,
+      row.is_sample,
     )
     .run();
 }
@@ -183,8 +196,8 @@ export async function insertComment(db: Database, row: CommentRow): Promise<void
   await db
     .prepare(
       `INSERT INTO comments (id, preview_id, version_id, parent_id, author_name, author_kind,
-        body, target, status, created_at, resolved_at, resolved_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+        body, target, status, created_at, resolved_at, resolved_by, account_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
     )
     .bind(
       row.id,
@@ -197,6 +210,7 @@ export async function insertComment(db: Database, row: CommentRow): Promise<void
       row.target,
       row.status,
       row.created_at,
+      row.account_id,
     )
     .run();
 }
@@ -570,4 +584,213 @@ export async function countWatchers(db: Database, previewId: string): Promise<nu
     .bind(previewId)
     .first<{ n: number }>();
   return Number(row?.n ?? 0);
+}
+
+// --------------------------------------------------------------- accounts
+
+export interface AccountRow {
+  id: string;
+  google_sub: string | null;
+  email: string | null;
+  display_name: string | null;
+  created_at: string;
+  last_seen_at: string;
+}
+
+export interface SessionRow {
+  token_hash: string;
+  account_id: string;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string;
+}
+
+export async function insertAccount(db: Database, row: AccountRow): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO accounts (id, google_sub, email, display_name, created_at, last_seen_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(row.id, row.google_sub, row.email, row.display_name, row.created_at, row.last_seen_at)
+    .run();
+}
+
+export function findAccount(db: Database, id: string): Promise<AccountRow | null> {
+  return db.prepare('SELECT * FROM accounts WHERE id = ?').bind(id).first<AccountRow>();
+}
+
+export function findAccountByGoogleSub(db: Database, sub: string): Promise<AccountRow | null> {
+  return db.prepare('SELECT * FROM accounts WHERE google_sub = ?').bind(sub).first<AccountRow>();
+}
+
+export async function linkGoogleAccount(
+  db: Database,
+  id: string,
+  profile: { sub: string; email: string | null; name: string | null },
+): Promise<void> {
+  await db
+    .prepare(
+      'UPDATE accounts SET google_sub = ?, email = ?, display_name = ?, last_seen_at = ? WHERE id = ?',
+    )
+    .bind(profile.sub, profile.email, profile.name, nowIso(), id)
+    .run();
+}
+
+export async function touchAccount(db: Database, id: string): Promise<void> {
+  await db.prepare('UPDATE accounts SET last_seen_at = ? WHERE id = ?').bind(nowIso(), id).run();
+}
+
+export async function insertSession(db: Database, row: SessionRow): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO sessions (token_hash, account_id, created_at, last_seen_at, expires_at)
+         VALUES (?, ?, ?, ?, ?)`,
+    )
+    .bind(row.token_hash, row.account_id, row.created_at, row.last_seen_at, row.expires_at)
+    .run();
+}
+
+export async function findSession(db: Database, tokenHash: string): Promise<SessionRow | null> {
+  return db
+    .prepare('SELECT * FROM sessions WHERE token_hash = ? AND expires_at > ?')
+    .bind(tokenHash, nowIso())
+    .first<SessionRow>();
+}
+
+export async function touchSession(db: Database, tokenHash: string): Promise<void> {
+  const now = nowIso();
+  await db
+    .prepare('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE token_hash = ?')
+    .bind(now, new Date(Date.now() + LIMITS.sessionLifetimeMs).toISOString(), tokenHash)
+    .run();
+}
+
+export async function deleteSession(db: Database, tokenHash: string): Promise<void> {
+  await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+}
+
+/**
+ * Moves everything one account holds onto another.
+ *
+ * Signing in on a second browser must not strand what the first one made, so
+ * the anonymous account being signed in from is emptied into the Google one
+ * rather than left as a second owner of the same things.
+ */
+export async function mergeAccounts(db: Database, from: string, into: string): Promise<void> {
+  await db
+    .prepare('UPDATE previews SET account_id = ? WHERE account_id = ?')
+    .bind(into, from)
+    .run();
+  await db
+    .prepare('UPDATE comments SET account_id = ? WHERE account_id = ?')
+    .bind(into, from)
+    .run();
+  // A row for each already exists on the target when both took part in the
+  // same preview, so the conflict is expected rather than an error.
+  await db
+    .prepare(`UPDATE OR IGNORE account_previews SET account_id = ? WHERE account_id = ?`)
+    .bind(into, from)
+    .run();
+  await db.prepare('DELETE FROM account_previews WHERE account_id = ?').bind(from).run();
+  await db.prepare('DELETE FROM sessions WHERE account_id = ?').bind(from).run();
+  await db.prepare('DELETE FROM accounts WHERE id = ?').bind(from).run();
+}
+
+/** Records that an account has something to do with a preview. */
+export async function recordInvolvement(
+  db: Database,
+  accountId: string,
+  previewId: string,
+  role: 'owner' | 'reviewer',
+): Promise<void> {
+  const now = nowIso();
+  await db
+    .prepare(
+      `INSERT INTO account_previews (account_id, preview_id, role, created_at, last_seen_at)
+         VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (account_id, preview_id) DO UPDATE SET
+         last_seen_at = excluded.last_seen_at,
+         role = CASE WHEN account_previews.role = 'owner' THEN 'owner' ELSE excluded.role END`,
+    )
+    .bind(accountId, previewId, role, now, now)
+    .run();
+}
+
+export interface InvolvedPreviewRow extends PreviewRow {
+  role: string;
+  involved_at: string;
+}
+
+export async function previewsFor(
+  db: Database,
+  accountId: string,
+  limit = 100,
+): Promise<InvolvedPreviewRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT p.*, ap.role AS role, ap.last_seen_at AS involved_at
+         FROM previews p
+         JOIN account_previews ap ON ap.preview_id = p.id
+        WHERE ap.account_id = ? AND p.deleted_at IS NULL
+        ORDER BY p.updated_at DESC
+        LIMIT ?`,
+    )
+    .bind(accountId, limit)
+    .all<InvolvedPreviewRow>();
+  return results;
+}
+
+export interface ActivityRow extends CommentRow {
+  slug: string;
+  preview_title: string;
+}
+
+/**
+ * What has happened on the previews an account takes part in.
+ *
+ * Its own comments are left out: activity is for what somebody else did.
+ */
+export async function activityFor(
+  db: Database,
+  accountId: string,
+  limit = 50,
+): Promise<ActivityRow[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT c.*, p.slug AS slug, p.title AS preview_title
+         FROM comments c
+         JOIN account_previews ap ON ap.preview_id = c.preview_id
+         JOIN previews p ON p.id = c.preview_id
+        WHERE ap.account_id = ?
+          AND p.deleted_at IS NULL
+          AND (c.account_id IS NULL OR c.account_id != ?)
+        ORDER BY c.created_at DESC
+        LIMIT ?`,
+    )
+    .bind(accountId, accountId, limit)
+    .all<ActivityRow>();
+  return results;
+}
+
+export async function setPreviewExpiry(
+  db: Database,
+  id: string,
+  lastUsedAt: string,
+  expiresAt: string | null,
+): Promise<void> {
+  await db
+    .prepare('UPDATE previews SET last_used_at = ?, expires_at = ? WHERE id = ?')
+    .bind(lastUsedAt, expiresAt, id)
+    .run();
+}
+
+export async function setPreviewAccount(
+  db: Database,
+  id: string,
+  accountId: string,
+): Promise<void> {
+  await db
+    .prepare('UPDATE previews SET account_id = ? WHERE id = ? AND account_id IS NULL')
+    .bind(accountId, id)
+    .run();
 }

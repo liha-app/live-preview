@@ -61,6 +61,14 @@ export interface Env {
   VAPID_PRIVATE_KEY?: string;
   /** The VAPID `sub` claim. Defaults to the app origin, which RFC 8292 allows. */
   VAPID_SUBJECT?: string;
+  /**
+   * Google sign-in, which is optional everywhere. Without these the endpoints
+   * report that this deployment does not offer it, and everything else works
+   * exactly as before.
+   */
+  GOOGLE_CLIENT_ID?: string;
+  /** A secret. */
+  GOOGLE_CLIENT_SECRET?: string;
   /** Optional Cloudflare Browser Rendering binding used for URL screenshots. */
   BROWSER?: unknown;
 }

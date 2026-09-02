@@ -46,6 +46,7 @@ export const ID_PREFIXES = {
    * every id here is 22 random base58 characters rather than a counter.
    */
   push: 'ps',
+  account: 'ac',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
@@ -54,7 +55,7 @@ export function generateId(kind: IdKind): string {
   return `${ID_PREFIXES[kind]}_${randomString(22)}`;
 }
 
-const ID_PATTERN = /^(pv|vr|cm|rs|ps)_[1-9A-HJ-NP-Za-km-z]{22}$/;
+const ID_PATTERN = /^(pv|vr|cm|rs|ps|ac)_[1-9A-HJ-NP-Za-km-z]{22}$/;
 
 export function isValidId(value: string, kind?: IdKind): boolean {
   if (!ID_PATTERN.test(value)) return false;
