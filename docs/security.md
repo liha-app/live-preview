@@ -204,6 +204,20 @@ at the network layer for deployments that care. This is stated in
   under `default-src 'none'; script-src 'self'` — an origin holding a
   notification permission is not one to guard with `unsafe-inline`.
 
+## Imported pages
+
+- **A snapshot's own Content-Security-Policy is removed.** Such a policy is
+  written in terms of `'self'`, and `'self'` is wherever the document is served
+  from — so moving the document silently redefines every rule in it. The site's
+  own stylesheets and scripts become third-party to it and it blocks them; the
+  review bridge is inline, so it blocks that too, and feedback on an imported
+  page loses the DOM context that is the point of it.
+
+  Nothing is given up. What keeps a snapshot harmless is the
+  `Content-Security-Policy: sandbox` header this server sends and the iframe it
+  is shown in, neither of which the snapshot can reach. Every other tag is left
+  exactly as it was.
+
 ## Denial of service
 
 - 30 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).

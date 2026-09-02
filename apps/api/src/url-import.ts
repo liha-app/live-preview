@@ -68,18 +68,36 @@ function extractTitle(html: string, fallback: string): string {
 }
 
 /**
- * Rewrites the snapshot so relative assets keep resolving against the original
- * site. `target="_blank"` on links keeps in-page navigation from replacing the
- * sandboxed snapshot with the live site.
+ * A page's own Content-Security-Policy, delivered in its markup.
+ *
+ * It has to go, and not because policies are inconvenient. Such a policy is
+ * written in terms of `'self'`, and `'self'` means the origin the document is
+ * served from. Moving the document to a snapshot host silently redefines every
+ * one of those rules: the site's own stylesheets, scripts and images become
+ * third-party to it and it blocks them, so the snapshot renders as bare text.
+ * The review bridge is inline, so it blocks that too — feedback on an imported
+ * page would quietly lose the DOM context that is the point of it.
+ *
+ * Nothing is given up by dropping it. What keeps a snapshot harmless is this
+ * server's own `Content-Security-Policy: sandbox` header and the iframe it is
+ * shown in — neither of which the snapshot can reach.
  */
-function withBaseTag(html: string, baseUrl: string): string {
+const POLICY_META =
+  /<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy(?:-report-only)?["']?[^>]*>/gi;
+
+/**
+ * Rewrites the snapshot so relative assets keep resolving against the original
+ * site, and drops the policy that would stop them.
+ */
+function prepareSnapshot(html: string, baseUrl: string): string {
+  const stripped = html.replace(POLICY_META, '');
   const baseTag = `<base href="${baseUrl.replace(/"/g, '&quot;')}"><meta name="referrer" content="no-referrer">`;
-  const headOpen = /<head[^>]*>/i.exec(html);
+  const headOpen = /<head[^>]*>/i.exec(stripped);
   if (headOpen) {
     const at = headOpen.index + headOpen[0].length;
-    return html.slice(0, at) + baseTag + html.slice(at);
+    return stripped.slice(0, at) + baseTag + stripped.slice(at);
   }
-  return `<!doctype html><head>${baseTag}</head>${html}`;
+  return `<!doctype html><head>${baseTag}</head>${stripped}`;
 }
 
 /**
@@ -131,7 +149,7 @@ export async function importUrlPreview(
 
   const html = new TextDecoder().decode(buffer);
   const title = extractTitle(html, finalUrl.hostname);
-  const snapshot = new TextEncoder().encode(withBaseTag(html, finalUrl.toString()));
+  const snapshot = new TextEncoder().encode(prepareSnapshot(html, finalUrl.toString()));
 
   const files: ImportedFile[] = [
     { path: 'index.html', bytes: snapshot, contentType: 'text/html; charset=utf-8' },
