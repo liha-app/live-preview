@@ -198,8 +198,8 @@ actually holds — once the composer is on screen, it holds the caret.
 
 |                          |                                                             |
 | ------------------------ | ----------------------------------------------------------- |
-| Unit + integration tests | 319, `pnpm test`, no network needed                         |
-| End-to-end tests         | 84, `pnpm test:e2e`, real Chromium, incl. WCAG 2.1 AA audit |
+| Unit + integration tests | 323, `pnpm test`, no network needed                         |
+| End-to-end tests         | 85, `pnpm test:e2e`, real Chromium, incl. WCAG 2.1 AA audit |
 | Packages                 | 6                                                           |
 | Migrations               | 6                                                           |
 | Languages                | English, Japanese                                           |

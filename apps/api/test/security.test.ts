@@ -323,6 +323,31 @@ describe('deletion', () => {
 
 describe('comment validation', () => {
   /*
+   * A body that is not JSON is the caller's mistake, and it was answered with
+   * 500 "Something went wrong" — the one error an agent could have fixed by
+   * itself, reported as though the server had fallen over.
+   */
+  it('says a broken body is broken, rather than blaming itself', async () => {
+    const server = createTestServer();
+    const created = await server.json<CreatePreviewResult>('/api/previews', {
+      method: 'POST',
+      ...uploadBody([{ path: 'index.html', content: '<h1>Hi</h1>', type: 'text/html' }]),
+    });
+
+    for (const body of ['not json', '', '{"unclosed": ']) {
+      const response = await server.fetch(`/api/previews/${created.preview.slug}/comments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      });
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      const payload = (await response.json()) as { error: { code: string; message: string } };
+      expect(payload.error.code).toBe('bad_request');
+      expect(payload.error.message).toMatch(/not valid JSON/i);
+    }
+  });
+
+  /*
    * Zod drops unknown keys by default, so a misspelled field used to store an
    * empty target and answer 201 — the caller told their feedback landed, and
    * the thing that makes it worth anything silently gone. An agent writing to

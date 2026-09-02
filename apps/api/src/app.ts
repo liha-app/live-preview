@@ -217,6 +217,25 @@ export function createApp() {
         NO_STORE,
       );
     }
+    /*
+     * A body that is not JSON is the caller's mistake, not this server's, and
+     * it used to be answered with 500 "Something went wrong" — which tells an
+     * agent nothing it can act on. It is the one thing it can fix by itself.
+     */
+    if (error instanceof SyntaxError) {
+      return c.json(
+        {
+          error: {
+            code: 'bad_request',
+            message: 'The request body is not valid JSON.',
+            details: { reason: error.message },
+          },
+        },
+        400,
+        NO_STORE,
+      );
+    }
+
     console.error('unhandled error', error);
     return c.json(
       { error: { code: 'internal_error', message: 'Something went wrong.' } },

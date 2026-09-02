@@ -522,7 +522,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-319 tests, no network access required:
+323 tests, no network access required:
 
 | Suite                    | Covers                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |

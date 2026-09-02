@@ -157,9 +157,13 @@ export function HomeRoute() {
   });
 
   /*
-   * The home page publishes its own, smaller tool set. Without this the one
-   * tool for *creating* a preview would only be offered to an agent already
-   * looking at one.
+   * The home page publishes the same tools, backed by a host that has no
+   * preview to answer about. Without this, the one tool for *creating* a
+   * preview would only ever be offered to an agent already looking at one.
+   *
+   * The reads come back empty and the writes say "Open a preview first",
+   * which is a better answer than a tool that is missing for a reason the
+   * agent cannot see.
    */
   useEffect(() => {
     const handle = registerLihaTools({
