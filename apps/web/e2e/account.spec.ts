@@ -41,6 +41,21 @@ test.describe('what this browser is involved in', () => {
   });
 
   /*
+   * Google refuses on its own page, for reasons only it knows about. All this
+   * end sees is somebody arriving back having got nowhere, and saying nothing
+   * is the difference between "that failed" and "I must have imagined pressing
+   * it".
+   */
+  test('says so when the sign-in comes back empty-handed', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/?signin=failed');
+
+    await expect(page.getByRole('alert')).toContainText(/did not complete the sign-in/i);
+    // And the failure is not left in the URL to be reloaded into again.
+    expect(new URL(page.url()).search).toBe('');
+  });
+
+  /*
    * Hiding the way in is the claim that needs evidence. The first version
    * treated "no answer yet" as "not offered", so a blocked or slow /api/me
    * removed the only door with nothing to show that anything was wrong.

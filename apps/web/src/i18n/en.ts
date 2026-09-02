@@ -18,6 +18,8 @@ export const en = {
   'account.open': 'Account',
   'me.signIn': 'Sign in with Google',
   'me.signedIn': 'Signed in',
+  'me.signInFailed':
+    'Google did not complete the sign-in. Everything still works without it — your previews are unaffected.',
   'me.signOut': 'Sign out',
   'me.previews': 'Previews',
   'me.activity': 'Activity',

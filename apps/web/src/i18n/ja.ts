@@ -20,6 +20,8 @@ export const ja: Messages = {
   'account.open': 'アカウント',
   'me.signIn': 'Google でログイン',
   'me.signedIn': 'サインイン済み',
+  'me.signInFailed':
+    'Google 側でサインインが完了しませんでした。サインインなしでもすべて使えます。プレビューには影響ありません。',
   'me.signOut': 'サインアウト',
   'me.previews': 'プレビュー',
   'me.activity': 'アクティビティ',

@@ -62,6 +62,24 @@ export function HomeRoute() {
   const [askAccount, setAskAccount] = useState(false);
 
   /*
+   * Coming back from a sign-in that did not work.
+   *
+   * Google refuses for reasons only it knows about — an organisation that
+   * blocks unapproved apps, a consent screen limited to one domain — and it
+   * refuses on its own page. All this end sees is somebody arriving back
+   * having got nowhere, and saying nothing about it is the difference between
+   * "that failed" and "I must have imagined pressing it".
+   */
+  const [signInFailed, setSignInFailed] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('signin') !== 'failed') return;
+    setSignInFailed(true);
+    url.searchParams.delete('signin');
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, []);
+
+  /*
    * Offered once somebody has published something, which is the first moment
    * there is anything to keep. The sample goes straight into its review screen,
    * so that path is offered there instead.
@@ -408,6 +426,13 @@ export function HomeRoute() {
         />
       )}
 
+      {signInFailed && (
+        <div className="toasts">
+          <div className="toast toast--error" role="alert">
+            {t('me.signInFailed')}
+          </div>
+        </div>
+      )}
       {showAgent && <AgentPanel registration={registration} onClose={() => setShowAgent(false)} />}
       {askAccount && <AccountModal account={account} onClose={() => setAskAccount(false)} />}
     </div>
