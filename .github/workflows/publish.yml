@@ -68,8 +68,9 @@ jobs:
           set -euo pipefail
           for pkg in shared webmcp mcp cli; do
             echo "::group::@liha-cli/$pkg"
-            ( cd "packages/$pkg" && npm publish --access public --provenance ) \
-              || echo "already published at this version; skipping"
+            tarball="$RUNNER_TEMP/$pkg.tgz"
+            ( cd "packages/$pkg" && pnpm pack --out "$tarball" )
+            npm publish "$tarball" --access public --provenance
             echo "::endgroup::"
           done
 
@@ -78,5 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           for pkg in shared webmcp mcp cli; do
-            ( cd "packages/$pkg" && npm publish --dry-run --access public )
+            tarball="$RUNNER_TEMP/$pkg.tgz"
+            ( cd "packages/$pkg" && pnpm pack --out "$tarball" )
+            npm publish "$tarball" --dry-run --access public
           done
