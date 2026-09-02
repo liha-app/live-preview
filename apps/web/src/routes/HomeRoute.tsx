@@ -214,7 +214,10 @@ export function HomeRoute() {
 
       <div className="paper__shell">
         <header className="paper__head">
-          <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
+          <div className="paper__wordmark">
+            <img src="/liha-mark.svg" alt="" width="22" height="26" />
+            {t('app.name').toLowerCase()}
+          </div>
           <div className="paper__nav">
             {/*
               Always, even with nothing behind it. Signing in is on that page,
@@ -464,7 +467,10 @@ function CreatedPanel({ result, onReset }: { result: CreatePreviewResult; onRese
     <div className="paper">
       <div className="paper__shell">
         <header className="paper__head">
-          <div className="paper__wordmark">{t('app.name').toLowerCase()}</div>
+          <div className="paper__wordmark">
+            <img src="/liha-mark.svg" alt="" width="22" height="26" />
+            {t('app.name').toLowerCase()}
+          </div>
           <div className="paper__nav">
             <PageChrome />
           </div>

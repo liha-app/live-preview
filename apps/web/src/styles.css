@@ -193,6 +193,12 @@ code,
   color: var(--fg);
 }
 
+.topbar__brand {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
 .topbar__title {
   font-weight: 500;
   max-width: 36ch;

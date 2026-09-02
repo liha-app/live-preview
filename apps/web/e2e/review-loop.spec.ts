@@ -426,8 +426,8 @@ test.describe('while you are working somewhere else', () => {
     // Back at the screen, the sidebar is the answer and the badge is noise.
     await page.evaluate(leave(false), false);
     await expect(page).toHaveTitle('Acme');
-    const cleared = await page.locator('link[rel="icon"]').getAttribute('href');
-    expect(decodeURIComponent(cleared ?? '')).toContain('fill="none"');
+    // Back to the mark itself, which is what "nothing waiting" looks like.
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/liha-mark.svg');
   });
 });
 

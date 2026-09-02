@@ -45,15 +45,11 @@
       href="https://fonts.googleapis.com/css2?family=Yomogi&family=Zen+Kaku+Gothic+New:wght@400;500&family=Zen+Kurenaido&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <!--
-      The mark is the red pen ring the whole product is about. It fills in and
-      carries a number when something arrived while you were away; see
-      src/lib/tabBadge.ts, which must keep drawing the same ring.
+      The mark, as a file so it lives in one place. src/lib/tabBadge.ts points
+      at this same path and swaps in a counted badge when something arrived
+      while you were away; a test fails if the two ever disagree.
     -->
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%23e5484d%22%20stroke-width%3D%223.5%22%2F%3E%3C%2Fsvg%3E"
-    />
+    <link rel="icon" type="image/svg+xml" href="/liha-mark.svg" />
     <title>Liha Live Preview</title>
   </head>
   <body>

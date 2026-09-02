@@ -64,6 +64,8 @@ export function TopBar({
   return (
     <header className="topbar">
       <a className="topbar__brand" href={appHome()} title={t('app.name')}>
+        {/* Decoration beside the name it already says. */}
+        <img src="/liha-mark.svg" alt="" width="13" height="16" />
         {t('app.name')}
       </a>
       <span className="topbar__title" title={preview.title}>

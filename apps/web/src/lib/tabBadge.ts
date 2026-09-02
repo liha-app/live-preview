@@ -17,12 +17,21 @@ const svg = (body: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${body}</svg>`,
   )}`;
 
-/** Nothing waiting: an open ring. */
-export const IDLE_ICON = svg(
-  `<circle cx="16" cy="16" r="11" fill="none" stroke="${MARK}" stroke-width="3.5"/>`,
-);
+/**
+ * Nothing waiting: the mark itself.
+ *
+ * A file rather than something drawn here, because it is artwork and belongs
+ * in one place. `index.html` points at the same path so the tab is not blank
+ * before the bundle runs, and a test fails if the two drift apart.
+ */
+export const IDLE_ICON = '/liha-mark.svg';
 
-/** Something waiting: the ring fills in and carries the number. */
+/**
+ * Something waiting: a filled disc carrying the number.
+ *
+ * Deliberately not the mark with a badge on it — at sixteen pixels that is a
+ * smudge. The change of shape is what is legible, so the shape changes.
+ */
 export function badgedIcon(count: number): string {
   const label = count > 9 ? '9+' : String(count);
   return svg(

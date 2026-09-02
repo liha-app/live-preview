@@ -45,6 +45,7 @@ export function MeRoute() {
     <div className="me">
       <header className="me__head">
         <a className="topbar__brand" href="/">
+          <img src="/liha-mark.svg" alt="" width="13" height="16" />
           {t('app.name')}
         </a>
         <span className="spacer" />

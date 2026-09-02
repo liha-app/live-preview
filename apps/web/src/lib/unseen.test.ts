@@ -77,13 +77,21 @@ describe('the tab badge', () => {
   });
 
   /*
-   * The page ships an icon in its markup so the tab is not blank before the
+   * The page names an icon in its markup so the tab is not blank before the
    * bundle runs. If the two drift apart the icon visibly swaps on every load.
    */
-  it('draws the same idle ring that index.html already carries', () => {
+  it('points at the same mark that index.html already names', () => {
     // Read from the package root: Vite rewrites `new URL(…, import.meta.url)`
     // into an asset URL, which for the entry HTML is the dev server's.
     const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
-    expect(html).toContain(IDLE_ICON);
+    expect(html).toContain(`href="${IDLE_ICON}"`);
+  });
+
+  it('ships the mark it points at', () => {
+    const mark = readFileSync(join(process.cwd(), 'public', IDLE_ICON), 'utf8');
+    expect(mark.startsWith('<svg')).toBe(true);
+    // Artwork, not a placeholder, and small enough to be an icon.
+    expect(mark.length).toBeGreaterThan(500);
+    expect(mark.length).toBeLessThan(20_000);
   });
 });
