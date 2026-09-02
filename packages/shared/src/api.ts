@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { withDefaultScheme } from './url.js';
 import { CommentTargetSchema } from './annotations.js';
 import { LIMITS } from './limits.js';
 
@@ -147,7 +148,10 @@ export type UpdatePreviewInput = z.infer<typeof UpdatePreviewInputSchema>;
 export const SetCurrentVersionInputSchema = z.object({ versionId: z.string() });
 
 export const CreateUrlPreviewInputSchema = z.object({
-  url: z.string().url(),
+  // `example.com` is a URL to everybody except a parser, so the scheme is
+  // filled in before it is checked — for the CLI and the agent as well as the
+  // form. Anything that already has a scheme is left alone.
+  url: z.string().transform(withDefaultScheme).pipe(z.string().url()),
   title: z.string().trim().max(LIMITS.maxTitleLength).optional(),
   password: z.string().optional(),
 });

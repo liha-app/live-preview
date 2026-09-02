@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UrlValidationError, assertPublicHttpUrl, isPublicHttpUrl, safeFetch } from './url.js';
+import {
+  UrlValidationError,
+  assertPublicHttpUrl,
+  isPublicHttpUrl,
+  safeFetch,
+  withDefaultScheme,
+} from './url.js';
 
 const BLOCKED = [
   'http://localhost/',
@@ -130,5 +136,43 @@ describe('safeFetch', () => {
         maxRedirects: 2,
       }),
     ).rejects.toMatchObject({ code: 'too_many_redirects' });
+  });
+});
+
+/*
+ * People write `example.com`, not `https://example.com` — browsers have filled
+ * that in for twenty years. Refusing it asks somebody to type punctuation to
+ * prove they meant it.
+ */
+describe('filling in a scheme nobody typed', () => {
+  it('assumes https when there is none', () => {
+    expect(withDefaultScheme('example.com')).toBe('https://example.com');
+    expect(withDefaultScheme('  example.com/page?a=1  ')).toBe('https://example.com/page?a=1');
+    // Scheme-relative means the same thing here.
+    expect(withDefaultScheme('//example.com')).toBe('https://example.com');
+  });
+
+  it('leaves alone anything that already has one', () => {
+    expect(withDefaultScheme('http://example.com')).toBe('http://example.com');
+    expect(withDefaultScheme('HTTPS://example.com')).toBe('HTTPS://example.com');
+  });
+
+  /*
+   * The dangerous ones have a scheme, so they are left exactly as they are and
+   * refused by the check that follows — rather than being quietly rewritten
+   * into something that passes it.
+   */
+  it('does not rewrite a scheme into a safe-looking one', () => {
+    for (const hostile of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,x']) {
+      expect(withDefaultScheme(hostile), hostile).toBe(hostile);
+      expect(isPublicHttpUrl(withDefaultScheme(hostile)), hostile).toBe(false);
+    }
+  });
+
+  it('still refuses what the checks refuse, with the scheme filled in', () => {
+    for (const blocked of ['localhost', '127.0.0.1', '10.0.0.1', '169.254.169.254']) {
+      expect(isPublicHttpUrl(withDefaultScheme(blocked)), blocked).toBe(false);
+    }
+    expect(isPublicHttpUrl(withDefaultScheme('example.com'))).toBe(true);
   });
 });

@@ -1074,6 +1074,11 @@
  * same corner and the same height as the controls beside it, and nothing else
  * about it changes.
  */
+/* The hint becomes the complaint, in the place the hint was. */
+.paper-url__note--bad {
+  color: var(--paper-pen);
+}
+
 .paper .gbtn {
   border-radius: var(--rough-d);
   height: 30px;

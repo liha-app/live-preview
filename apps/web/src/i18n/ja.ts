@@ -245,6 +245,7 @@ export const ja: Messages = {
   'home.urlHeading': 'すでに公開されているURLをレビューする',
   'home.urlPlaceholder': 'https://example.com/landing',
   'home.import': '読み込む',
+  'home.urlInvalid': 'ウェブアドレスとして読めません。example.com のように入力してください。',
   'home.urlHint':
     'ページのHTMLをスナップショットして、その上に指摘を書き込めるようにします。プライベートIPや内部アドレスは拒否されます。',
 

@@ -243,6 +243,8 @@ export const en = {
   'home.urlHeading': 'Or review a URL that is already deployed',
   'home.urlPlaceholder': 'https://example.com/landing',
   'home.import': 'Import',
+  'home.urlInvalid':
+    'That does not look like a web address. Try example.com or https://example.com/page.',
   'home.urlHint':
     'Liha snapshots the page HTML so reviewers can mark it up. Private and internal addresses are rejected.',
 

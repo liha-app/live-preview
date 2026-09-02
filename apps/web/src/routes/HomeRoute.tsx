@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CreatePreviewResult } from '@liha/shared';
-import { formatBytes } from '@liha/shared';
+import { formatBytes, isPublicHttpUrl, withDefaultScheme } from '@liha/shared';
 import { api } from '../lib/api.js';
 import { AccountModal } from '../components/AccountModal.js';
 import { GoogleSignIn } from '../components/GoogleSignIn.js';
@@ -100,6 +100,7 @@ export function HomeRoute() {
   const [password, setPassword] = useState('');
   const [url, setUrl] = useState('');
   const [result, setResult] = useState<CreatePreviewResult | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [showAgent, setShowAgent] = useState(false);
   const [intro, setIntro] = useState(false);
 
@@ -292,18 +293,35 @@ export function HomeRoute() {
                     placeholder={t('home.urlPlaceholder')}
                     aria-label={t('home.urlHeading')}
                     value={url}
-                    onChange={(event) => setUrl(event.target.value)}
+                    onChange={(event) => {
+                      setUrl(event.target.value);
+                      if (urlError) setUrlError(null);
+                    }}
                   />
                   <button
                     type="button"
                     className="paper-btn paper-btn--ink"
                     disabled={!url || busy}
-                    onClick={() => setPending('url')}
+                    onClick={() => {
+                      /*
+                       * Checked here rather than after the sheet: a form that
+                       * takes two more clicks to tell you the first one was
+                       * wrong has wasted both of them.
+                       */
+                      if (!isPublicHttpUrl(withDefaultScheme(url))) {
+                        setUrlError(t('home.urlInvalid'));
+                        return;
+                      }
+                      setUrlError(null);
+                      setPending('url');
+                    }}
                   >
                     {t('home.import')}
                   </button>
                 </div>
-                <p className="paper-url__note">{t('home.urlHint')}</p>
+                <p className={`paper-url__note${urlError ? ' paper-url__note--bad' : ''}`}>
+                  {urlError ?? t('home.urlHint')}
+                </p>
               </div>
             )}
 

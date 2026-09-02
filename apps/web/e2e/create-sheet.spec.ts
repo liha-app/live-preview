@@ -60,3 +60,55 @@ test.describe('the create sheet', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 });
+
+/*
+ * A form that takes two more clicks to tell you the first one was wrong has
+ * wasted both of them. And `example.com` is a URL to everybody except a parser.
+ */
+test.describe('the URL field', () => {
+  const field = (page: import('@playwright/test').Page) =>
+    page.getByRole('textbox', { name: /review a url that is already deployed/i });
+
+  test('says what is wrong before opening anything', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Review a URL' }).click();
+
+    await field(page).fill('not a web address at all');
+    await page.getByRole('button', { name: 'Import' }).click();
+
+    await expect(page.getByText(/does not look like a web address/i)).toBeVisible();
+    // Nothing opened, so nothing has to be closed again.
+    await expect(page.getByRole('button', { name: 'Create preview' })).toHaveCount(0);
+
+    // Typing again clears the complaint rather than leaving it under a fixed field.
+    await field(page).fill('example.com');
+    await expect(page.getByText(/does not look like a web address/i)).toHaveCount(0);
+  });
+
+  test('takes an address without its scheme', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Review a URL' }).click();
+
+    await field(page).fill('example.com');
+    await page.getByRole('button', { name: 'Import' }).click();
+    await expect(page.getByRole('button', { name: 'Create preview' })).toBeVisible();
+  });
+
+  /*
+   * The dangerous ones have a scheme, so they are never rewritten into
+   * something that would pass.
+   */
+  test('refuses an address pointed at this machine, with or without a scheme', async ({ page }) => {
+    await skipIntro(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Review a URL' }).click();
+
+    for (const hostile of ['localhost:8787', 'http://127.0.0.1/', 'javascript:alert(1)']) {
+      await field(page).fill(hostile);
+      await page.getByRole('button', { name: 'Import' }).click();
+      await expect(page.getByText(/does not look like a web address/i), hostile).toBeVisible();
+    }
+  });
+});

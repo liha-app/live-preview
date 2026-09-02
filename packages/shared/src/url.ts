@@ -17,6 +17,26 @@ export class UrlValidationError extends Error {
   }
 }
 
+/**
+ * Fills in the scheme somebody did not type.
+ *
+ * People write `example.com`, not `https://example.com` — the browser has been
+ * filling that in for them for twenty years. Refusing it is asking them to
+ * type punctuation to prove they meant it.
+ *
+ * Only when there is no scheme at all: `javascript:` and `file:` have one, so
+ * they are left exactly as they are and refused by the check that follows,
+ * rather than being quietly rewritten into something that passes.
+ */
+const HAS_SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+export function withDefaultScheme(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === '' || HAS_SCHEME.test(trimmed)) return trimmed;
+  // `//example.com` is a scheme-relative URL, and means the same thing here.
+  return `https://${trimmed.replace(/^\/+/, '')}`;
+}
+
 export const ALLOWED_URL_PORTS = new Set(['', '80', '443', '8080', '8443']);
 
 const BLOCKED_HOSTNAME_SUFFIXES = [
