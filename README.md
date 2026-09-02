@@ -108,7 +108,8 @@ are looking:
   once and its service worker covers all of them. Anyone who can read the
   feedback can ask to be told about it — it is the reviewers who are waiting on
   a reply. No token goes with you: it is traded for a grant good for ten
-  minutes and one preview.
+  minutes and one preview. The notification origin doubles as the place to see
+  what you are being told about, and to stop.
 - **The tab tells you what arrived while you were away.** The screen polls, and
   anything that turns up while it is behind another window shows up as a count
   on the tab's icon and title. It clears the moment you come back, because from
@@ -482,7 +483,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-240 tests, no network access required:
+279 tests, no network access required:
 
 | Suite                | Covers                                                                                                                                            |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |

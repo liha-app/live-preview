@@ -48,6 +48,17 @@ button[disabled] { opacity: 0.5; cursor: default; }
 a { color: inherit; }
 .quiet { font-size: 13px; }
 .bad { color: var(--mark); }
+h2 { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase;
+     letter-spacing: 0.04em; margin: 26px 0 8px; }
+ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+li { display: flex; align-items: center; gap: 10px; padding: 9px 0;
+     border-bottom: 1px solid var(--line); font-size: 14px; }
+li a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.quiet-btn {
+  background: transparent; color: var(--muted); border-color: var(--line);
+  padding: 5px 10px; font-size: 13px; font-weight: 400;
+}
+button.quiet-btn:hover { color: var(--fg); }
 `;
 
 const RING = `<svg class="ring" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="#e5484d" stroke-width="3.5"/></svg>`;
@@ -66,6 +77,11 @@ export function watchPage(): string {
   <h1 id="head">Notifications</h1>
   <p id="body">Getting ready…</p>
   <p><button id="go" hidden></button></p>
+  <section id="watching" hidden>
+    <h2>Being told about</h2>
+    <ul id="list"></ul>
+    <p><button id="stopAll" class="quiet-btn">Stop all notifications</button></p>
+  </section>
   <p class="quiet" id="back" hidden></p>
 </main>
 <script src="/app.js"></script>
@@ -88,9 +104,10 @@ const head = document.getElementById('head');
 const body = document.getElementById('body');
 const go = document.getElementById('go');
 const back = document.getElementById('back');
+const watching = document.getElementById('watching');
+const list = document.getElementById('list');
+const stopAll = document.getElementById('stopAll');
 
-// The grant arrives in the fragment, which browsers do not send to servers and
-// proxies do not log. It is spent immediately and taken out of the URL.
 let token = null;
 let title = 'this preview';
 let returnTo = null;
@@ -99,9 +116,8 @@ let returnTo = null;
  * The grant arrives in the fragment, which browsers do not send to servers and
  * proxies do not log. It is spent immediately and taken out of the URL.
  *
- * Read on hashchange as well as at load: arriving at this page when it is
- * already open changes only the fragment, and a fragment change does not
- * reload anything.
+ * Read on hashchange as well as at load: arriving here when this page is
+ * already open changes only the fragment, and that reloads nothing.
  */
 function readGrant() {
   const params = new URLSearchParams(location.hash.slice(1));
@@ -123,33 +139,64 @@ function say(heading, text, isBad) {
   body.className = isBad ? 'bad' : '';
 }
 
-function offerReturn() {
-  if (!returnTo) return;
-  let url;
-  try {
-    url = new URL(returnTo);
-  } catch {
-    return;
-  }
-  // Only back to where you came from, never wherever a link says.
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
-  if (url.hostname !== location.hostname && !url.hostname.endsWith('.' + baseDomain())) return;
-  back.hidden = false;
-  const a = document.createElement('a');
-  a.href = url.href;
-  a.textContent = 'Back to the review';
-  back.replaceChildren(a);
+function baseDomain() {
+  return location.hostname.split('.').slice(-2).join('.');
 }
 
-function baseDomain() {
-  const parts = location.hostname.split('.');
-  return parts.slice(-2).join('.');
+/** Only somewhere this deployment serves, never wherever a link says. */
+function safeUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  if (url.hostname !== location.hostname && !url.hostname.endsWith('.' + baseDomain())) return null;
+  return url;
+}
+
+function offerReturn() {
+  const url = returnTo && safeUrl(returnTo);
+  if (!url) return;
+  const link = document.createElement('a');
+  link.href = url.href;
+  link.textContent = 'Back to the review';
+  back.replaceChildren(link);
+  back.hidden = false;
 }
 
 function keyBytes(base64url) {
   const padded = base64url.replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+/*
+ * The worker needs to know who it is to ask what it missed. The Cache API is
+ * shared between this page and the worker on the same origin, so writing it
+ * here is enough — no message passing, and nothing to go stale if the worker is
+ * asleep when this runs.
+ */
+async function identity(next) {
+  const store = await caches.open('liha-identity');
+  if (next === undefined) {
+    const held = await store.match('/id');
+    return held ? (await held.json()).id : null;
+  }
+  if (next === null) await store.delete('/id');
+  else await store.put('/id', new Response(JSON.stringify({ id: next })));
+  return next;
+}
+
+async function post(path, payload) {
+  const response = await fetch(API + path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(path + ' failed: ' + response.status);
+  return response.json();
 }
 
 async function subscribe() {
@@ -164,51 +211,122 @@ async function subscribe() {
       applicationServerKey: keyBytes(VAPID),
     }));
 
-  const response = await fetch(API + '/api/push/subscribe', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ endpoint: subscription.endpoint, watchToken: token }),
+  const result = await post('/api/push/subscribe', {
+    endpoint: subscription.endpoint,
+    watchToken: token,
   });
-  if (!response.ok) throw new Error('subscribe failed: ' + response.status);
-  const result = await response.json();
-
-  // The worker needs to know who it is to ask what it missed. The Cache API is
-  // shared between this page and the worker on the same origin, so writing it
-  // here is enough — no message passing, and nothing to go stale if the worker
-  // is asleep when this runs.
-  const store = await caches.open('liha-identity');
-  await store.put('/id', new Response(JSON.stringify({ id: result.subscriptionId })));
+  await identity(result.subscriptionId);
   return result;
 }
 
+/** Everything this browser has asked to be told about, with a way to stop. */
+async function renderWatching() {
+  const id = await identity();
+  if (!id) {
+    watching.hidden = true;
+    return 0;
+  }
+
+  let items = [];
+  try {
+    items = (await post('/api/push/watches', { subscriptionId: id })).items || [];
+  } catch {
+    watching.hidden = true;
+    return 0;
+  }
+
+  list.replaceChildren();
+  for (const item of items) {
+    const row = document.createElement('li');
+    const link = document.createElement('a');
+    const url = safeUrl(item.url);
+    if (url) link.href = url.href;
+    link.textContent = item.title;
+    const stop = document.createElement('button');
+    stop.className = 'quiet-btn';
+    stop.textContent = 'Stop';
+    stop.addEventListener('click', async () => {
+      stop.disabled = true;
+      await post('/api/push/unsubscribe', { subscriptionId: id, previewId: item.previewId });
+      await renderWatching();
+    });
+    row.append(link, stop);
+    list.append(row);
+  }
+
+  watching.hidden = items.length === 0;
+  return items.length;
+}
+
+stopAll.addEventListener('click', async () => {
+  stopAll.disabled = true;
+  const id = await identity();
+  if (id) await post('/api/push/unsubscribe', { subscriptionId: id });
+
+  // Tell the browser too, or it keeps a subscription pointed at a server that
+  // has forgotten it.
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = registration && (await registration.pushManager.getSubscription());
+  if (subscription) await subscription.unsubscribe();
+  await identity(null);
+
+  stopAll.disabled = false;
+  await renderWatching();
+  say('Stopped', 'Nothing will be sent to this browser.');
+});
+
 async function start() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    say('Not supported here', 'This browser cannot receive web push. On iPhone, add this page to the Home Screen first.', true);
-    return;
-  }
-  if (!token) {
-    say('Nothing to set up', 'Open this from a review screen so it knows which preview to watch.', true);
-    return;
-  }
-  if (Notification.permission === 'denied') {
-    say('Notifications are blocked', 'Allow notifications for this site in your browser settings, then try again.', true);
-    offerReturn();
+    say(
+      'Not supported here',
+      'This browser cannot receive web push. On iPhone, add this page to the Home Screen first.',
+      true,
+    );
     return;
   }
 
-  // Already allowed: this is the second preview and there is nothing to ask.
+  if (Notification.permission === 'denied') {
+    say(
+      'Notifications are blocked',
+      'Allow notifications for this site in your browser settings, then try again.',
+      true,
+    );
+    offerReturn();
+    await renderWatching();
+    return;
+  }
+
+  // No grant: this is somebody coming to see or change what they already have.
+  if (!token) {
+    const count = await renderWatching();
+    if (count > 0) say('Notifications', 'You are being told about the reviews below.');
+    else
+      say(
+        'Nothing set up',
+        'Open this from a review screen to be told when someone comments on it.',
+      );
+    return;
+  }
+
+  // Already allowed: a second preview, and nothing to ask.
   if (Notification.permission === 'granted') {
     try {
       await subscribe();
       say('Done', 'You will be told when someone comments on ' + title + '.');
     } catch (error) {
-      say('That did not work', String(error && error.message ? error.message : error), true);
+      say('That did not work', String((error && error.message) || error), true);
     }
     offerReturn();
+    await renderWatching();
     return;
   }
 
-  say('Notifications', 'Allow notifications once here, and you will be told about comments on ' + title + ' — and on anything else you ask to watch.');
+  say(
+    'Notifications',
+    'Allow notifications once here, and you will be told about comments on ' +
+      title +
+      ' — and on anything else you ask to watch.',
+  );
   go.hidden = false;
   go.textContent = 'Allow notifications';
   go.addEventListener('click', async () => {
@@ -224,10 +342,11 @@ async function start() {
       say('Done', 'You will be told when someone comments on ' + title + '.');
       go.hidden = true;
     } catch (error) {
-      say('That did not work', String(error && error.message ? error.message : error), true);
+      say('That did not work', String((error && error.message) || error), true);
       go.disabled = false;
     }
     offerReturn();
+    await renderWatching();
   });
 }
 

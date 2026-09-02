@@ -34,7 +34,7 @@ import {
 import { matchContentHost, matchReviewHost, originWildcard } from './content-origin.js';
 import { matchContentPath, resolveViaReferer, serveVersionFile } from './content.js';
 import { DEMO_TITLE, demoComments, demoFiles } from './demo.js';
-import { isUsableEndpoint, notifyWatchers, pendingFor, vapidKeys } from './notify.js';
+import { isUsableEndpoint, notifyWatchers, pendingFor, vapidKeys, watchedBy } from './notify.js';
 import { serviceWorker, watchPage, watchScript } from './notification-site.js';
 import { resolveConfig, type Env, type ResolvedConfig } from './env.js';
 import { ApiError, badRequest, notFound, tooLarge } from './errors.js';
@@ -666,6 +666,16 @@ export function createApp() {
     // Say the same thing for an unknown id as for one with nothing waiting:
     // this endpoint must not become a way to test whether an id exists.
     const items = await pendingFor(c.env, c.get('config'), body.subscriptionId);
+    return c.json({ items }, 200, NO_STORE);
+  });
+
+  app.post('/api/push/watches', async (c) => {
+    const body = (await c.req.json()) as { subscriptionId?: unknown };
+    if (typeof body.subscriptionId !== 'string') throw badRequest('subscriptionId is required.');
+
+    // Same empty answer for an unknown id as for one watching nothing: this
+    // must not become a way to test whether an id exists.
+    const items = await watchedBy(c.env, c.get('config'), body.subscriptionId);
     return c.json({ items }, 200, NO_STORE);
   });
 

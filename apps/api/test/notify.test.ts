@@ -314,6 +314,112 @@ describe('being notified', () => {
   });
 });
 
+describe('stopping', () => {
+  const watchesOfSubscription = (server: TestServer, subscriptionId: string) =>
+    server.json<{ items: { previewId: string; title: string; url: string }[] }>(
+      '/api/push/watches',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subscriptionId }),
+      },
+    );
+
+  const stop = (server: TestServer, payload: Record<string, string>) =>
+    server.fetch('/api/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+  async function watchingTwo(server: TestServer) {
+    const first = await newPreview(server);
+    const second = await newPreview(server);
+    let id = '';
+    for (const created of [first, second]) {
+      const response = await subscribe(
+        server,
+        (await watchToken(server, created)).token,
+        'https://push.test/one-browser',
+      );
+      id = ((await response.json()) as { subscriptionId: string }).subscriptionId;
+    }
+    return { id, first, second };
+  }
+
+  /*
+   * The notification origin is the only place that knows a browser's
+   * subscription, which makes it the only place that can show what it is
+   * watching — and the only place that can offer to stop.
+   */
+  it('lists what this browser asked to be told about', async () => {
+    const server = await serverWithPush();
+    const { id, first, second } = await watchingTwo(server);
+
+    const { items } = await watchesOfSubscription(server, id);
+    expect(items.map((item) => item.title)).toEqual(['Untitled preview', 'Untitled preview']);
+    expect(items.map((item) => item.previewId).sort()).toEqual(
+      [first.preview.id, second.preview.id].sort(),
+    );
+    expect(items[0]?.url).toMatch(/^https?:\/\//);
+  });
+
+  it('stops one review without stopping the others', async () => {
+    const server = await serverWithPush();
+    const { id, first, second } = await watchingTwo(server);
+
+    expect((await stop(server, { subscriptionId: id, previewId: first.preview.id })).status).toBe(
+      200,
+    );
+
+    const { items } = await watchesOfSubscription(server, id);
+    expect(items.map((item) => item.previewId)).toEqual([second.preview.id]);
+
+    // And nothing is sent about the one that was stopped.
+    const capture = captureSends();
+    try {
+      await server.fetch(`/api/previews/${first.preview.slug}/comments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ authorName: 'Mika', body: 'Still here?' }),
+      });
+    } finally {
+      capture.restore();
+    }
+    expect(capture.sent).toEqual([]);
+  });
+
+  it('stops everything, and forgets the subscription', async () => {
+    const server = await serverWithPush();
+    const { id, second } = await watchingTwo(server);
+
+    expect((await stop(server, { subscriptionId: id })).status).toBe(200);
+    expect((await watchesOfSubscription(server, id)).items).toEqual([]);
+
+    const capture = captureSends();
+    try {
+      await server.fetch(`/api/previews/${second.preview.slug}/comments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ authorName: 'Mika', body: 'Anyone?' }),
+      });
+    } finally {
+      capture.restore();
+    }
+    expect(capture.sent).toEqual([]);
+
+    const { results } = await server.env.DB.prepare(
+      'SELECT count(*) AS n FROM push_subscriptions',
+    ).all<{ n: number }>();
+    expect(results[0]?.n).toBe(0);
+  });
+
+  it('says nothing for an id it does not know', async () => {
+    const server = await serverWithPush();
+    expect((await watchesOfSubscription(server, 'ps_NotARealSubscriptio')).items).toEqual([]);
+  });
+});
+
 describe('the notification origin', () => {
   it('serves a page, its script and a worker at the root scope', async () => {
     const server = await serverWithPush();

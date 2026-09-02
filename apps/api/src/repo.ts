@@ -512,12 +512,15 @@ export async function watchersOf(db: Database, previewId: string): Promise<PushS
 
 export interface WatchedPreview {
   preview_id: string;
+  created_at: string;
   notified_at: string;
 }
 
 export async function watchesOf(db: Database, subscriptionId: string): Promise<WatchedPreview[]> {
   const { results } = await db
-    .prepare('SELECT preview_id, notified_at FROM push_watches WHERE subscription_id = ?')
+    .prepare(
+      'SELECT preview_id, created_at, notified_at FROM push_watches WHERE subscription_id = ?',
+    )
     .bind(subscriptionId)
     .all<WatchedPreview>();
   return results;

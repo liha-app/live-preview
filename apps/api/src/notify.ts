@@ -117,3 +117,36 @@ export async function pendingFor(
 
   return items;
 }
+
+export interface WatchedItem {
+  previewId: string;
+  title: string;
+  url: string;
+  since: string;
+}
+
+/**
+ * What this browser has asked to be told about.
+ *
+ * The notification origin is the only place that knows a browser's
+ * subscription, which makes it the only place that can show this — and the
+ * only place that can offer to stop.
+ */
+export async function watchedBy(
+  env: Env,
+  config: ResolvedConfig,
+  subscriptionId: string,
+): Promise<WatchedItem[]> {
+  const items: WatchedItem[] = [];
+  for (const watch of await watchesOf(env.DB, subscriptionId)) {
+    const preview = await findPreviewById(env.DB, watch.preview_id);
+    if (!preview || preview.deleted_at) continue;
+    items.push({
+      previewId: preview.id,
+      title: preview.title,
+      url: shareUrl(config, preview.slug),
+      since: watch.created_at,
+    });
+  }
+  return items;
+}
