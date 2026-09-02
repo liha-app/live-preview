@@ -218,6 +218,24 @@ at the network layer for deployments that care. This is stated in
   is shown in, neither of which the snapshot can reach. Every other tag is left
   exactly as it was.
 
+### What a snapshot cannot carry
+
+A snapshot is the same markup served from somewhere else, and the site's own
+stylesheets, scripts and images load from it exactly as before. **Anything
+fetched in CORS mode does not**, and fonts are always fetched in CORS mode. A
+site that does not send `Access-Control-Allow-Origin` on its font files — which
+is most of them, because until now nothing needed it — will render here in a
+fallback face.
+
+This is not something this end can fix without becoming a page archiver:
+fetching every stylesheet, rewriting every `url()` and storing the assets. The
+review screen says so instead, on the preview itself, because a reviewer who
+does not know is a reviewer filing feedback about type that is only wrong here.
+
+Site owners who want their pages to snapshot faithfully can send
+`Access-Control-Allow-Origin: *` on font responses, which is what public font
+CDNs have always done.
+
 ## Denial of service
 
 - 30 MB and 2,000 files per version (configurable via `MAX_VERSION_BYTES`).

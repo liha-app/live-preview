@@ -64,6 +64,9 @@ export const ja: Messages = {
   'topbar.ownerSettings': 'オーナー設定',
   'topbar.shortcuts': 'キーボードショートカット',
   'topbar.passwordProtected': 'パスワード保護',
+  'topbar.snapshot': 'スナップショット',
+  'topbar.snapshotNote':
+    '{url} をこのバージョン作成時に取り込んだものです。他オリジンからの利用を許可していない素材（多くはフォント）は代替に置き換わるため、書体が実物と異なることがあります。',
   'topbar.expiresDays': 'あと{days}日',
   'topbar.expiresHours': 'あと{hours}時間',
   'topbar.expiresMinutes': 'あと{minutes}分',

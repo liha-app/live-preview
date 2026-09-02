@@ -201,6 +201,21 @@ code,
   white-space: nowrap;
 }
 
+/* A fact about what you are looking at, not an error. */
+.topbar__snapshot {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  cursor: help;
+  display: inline-flex;
+  flex: none;
+  font-size: 11.5px;
+  gap: 4px;
+  padding: 2px 8px 2px 6px;
+  white-space: nowrap;
+}
+
 /* Quiet by design: it is a fact about the preview, not a warning. */
 button.topbar__expiry {
   cursor: pointer;
@@ -1177,7 +1192,8 @@ pre.snippet {
   }
 
   /* On a phone the title and the tools come first. */
-  .topbar__expiry {
+  .topbar__expiry,
+  .topbar__snapshot {
     display: none;
   }
 

@@ -62,6 +62,9 @@ export const en = {
   'topbar.ownerSettings': 'Owner settings',
   'topbar.shortcuts': 'Keyboard shortcuts',
   'topbar.passwordProtected': 'Password protected',
+  'topbar.snapshot': 'snapshot',
+  'topbar.snapshotNote':
+    'A snapshot of {url}, taken when this version was made. Assets the site does not allow other origins to use — fonts, most often — fall back here, so type may look different from the real page.',
   'topbar.expiresDays': '{days} days left',
   'topbar.expiresHours': 'Expires in {hours}h',
   'topbar.expiresMinutes': 'Expires in {minutes}m',

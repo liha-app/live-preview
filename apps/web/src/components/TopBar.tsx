@@ -1,5 +1,14 @@
 import type { ReactNode } from 'react';
-import { ArrowLeftRight, Clock, Lock, Settings2, Share2, Sparkles, Upload } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Camera,
+  Clock,
+  Lock,
+  Settings2,
+  Share2,
+  Sparkles,
+  Upload,
+} from 'lucide-react';
 import type { Preview, Version } from '@liha/shared';
 import { useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';
@@ -62,6 +71,22 @@ export function TopBar({
       </span>
       {preview.passwordProtected && (
         <Lock size={13} className="faint" role="img" aria-label={t('topbar.passwordProtected')} />
+      )}
+      {preview.manifest?.sourceUrl && (
+        /*
+         * A snapshot is not the page. Its own stylesheets load, but anything
+         * fetched in CORS mode — fonts, most often — needs the origin site to
+         * allow it, and most sites never had a reason to. Saying so is the
+         * difference between a reviewer trusting what they see and filing
+         * feedback about type that is only wrong here.
+         */
+        <span
+          className="topbar__snapshot"
+          title={t('topbar.snapshotNote', { url: preview.manifest.sourceUrl })}
+        >
+          <Camera size={12} strokeWidth={1.75} aria-hidden="true" />
+          {t('topbar.snapshot')}
+        </span>
       )}
       {remaining && (
         /*
