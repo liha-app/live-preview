@@ -275,6 +275,25 @@ Configuration reference:
 | `MAX_VERSION_BYTES`       | Upload cap per version. Default 30 MB.                                                                                                                          |
 | `MAX_TOTAL_BYTES`         | Ceiling on everything the instance stores. Default 5 GB; `0` removes it.                                                                                        |
 
+### Releasing
+
+`.github/workflows/publish.yml` publishes on a `v*` tag. No token is stored
+anywhere: npm's trusted publishing hands the workflow a short-lived OIDC
+credential, which is why it asks for `id-token: write` and why its filename is
+named on each package's npm settings page — npm accepts a publish only from
+that exact workflow in that exact repository.
+
+That is configured per package, on a package that already exists, so the first
+publish of a new name is done by hand:
+
+```bash
+cd packages/shared && npm publish --access public --otp=<code>
+```
+
+Dependencies first — `shared`, `webmcp`, `mcp`, `cli` — because a dependent
+published against a version that does not exist yet installs into a broken
+tree.
+
 ---
 
 ## CLI usage

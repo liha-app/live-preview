@@ -1,0 +1,82 @@
+# Publishes the @liha-cli packages to npm.
+#
+# No token lives anywhere. npm's trusted publishing hands this workflow a
+# short-lived OIDC credential, which is why `id-token: write` is here and why
+# the filename matters: it is named on each package's npm settings page, and
+# npm will only accept a publish that came from this exact workflow in this
+# exact repository.
+#
+# That has to be configured per package, on a package that already exists, so
+# the very first publish of a new name is done by hand. Everything after is
+# this.
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Pack and check without publishing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # The whole point: an OIDC token instead of a stored secret.
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          # Trusted publishing needs Node 22.14+ and npm 11.5.1+.
+          node-version: 22.14
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - run: npm install -g npm@latest
+      - run: npm --version
+
+      - run: pnpm install --frozen-lockfile
+
+      # Nothing ships that has not passed what main has to pass.
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+      # Dependencies first: a dependent published against a version that does
+      # not exist yet installs into a broken tree.
+      - name: Publish
+        if: ${{ !inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          for pkg in shared webmcp mcp cli; do
+            echo "::group::@liha-cli/$pkg"
+            ( cd "packages/$pkg" && npm publish --access public --provenance ) \
+              || echo "already published at this version; skipping"
+            echo "::endgroup::"
+          done
+
+      - name: Pack only
+        if: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          for pkg in shared webmcp mcp cli; do
+            ( cd "packages/$pkg" && npm publish --dry-run --access public )
+          done
