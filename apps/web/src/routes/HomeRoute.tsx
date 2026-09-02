@@ -205,13 +205,17 @@ export function HomeRoute() {
               {t('home.mine')}
             </a>
             {/*
-              Permanent, because the offer below can be dismissed forever and a
+              Straight to Google, because that is what it says. A button whose
+              label is an action and whose behaviour is a dialog is a lie about
+              what pressing it does — the dialog is the offer, this is the act.
+
+              Permanent, because the offer can be dismissed forever and a
               dismissed prompt must not be the only way in.
             */}
             {account.available && !account.signedIn && (
-              <button type="button" className="paper-link" onClick={() => setAskAccount(true)}>
+              <a className="paper-link" href={account.signInHref(window.location.href)}>
                 {t('me.signIn')}
-              </button>
+              </a>
             )}
             <button type="button" className="paper-link" onClick={() => setIntro(true)}>
               {t('home.howTo')}

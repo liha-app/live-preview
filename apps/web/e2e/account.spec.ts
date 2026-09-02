@@ -64,10 +64,15 @@ test.describe('what this browser is involved in', () => {
     await expect(page.getByRole('heading', { name: 'Preview created' })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    // Still reachable by hand, which is the other half of the promise.
+    /*
+     * Still reachable by hand, which is the other half of the promise — and it
+     * goes to Google, because that is what it says. A button whose label is an
+     * action and whose behaviour is a dialog is a lie about what it does.
+     */
     await page.goto('/');
-    await page.getByRole('button', { name: /sign in with google/i }).click();
-    await expect(page.getByRole('dialog').getByText('Keep this on an account?')).toBeVisible();
+    const signIn = page.getByRole('link', { name: /sign in with google/i });
+    await expect(signIn).toBeVisible();
+    await expect(signIn).toHaveAttribute('href', /\/api\/auth\/google\/start\?return=/);
   });
 
   test('lists what I made and what happened on it', async ({ page }) => {
