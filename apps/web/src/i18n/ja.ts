@@ -66,7 +66,7 @@ export const ja: Messages = {
   'topbar.passwordProtected': 'パスワード保護',
   'topbar.snapshot': 'スナップショット',
   'topbar.snapshotNote':
-    '{url} をこのバージョン作成時に取り込んだものです。他オリジンからの利用を許可していない素材（多くはフォント）は代替に置き換わるため、書体が実物と異なることがあります。',
+    '{url} をこのバージョン作成時に取り込んだものです。Webフォントとモジュールスクリプトは他オリジンからの利用許可が必要で、多くのサイトはそれを付けていません。書体が実物と異なったり、スクリプト由来の動きが再現されないことがあります。',
   'topbar.expiresDays': 'あと{days}日',
   'topbar.expiresHours': 'あと{hours}時間',
   'topbar.expiresMinutes': 'あと{minutes}分',

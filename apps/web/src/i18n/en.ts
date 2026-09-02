@@ -64,7 +64,7 @@ export const en = {
   'topbar.passwordProtected': 'Password protected',
   'topbar.snapshot': 'snapshot',
   'topbar.snapshotNote':
-    'A snapshot of {url}, taken when this version was made. Assets the site does not allow other origins to use — fonts, most often — fall back here, so type may look different from the real page.',
+    'A snapshot of {url}, taken when this version was made. Web fonts and module scripts have to be allowed for other origins, and most sites never needed to — so type may differ from the real page, and anything driven by a module script may not run.',
   'topbar.expiresDays': '{days} days left',
   'topbar.expiresHours': 'Expires in {hours}h',
   'topbar.expiresMinutes': 'Expires in {minutes}m',

@@ -220,21 +220,32 @@ at the network layer for deployments that care. This is stated in
 
 ### What a snapshot cannot carry
 
-A snapshot is the same markup served from somewhere else, and the site's own
-stylesheets, scripts and images load from it exactly as before. **Anything
-fetched in CORS mode does not**, and fonts are always fetched in CORS mode. A
-site that does not send `Access-Control-Allow-Origin` on its font files — which
-is most of them, because until now nothing needed it — will render here in a
-fallback face.
+A snapshot is the same markup served from somewhere else. Measured against a
+real site:
 
-This is not something this end can fix without becoming a page archiver:
-fetching every stylesheet, rewriting every `url()` and storing the assets. The
-review screen says so instead, on the preview itself, because a reviewer who
-does not know is a reviewer filing feedback about type that is only wrong here.
+| Loaded by the snapshot    | Result    |
+| ------------------------- | --------- |
+| `<link rel="stylesheet">` | loads     |
+| `<img>`                   | loads     |
+| classic `<script src>`    | loads     |
+| `<script type="module">`  | **fails** |
+| web fonts                 | **fails** |
 
-Site owners who want their pages to snapshot faithfully can send
-`Access-Control-Allow-Origin: *` on font responses, which is what public font
-CDNs have always done.
+The two that fail are the two a browser fetches in CORS mode, and they fail for
+the same reason: the origin site has to say other origins may use them, and
+almost none do — until something like this existed, nothing needed it. So a
+modern site snapshots with its layout intact, in a fallback face, with anything
+driven by a module script inert.
+
+This end cannot fix it without becoming a page archiver: fetching every
+stylesheet, rewriting every `url()`, storing the assets. The review screen says
+so instead, on the preview itself — a reviewer who does not know is a reviewer
+filing feedback about type that is only wrong here.
+
+A site owner reviewing their own pages can send `Access-Control-Allow-Origin: *`
+on those responses, which is what public font CDNs have always done. Nobody
+reviewing somebody else's site can, which is why the archiver is the real fix
+rather than the note.
 
 ## Denial of service
 
