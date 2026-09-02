@@ -40,6 +40,7 @@ import { pushSupported, watchUrl } from '../lib/notifications.js';
 import { COMMENT_POLL_MS } from '../lib/unseen.js';
 import { useUnseenComments } from '../lib/useUnseenComments.js';
 import type { Tool } from '../components/AnnotationLayer.js';
+import { appHome } from '../lib/ownPreview.js';
 
 interface AgentEvent {
   id: number;
@@ -628,7 +629,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
           <p className="muted" style={{ margin: 0 }}>
             {t('notFound.body')}
           </p>
-          <a className="btn" href="/">
+          <a className="btn" href={appHome()}>
             {t('notFound.create')}
           </a>
         </div>

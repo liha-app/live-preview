@@ -6,6 +6,7 @@ import { useI18n, useT } from '../i18n/index.js';
 import { timeLeft } from '../lib/expiry.js';
 import { GoogleSignIn } from '../components/GoogleSignIn.js';
 import { LocaleToggle } from '../components/LocaleToggle.js';
+import { appHome } from '../lib/ownPreview.js';
 
 /**
  * Everything this browser is involved in.
@@ -44,7 +45,7 @@ export function MeRoute() {
   return (
     <div className="me">
       <header className="me__head">
-        <a className="topbar__brand" href="/">
+        <a className="topbar__brand" href={appHome()}>
           <img src="/liha-mark.svg" alt="" width="13" height="16" />
           {t('app.name')}
         </a>

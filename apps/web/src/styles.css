@@ -1203,13 +1203,33 @@ pre.snippet {
     display: none;
   }
 
+  /*
+   * On a phone the dock stops floating over the artifact and sits under it.
+   *
+   * Floating is fine on a tall screen, where it costs a sliver. Here the stage
+   * is a little over half a small screen, so a floating dock permanently hides
+   * about a seventh of what is being reviewed — and the artifact is in an
+   * iframe, so no amount of padding on this side moves its content out from
+   * under. Giving the stage a floor the dock stands on is the only way nothing
+   * is covered.
+   */
+  .stage {
+    padding-bottom: 46px;
+  }
+
   .dock {
-    bottom: 10px;
-    padding: 4px;
+    bottom: 5px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .dock button {
+    height: 30px;
+    width: 30px;
   }
 
   .stage__scroll {
-    padding-bottom: 62px;
+    padding-bottom: 0;
   }
 
   .inline-composer {

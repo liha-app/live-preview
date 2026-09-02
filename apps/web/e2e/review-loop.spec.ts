@@ -519,3 +519,20 @@ test.describe('setting up notifications', () => {
     expect(new URLSearchParams(new URL(href).hash.slice(1)).get('t')).toMatch(/^w1\./);
   });
 });
+
+/*
+ * On a preview's own host every path is that preview's review screen, so a way
+ * out that points at "/" arrives back where it started. That is a dead end at
+ * exactly the moment somebody needs a way out — the link under "preview not
+ * found" was one.
+ */
+test.describe('a preview that is not there', () => {
+  test('says so, and offers somewhere to go', async ({ page }) => {
+    await page.goto('/p/zzzzzzzzzzzz');
+
+    await expect(page.getByText(/preview not found/i)).toBeVisible();
+    // Where that link points when each preview has its own host is decided by
+    // appHome(), which has its own test — here it only has to exist.
+    await expect(page.getByRole('link', { name: /create a new preview/i })).toBeVisible();
+  });
+});

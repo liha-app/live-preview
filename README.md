@@ -24,7 +24,9 @@ liha-preview deploy .          →  https://liha.example/p/qxp3z4yqu5ow
    same URL, version 2, comment resolved
 ```
 
-- **MIT licensed**, no accounts, no billing, no SaaS.
+- **MIT licensed**, no sign-up, no billing, no SaaS. Signing in exists and is
+  never required: it lengthens how long a preview is kept and gathers what you
+  are involved in onto one page.
 - **Light and dark themes**, **English and Japanese**, keyboard-driven, zero WCAG 2.1 AA violations.
 - Runs on **Cloudflare Workers + D1 + R2**, and entirely locally with Wrangler.
 - **WebMCP** tools in the browser, a **local MCP server** for coding agents, and
@@ -504,8 +506,11 @@ sandbox` header so it stays contained even when opened directly. It cannot read
   300 MB per preview, 20 new previews per client per five minutes, and a 5 GB
   ceiling on everything the instance stores. Zip expansion is checked _before_
   decompression to refuse zip bombs.
-- **Samples expire after 24 hours**, uploads never. An hourly cron sweeps them;
-  the review screen counts the time down so nobody returns to a surprise 404.
+- **Everything expires, counted from when it was last used** — a day for a
+  sample, a week anonymously, a month signed in. A review still being read
+  cannot vanish in the middle of it, and the owner can push the clock out by
+  pressing the countdown. An hourly cron sweeps what is due, bytes first, and
+  the review screen shows the time left so nobody meets a surprise 404.
 
 Found something? See [SECURITY.md](SECURITY.md).
 
@@ -517,7 +522,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-279 tests, no network access required:
+319 tests, no network access required:
 
 | Suite                    | Covers                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -271,11 +271,13 @@ rather than the note.
   preview frees its space. For a public instance, put a Cloudflare WAF rate
   limiting rule in front as well: it sheds load at the edge, before a request
   costs you a Worker invocation.
-- Samples expire after 24 hours; uploads do not. "Open a sample" mints a real
-  preview that the visitor owns, which is the point — and also means one
-  accumulates per curious visitor, forever, for something nobody comes back to.
-  An hourly cron sweeps them, bytes first and then the row, in bounded batches.
-  Anything somebody uploaded is kept until they delete it.
+- Nothing is kept forever, and the clock counts from last use rather than from
+  upload — a review still being read must not vanish in the middle of it. A
+  sample gets a flat 24 hours and does not slide, because it is minted per
+  curious visitor for something nobody comes back to; an anonymous upload gets a
+  week, a signed-in one a month, and the owner can push either out by hand. An
+  hourly cron sweeps what is due, R2 objects first and then the row, in bounded
+  batches.
 - `Content-Length` is checked before the multipart body is parsed.
 - Zip expansion size and entry count are checked before decompression.
 - Comment bodies are capped at 10,000 characters; every string in a comment

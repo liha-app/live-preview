@@ -19,7 +19,7 @@ liha-preview deploy .          →  https://liha.example/p/qxp3z4yqu5ow
    同じURL、バージョン2、コメントは解決済み
 ```
 
-- **MIT ライセンス**。アカウント登録も課金も SaaS もありません。
+- **MIT ライセンス**。サインアップも課金も SaaS もありません。サインインは用意していますが、必須ではありません — プレビューの保持期間が延び、関わっているものが一覧になるだけです。
 - **ライト / ダークテーマ**、キーボード完結、WCAG 2.1 AA 違反ゼロ。
 - **日本語・英語**対応。
 - **Cloudflare Workers + D1 + R2** で動作し、ローカルは Wrangler だけで完結します。
@@ -322,7 +322,7 @@ liha-preview mcp --root .
 pnpm test
 ```
 
-ネットワーク不要で 279 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 67 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
+ネットワーク不要で 319 件のユニット / 統合テストが走ります。加えて実 Chromium での E2E が 84 件あり、**axe-core による WCAG 2.1 AA 監査**（両テーマ・両言語で違反ゼロが条件）を含みます。
 
 ```bash
 npx playwright install chromium

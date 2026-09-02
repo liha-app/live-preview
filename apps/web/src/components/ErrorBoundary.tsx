@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { en } from '../i18n/en.js';
 import { ja } from '../i18n/ja.js';
 import { readLocale } from '../i18n/index.js';
+import { appHome } from '../lib/ownPreview.js';
 
 interface Props {
   children: ReactNode;
@@ -56,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               {t['error.reload']}
             </button>
-            <a className="btn" href="/">
+            <a className="btn" href={appHome()}>
               {t['error.startOver']}
             </a>
           </div>
