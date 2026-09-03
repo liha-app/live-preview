@@ -8,7 +8,7 @@ _English · [日本語](README.ja.md)_
 ## Try it
 
 - **Live app:** https://livepreview.liha.dev
-- **Demo video:** 2:29
+- **Demo video:** [Watch on YouTube (2:29)](https://www.youtube.com/watch?v=42ETT6sLz9U)
 - **No account required.**
 
 ### Judge quick start
