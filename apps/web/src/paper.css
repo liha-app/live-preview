@@ -1098,36 +1098,195 @@
 }
 
 /*
- * The demo video, drawn rather than fetched.
+ * The demo, docked in the corner.
  *
- * The poster is a sketch of a preview in the same ink as the rest of the sheet,
- * so the card holds its place in the layout without a single request leaving
- * the page. Pressing play swaps it for the real player, and that is the first
- * moment YouTube hears about any of this.
+ * Fixed rather than in the flow, for the same reason the notes around it are
+ * absolute: the sheet has to fit on a screen without scrolling, and a card
+ * added to the column would push the drop target off the bottom of a laptop.
+ * On a phone there is no corner to spare, so it rejoins the column instead.
+ *
+ * The poster is drawn, not fetched. Nothing reaches YouTube until the dialog
+ * opens, and the player exists only while it is open.
  */
 .paper-film {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 34px;
+  gap: 7px;
+  width: min(280px, 100%);
+  margin: 30px auto 0;
 }
 
-.paper-film__title {
-  font-family: var(--hand);
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--paper-muted);
-  margin: 0;
+@media (min-width: 900px) {
+  .paper-film {
+    position: fixed;
+    right: 26px;
+    bottom: 24px;
+    z-index: 30;
+    margin: 0;
+    align-items: stretch;
+  }
+
+  /*
+   * The margin note that used to sit here says what the video now shows. Two
+   * things in one corner is one too many, and the demo is the better of them.
+   */
+  .paper:has(.paper-film) .decor-comments {
+    display: none;
+  }
 }
 
-.paper-film__frame {
-  width: min(560px, 100%);
+.paper-film__poster {
+  position: relative;
+  display: block;
+  width: 100%;
   aspect-ratio: 16 / 9;
+  padding: 0;
   border: 1.5px solid var(--paper-ink);
   border-radius: var(--rough-c);
   background: var(--paper-card);
   box-shadow: 5px 5px 0 var(--paper-shadow);
+  cursor: pointer;
+  color: inherit;
+  overflow: hidden;
+  transition: transform 0.15s ease;
+}
+
+.paper-film__poster:hover,
+.paper-film__poster:focus-visible {
+  transform: translateY(-2px);
+}
+
+.paper-film__poster:focus-visible {
+  outline: 2px solid var(--paper-pen);
+  outline-offset: 3px;
+}
+
+.paper-film__chrome {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-bottom: 1.5px solid var(--paper-ink);
+}
+
+.paper-film__chrome i {
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  border: 1.1px solid var(--paper-ink);
+}
+
+.paper-film__sketch {
+  position: absolute;
+  inset: 28px 18px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paper-film__sketch b,
+.paper-film__sketch s {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-fill);
+  text-decoration: none;
+}
+
+.paper-film__sketch b {
+  width: 42%;
+  height: 8px;
+  background: var(--paper-fill-strong);
+}
+
+/* The button being reviewed — where the demo's first comment lands. */
+.paper-film__sketch em {
+  width: 56px;
+  height: 15px;
+  margin-top: 3px;
+  border: 1.4px solid var(--paper-pen);
+  border-radius: var(--rough-a);
+}
+
+.paper-film__play {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 2px solid var(--paper-pen);
+  border-radius: 50%;
+  background: var(--paper-card);
+  transition: transform 0.15s ease;
+}
+
+/* The triangle, drawn with a border so it needs no asset. */
+.paper-film__play::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  border-style: solid;
+  border-width: 8px 0 8px 13px;
+  border-color: transparent transparent transparent var(--paper-pen);
+}
+
+.paper-film__poster:hover .paper-film__play,
+.paper-film__poster:focus-visible .paper-film__play {
+  transform: scale(1.08);
+}
+
+.paper-film__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--hand);
+  font-size: 12.5px;
+  color: var(--paper-text);
+}
+
+.paper-film__len {
+  font-family: var(--code);
+  font-size: 10px;
+  color: var(--paper-faint);
+}
+
+.paper-film__note {
+  font-family: var(--hand);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--paper-faint);
+  margin: 0;
+  text-align: center;
+}
+
+/* The dialog: big enough to actually watch. */
+.modal--film {
+  position: relative;
+  width: min(1040px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.paper-film__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: var(--rough-c);
+  background: #000;
+  box-shadow: 7px 7px 0 var(--paper-shadow-strong);
   overflow: hidden;
 }
 
@@ -1138,156 +1297,71 @@
   border: 0;
 }
 
-.paper-film__poster {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  display: block;
+/*
+ * Hung on the dialog's corner rather than placed inside the picture: the
+ * player draws its own controls up there, and a second cross beside YouTube's
+ * reads as a mistake.
+ */
+.paper-film__close {
+  position: absolute;
+  top: -13px;
+  right: -13px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
   padding: 0;
-  border: 0;
-  background: var(--paper-card);
-  cursor: pointer;
-  color: inherit;
-}
-
-.paper-film__chrome {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 10px;
-  border-bottom: 1.5px solid var(--paper-ink);
-}
-
-.paper-film__chrome i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1.2px solid var(--paper-ink);
-}
-
-.paper-film__sketch {
-  position: absolute;
-  inset: 40px 26px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.paper-film__sketch b,
-.paper-film__sketch s {
-  display: block;
-  height: 7px;
-  border-radius: 4px;
-  background: var(--paper-fill);
-  text-decoration: none;
-}
-
-.paper-film__sketch b {
-  width: 42%;
-  height: 11px;
-  background: var(--paper-fill-strong);
-}
-
-/* The button being reviewed — the thing the demo's first comment lands on. */
-.paper-film__sketch em {
-  width: 78px;
-  height: 22px;
-  margin-top: 4px;
-  border: 1.5px solid var(--paper-pen);
+  border: 1.5px solid var(--paper-ink);
   border-radius: var(--rough-a);
-}
-
-.paper-film__play {
-  position: absolute;
-  left: 50%;
-  top: 54%;
-  width: 58px;
-  height: 58px;
-  margin: -29px 0 0 -29px;
-  border: 2px solid var(--paper-pen);
-  border-radius: 50%;
   background: var(--paper-card);
-  transition:
-    transform 0.15s ease,
-    background 0.15s ease;
+  color: var(--paper-text);
+  box-shadow: 3px 3px 0 var(--paper-shadow-strong);
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-/* The triangle, drawn with a border so it needs no asset. */
-.paper-film__play::after {
-  content: '';
-  position: absolute;
-  left: 22px;
-  top: 17px;
-  border-style: solid;
-  border-width: 12px 0 12px 19px;
-  border-color: transparent transparent transparent var(--paper-pen);
+.paper-film__close:hover,
+.paper-film__close:focus-visible {
+  background: var(--paper-fill);
 }
 
-.paper-film__poster:hover .paper-film__play,
-.paper-film__poster:focus-visible .paper-film__play {
-  transform: scale(1.06);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .paper-film__play {
-    transition: none;
-  }
-}
-
-.paper-film__poster:focus-visible {
+.paper-film__close:focus-visible {
   outline: 2px solid var(--paper-pen);
-  outline-offset: -4px;
+  outline-offset: 2px;
 }
 
-.paper-film__label {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 14px;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
+/*
+ * Sits on the scrim, which is dark in both themes, so it brings its own paper
+ * rather than borrowing a text colour that only works on one of them.
+ */
+.paper-film__stage-note {
+  align-self: flex-end;
+  margin: 0;
+  padding: 4px 12px 5px;
+  background: var(--paper-card);
+  border: 1.5px solid var(--paper-ink);
+  border-radius: var(--rough-b);
+  box-shadow: 3px 3px 0 var(--paper-shadow);
   font-family: var(--hand);
-  font-size: 14px;
+  font-size: 12.5px;
   color: var(--paper-text);
 }
 
-.paper-film__len {
-  font-family: var(--code);
-  font-size: 11px;
-  color: var(--paper-faint);
-}
-
-.paper-film__note {
-  font-family: var(--hand);
-  font-size: 12.5px;
-  color: var(--paper-faint);
-  margin: 0;
-  text-align: center;
-}
-
-@media (max-width: 560px) {
-  .paper-film {
-    margin-top: 26px;
+@media (prefers-reduced-motion: reduce) {
+  .paper-film__poster,
+  .paper-film__play,
+  .paper-film__close {
+    transition: none;
   }
 
-  .paper-film__sketch {
-    inset: 34px 18px auto;
+  .paper-film__poster:hover,
+  .paper-film__poster:focus-visible {
+    transform: none;
   }
 
-  .paper-film__play {
-    width: 46px;
-    height: 46px;
-    margin: -23px 0 0 -23px;
-  }
-
-  .paper-film__play::after {
-    left: 17px;
-    top: 13px;
-    border-width: 9px 0 9px 15px;
+  .paper-film__poster:hover .paper-film__play,
+  .paper-film__poster:focus-visible .paper-film__play {
+    transform: none;
   }
 }

@@ -18,11 +18,14 @@ export function Modal({
    * survives the visible heading going away.
    */
   bare = false,
+  /** Extra class on the dialog box, for a size `bare` does not cover. */
+  className,
 }: {
   title: string;
   onClose(): void;
   children: React.ReactNode;
   bare?: boolean;
+  className?: string;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -85,7 +88,7 @@ export function Modal({
     <div className="scrim" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className={bare ? 'modal modal--bare' : 'modal'}
+        className={[bare ? 'modal modal--bare' : 'modal', className].filter(Boolean).join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={title}
