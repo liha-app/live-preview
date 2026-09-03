@@ -74,12 +74,12 @@ liha-preview deploy .          →  https://lp-<slug>.liha.review
 Upload an artifact, get a share URL, collect feedback, ship a fix to the same
 URL. Concretely:
 
-| Concept         | What it means                                                                            |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| **Preview**     | A stable share URL, one origin per preview. Never changes.                               |
-| **Version**     | An immutable snapshot of the artifact. Publishing a new one does not move the URL.       |
-| **Comment**     | Anchored feedback, recorded against the version it was left on. Resolved, never deleted. |
-| **Annotation**  | Pin, box, freehand, arrow or highlight, stored in normalized (0–1) coordinates.          |
+| Concept         | What it means                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Preview**     | A stable share URL, one origin per preview. Never changes.                                                                     |
+| **Version**     | An immutable snapshot of the artifact. Publishing a new one does not move the URL.                                             |
+| **Comment**     | Anchored feedback, recorded against the version it was left on. Resolved, never deleted.                                       |
+| **Annotation**  | Pin, box, freehand, arrow or highlight, stored in normalized (0–1) coordinates.                                                |
 | **Owner token** | A bearer token shown once at creation. Ownership works without sign-in; an optional account can keep previews across browsers. |
 
 Supported artifacts: **static sites** (`index.html`, a `dist/` folder, or a zip),
