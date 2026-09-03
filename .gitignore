@@ -26,3 +26,13 @@ test-results/
 # Submission material for the WebMCP Challenge: planning notes, the demo script
 # and the Devpost draft. Kept locally; the public repo is about the product.
 docs/challenge/
+
+# Demo video working files. `raw/fixture.json` carries a live owner token, and
+# the captures and renders are large binaries — the scripts that make them are
+# what belongs in the repository.
+video/raw/
+video/recordings/
+video/narration/
+video/narration-ja/
+video/subtitles/
+video/output/

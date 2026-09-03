@@ -1,0 +1,29 @@
+1
+00:00:00,500 --> 00:00:05,800
+PAGE-PUBLISHED WEBMCP
+13 tools discovered in this tab
+
+2
+00:00:06,000 --> 00:00:13,500
+WEBMCP CALL 1/5
+get_review_summary
+
+3
+00:00:13,700 --> 00:00:20,500
+WEBMCP CALL 2/5
+focus_comment
+
+4
+00:00:20,700 --> 00:00:28,500
+WEBMCP CALL 3/5
+set_viewport · mobile 390px
+
+5
+00:00:28,700 --> 00:00:36,200
+WEBMCP CALL 4/5
+read_artifact_file · assets/site.css
+
+6
+00:00:36,500 --> 00:00:41,500
+WEBMCP CALL 5/5
+add_comment · reply posted
