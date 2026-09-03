@@ -5,6 +5,26 @@ _English · [日本語](README.ja.md)_
 [![CI](https://github.com/liha-app/live-preview/actions/workflows/ci.yml/badge.svg)](https://github.com/liha-app/live-preview/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+## Try it
+
+- **Live app:** https://livepreview.liha.dev
+- **Demo video:** 2:29
+- **No account required.**
+
+### Judge quick start
+
+1. Open the live app in ChatGPT's in-app browser, or Chrome with WebMCP enabled.
+2. Click **See a sample**.
+3. Open the generated review session.
+4. Ask the agent to inspect the unresolved feedback and help fix it.
+5. The page exposes structured WebMCP tools for review state, DOM context,
+   viewport control, artifact files, replies, and resolution.
+
+The key loop:
+
+**Human review → structured WebMCP context → agent fixes source → same preview
+URL → resolve.**
+
 Share a build, a mockup or a document at a stable URL. People mark up what they
 see. An AI agent reads that feedback **with structured context** — the CSS
 selector, the DOM snippet, the page, the viewport — fixes the source, and ships
@@ -15,7 +35,7 @@ button on screen becomes something an agent can act on without anyone copying
 and pasting anything.
 
 ```
-liha-preview deploy .          →  https://liha.example/p/qxp3z4yqu5ow
+liha-preview deploy .          →  https://lp-<slug>.liha.review
 
    reviewer clicks the hero button and writes "make this smaller"
                     ↓
@@ -60,7 +80,7 @@ URL. Concretely:
 | **Version**     | An immutable snapshot of the artifact. Publishing a new one does not move the URL.       |
 | **Comment**     | Anchored feedback, recorded against the version it was left on. Resolved, never deleted. |
 | **Annotation**  | Pin, box, freehand, arrow or highlight, stored in normalized (0–1) coordinates.          |
-| **Owner token** | A bearer token shown once at creation. No login system.                                  |
+| **Owner token** | A bearer token shown once at creation. Ownership works without sign-in; an optional account can keep previews across browsers. |
 
 Supported artifacts: **static sites** (`index.html`, a `dist/` folder, or a zip),
 **images** (PNG, JPEG, WebP, GIF, AVIF), **PDFs** (rendered with pdf.js, comments

@@ -3,6 +3,11 @@
 Recorded per phase, in the order the phases were built. "Remaining" lists work
 that is deliberately not done, not work that was forgotten.
 
+> **Historical build log.** Phase-by-phase counts and remaining-work notes are
+> snapshots from when each phase was completed. For current behavior, see the
+> [README](../README.md) and [WebMCP documentation](webmcp.md); for current
+> automation status, see [GitHub Actions](https://github.com/liha-app/live-preview/actions).
+
 ---
 
 ## Phase 1 — Vertical slice
@@ -66,10 +71,9 @@ separation and exit codes.
 
 ## Phase 4 — WebMCP
 
-**Implemented.** `@liha-cli/webmcp` registers nine tools on
-`document.modelContext`: `get_preview_info`, `get_share_info`, `list_comments`,
-`get_comment`, `add_comment`, `resolve_comment`, `list_versions`,
-`get_review_summary`, and `create_preview_from_url`. Full input schemas,
+**Implemented.** `@liha-cli/webmcp` registers twelve tools on
+`document.modelContext`, plus `create_preview_from_url` when the host supports
+it. Full input schemas,
 `readOnlyHint` on reads, `untrustedContentHint` plus delimiters on everything
 carrying reviewer-written text. Feature-detected; the app is unaffected without
 browser support. Agent tool calls run through the same mutations the UI uses, so
@@ -161,8 +165,10 @@ red-pen drawing (including that the stroke resolves to a real colour), version
 publish keeping the share URL, resolve, the password gate, and a test asserting
 uploaded script cannot read the app's storage or its parent frame.
 
-**Remaining.** No CI workflow. No dark/light toggle — the UI follows the system
-setting. Mobile layout is functional but not optimised.
+**Remaining.** Mobile layout is functional but not optimised.
+
+**Added since this phase.** GitHub Actions runs the CI workflow. The UI has a
+light/dark/system theme switch in the top bar.
 
 **Known issues.** Preview content is served from `*.localhost` subdomains in
 local development, which Safari does not resolve; the README documents the
