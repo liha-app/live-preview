@@ -10,6 +10,36 @@
       content="Share build artifacts for review, and let AI agents close the feedback loop."
     />
     <!--
+      The share card. Absolute URLs, because an unfurl is fetched by a server
+      that has no page to resolve a relative path against.
+
+      This document is also served on every review host, so `og:url` names the
+      landing page rather than whatever origin it was read on. That is
+      deliberate: a review link pasted into Slack should unfurl as the product,
+      not as a preview of somebody's unreleased build.
+
+      Regenerate the image with `node scripts/make-og.mjs` after editing
+      scripts/og-card.html.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Liha Live Preview" />
+    <meta property="og:url" content="https://livepreview.liha.dev/" />
+    <meta property="og:title" content="Liha Live Preview" />
+    <meta
+      property="og:description"
+      content="A stable URL for the build. Reviewers point at what they mean, and the agent in the same tab acts on it."
+    />
+    <meta property="og:image" content="https://livepreview.liha.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="A sheet of graph paper: Liha Live Preview in handwriting, a sketched browser window with one button circled in red pen, and a sticky note reading the agent is in this tab."
+    />
+    <!-- Title, description and image are taken from the og: tags above. -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <!--
       Chrome WebMCP origin trial, so the site publishes its tools in stock
       Chrome without chrome://flags. Two tokens, because the app is served from
       two places: the landing page at https://livepreview.liha.dev, and every
