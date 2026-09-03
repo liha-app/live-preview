@@ -38,6 +38,8 @@ the browser's agent runtime.
 
 ## The tools
 
+Thirteen, when the host supports `create_preview_from_url`; twelve otherwise.
+
 | Tool                      | `readOnlyHint` | `untrustedContentHint` | Notes                                                                           |
 | ------------------------- | :------------: | :--------------------: | ------------------------------------------------------------------------------- |
 | `get_preview_info`        |       ✓        |                        | Also reports `viewerIsOwner`.                                                   |
@@ -48,6 +50,10 @@ the browser's agent runtime.
 | `resolve_comment`         |                |                        | Fails with guidance if this browser has no owner token.                         |
 | `list_versions`           |       ✓        |                        | Newest first.                                                                   |
 | `get_review_summary`      |       ✓        |           ✓            | The whole review state in one call.                                             |
+| `focus_comment`           |                |                        | Moves the reviewer's screen: scrolls to the comment and outlines its element.   |
+| `set_viewport`            |                |                        | `fit` / `desktop` / `tablet` / `mobile` (390px). Web previews only.             |
+| `list_artifact_files`     |       ✓        |                        | Text files in the version on screen.                                            |
+| `read_artifact_file`      |       ✓        |                        | One file out of that version. Binary files are refused.                         |
 | `create_preview_from_url` |                |                        | `openWorldHint`. Only registered if the host supports it.                       |
 
 Descriptions are written to answer _when should I call this_, not just _what is

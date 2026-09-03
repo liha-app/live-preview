@@ -33,15 +33,17 @@ meeting and gets surprised.
 
 Ordered by how early it kills the conversation.
 
-### 1. No identity system — blocking
+### 1. No enterprise identity — blocking
 
-There are no accounts, no SSO, no SAML/OIDC, no SCIM provisioning. Whoever holds
-a preview's owner token is its owner, and tokens cannot be rotated or revoked
-individually.
+There is optional Google sign-in, and an account carries what you own and review
+to your other browsers. That is consumer identity: it is not SSO, and there is
+no SAML/OIDC federation, no SCIM provisioning, no organisations, and no groups.
+Ownership itself is still the owner token — whoever holds it is the owner, and
+tokens cannot be rotated or revoked individually.
 
 For a company this means: no "remove access when someone leaves", no per-user
 audit trail, no group permissions. Enterprise IT will not approve a tool that
-cannot be tied to their directory.
+cannot be tied to their directory, and a Google account is not their directory.
 
 **Effort:** large. OIDC login, an organisations/members model, per-resource
 roles, and a migration path for existing token-owned previews.
@@ -55,13 +57,17 @@ and public-sector buyers treat this as mandatory.
 
 ### 3. Data governance is undefined — blocking
 
-No retention policy, no documented deletion SLA, no data-residency choice, no
-DPA, no sub-processor list, no backup or restore procedure. Deleting a preview
-removes its rows and objects immediately, which is good, but nothing is written
-down and nothing is contractual.
+Retention is now enforced rather than absent: sample previews expire 24 hours
+after they are made, anonymous previews a week after they were last used, and
+previews attached to an account 30 days after last use, extendable in one click.
+A cron sweep deletes expired rows and objects. Deleting a preview by hand removes
+its rows and objects immediately.
 
-GDPR-exposed buyers will also ask where reviewer names and comment text live and
-for how long. Today: in D1, forever.
+What is still missing is everything contractual: no documented deletion SLA, no
+data-residency choice, no DPA, no sub-processor list, no backup or restore
+procedure. A GDPR-exposed buyer will ask where reviewer names and comment text
+live and under whose contract — and the answer is written in code, not in a
+document they can sign.
 
 **Effort:** small technically, real work legally.
 
@@ -78,10 +84,13 @@ load testing. Nobody has run this under concurrent load.
 
 ### 6. Smaller gaps that still get asked about
 
-- **English only.** No i18n scaffolding — relevant given the likely first market.
+- **Two languages.** English and Japanese, switchable in the interface. Adding a
+  third is scaffolding work, not new architecture. Locale is stored per origin,
+  so a preview on its own host can open in the other language.
 - **Browser support** is undocumented and untested outside Chromium. Safari
   cannot resolve the `*.localhost` dev origin, and Safari/Firefox are not in CI.
-- **Mobile** works but is not designed for; annotating on a phone is awkward.
+- **Mobile** is laid out for, but annotating precisely on a phone is still
+  awkward — it is a pointing problem, not a layout one.
 - **No SLA or support channel.**
 - **PDF rendering** loads every page eagerly; a 200-page document will crawl.
 

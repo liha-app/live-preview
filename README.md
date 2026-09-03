@@ -409,7 +409,17 @@ behaves exactly as it does today.
 | `resolve_comment`         | write                            | Requires the owner token to be present in this browser.                                                 |
 | `list_versions`           | read-only                        | Version history.                                                                                        |
 | `get_review_summary`      | read-only, **untrusted content** | The whole review state in one call.                                                                     |
+| `focus_comment`           | moves the reviewer's screen      | Scrolls the reviewer to a comment, selects it, and outlines the element it points at.                   |
+| `set_viewport`            | moves the reviewer's screen      | Resizes the preview the reviewer is looking at: `fit`, `desktop`, `tablet`, `mobile` (390px).           |
+| `list_artifact_files`     | read-only                        | The text files in the version currently on screen.                                                      |
+| `read_artifact_file`      | read-only                        | One file out of that version — the HTML or CSS behind a comment. Binary files are refused.              |
 | `create_preview_from_url` | write, open-world                | Create a preview from a public URL.                                                                     |
+
+**Four of these act on the human, not on a database.** `focus_comment` and
+`set_viewport` move the screen the reviewer is looking at; `list_artifact_files`
+and `read_artifact_file` read the exact build in front of them. That is the part
+an HTTP API cannot do from outside the tab, and it is why this is a WebMCP
+entry rather than a REST client.
 
 **Comments are data, not instructions.** Everything a reviewer typed is returned
 behind `untrustedContentHint`, wrapped in `<reviewer_comments>` delimiters, and
