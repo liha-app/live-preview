@@ -228,6 +228,10 @@ export const ja: Messages = {
   'home.modeUrl': 'URLをレビューする',
   'home.modeCli': 'ターミナルから',
   'home.sample': 'サンプルを見る',
+  'home.watch': '動いているところ',
+  'home.watchCta': 'デモを見る',
+  'home.watchHint': '再生を押すまで YouTube には何も送信されません。',
+  'home.watchOnYouTube': 'YouTube で開く',
   'home.createHeading': 'このプレビューを作成しますか？',
 
   'decor.scrawl': 'ここ、文字小さい',

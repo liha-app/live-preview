@@ -1096,3 +1096,198 @@
   border-radius: var(--rough-d);
   height: 30px;
 }
+
+/*
+ * The demo video, drawn rather than fetched.
+ *
+ * The poster is a sketch of a preview in the same ink as the rest of the sheet,
+ * so the card holds its place in the layout without a single request leaving
+ * the page. Pressing play swaps it for the real player, and that is the first
+ * moment YouTube hears about any of this.
+ */
+.paper-film {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 34px;
+}
+
+.paper-film__title {
+  font-family: var(--hand);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--paper-muted);
+  margin: 0;
+}
+
+.paper-film__frame {
+  width: min(560px, 100%);
+  aspect-ratio: 16 / 9;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: var(--rough-c);
+  background: var(--paper-card);
+  box-shadow: 5px 5px 0 var(--paper-shadow);
+  overflow: hidden;
+}
+
+.paper-film__player {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.paper-film__poster {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: var(--paper-card);
+  cursor: pointer;
+  color: inherit;
+}
+
+.paper-film__chrome {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-bottom: 1.5px solid var(--paper-ink);
+}
+
+.paper-film__chrome i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.2px solid var(--paper-ink);
+}
+
+.paper-film__sketch {
+  position: absolute;
+  inset: 40px 26px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.paper-film__sketch b,
+.paper-film__sketch s {
+  display: block;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--paper-fill);
+  text-decoration: none;
+}
+
+.paper-film__sketch b {
+  width: 42%;
+  height: 11px;
+  background: var(--paper-fill-strong);
+}
+
+/* The button being reviewed — the thing the demo's first comment lands on. */
+.paper-film__sketch em {
+  width: 78px;
+  height: 22px;
+  margin-top: 4px;
+  border: 1.5px solid var(--paper-pen);
+  border-radius: var(--rough-a);
+}
+
+.paper-film__play {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+  border: 2px solid var(--paper-pen);
+  border-radius: 50%;
+  background: var(--paper-card);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+/* The triangle, drawn with a border so it needs no asset. */
+.paper-film__play::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: 17px;
+  border-style: solid;
+  border-width: 12px 0 12px 19px;
+  border-color: transparent transparent transparent var(--paper-pen);
+}
+
+.paper-film__poster:hover .paper-film__play,
+.paper-film__poster:focus-visible .paper-film__play {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper-film__play {
+    transition: none;
+  }
+}
+
+.paper-film__poster:focus-visible {
+  outline: 2px solid var(--paper-pen);
+  outline-offset: -4px;
+}
+
+.paper-film__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--hand);
+  font-size: 14px;
+  color: var(--paper-text);
+}
+
+.paper-film__len {
+  font-family: var(--code);
+  font-size: 11px;
+  color: var(--paper-faint);
+}
+
+.paper-film__note {
+  font-family: var(--hand);
+  font-size: 12.5px;
+  color: var(--paper-faint);
+  margin: 0;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .paper-film {
+    margin-top: 26px;
+  }
+
+  .paper-film__sketch {
+    inset: 34px 18px auto;
+  }
+
+  .paper-film__play {
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+  }
+
+  .paper-film__play::after {
+    left: 17px;
+    top: 13px;
+    border-width: 9px 0 9px 15px;
+  }
+}

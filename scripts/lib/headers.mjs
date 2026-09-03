@@ -27,7 +27,11 @@ export function buildHeaders({ apiOrigin, contentDomain }) {
     // an image preview is an <img> (img), an HTML preview is an iframe (frame).
     // Miss one and that artifact type is silently blank.
     `connect-src 'self' ${apiOrigin} https://*.${contentDomain}`,
-    `frame-src https://*.${contentDomain}`,
+    // The demo video is a click-to-load YouTube embed, so this origin is only
+    // ever framed after someone presses play. `nocookie` is the narrower of
+    // the two YouTube embed hosts, and the only one named here. The review
+    // screen is served by the Worker and keeps a frame-src without it.
+    `frame-src https://*.${contentDomain} https://www.youtube-nocookie.com`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'none'",

@@ -13,6 +13,7 @@ import { filesFromDataTransfer, pickFiles, type UploadSelection } from '../lib/f
 import { CopyField, Modal } from '../components/Dialogs.js';
 import { LocaleToggle } from '../components/LocaleToggle.js';
 import { ThemeToggle } from '../components/ThemeToggle.js';
+import { DemoVideo } from '../components/DemoVideo.js';
 import { PaperDecor } from '../components/PaperDecor.js';
 import { Onboarding } from '../components/Onboarding.js';
 import { useT } from '../i18n/index.js';
@@ -387,6 +388,8 @@ export function HomeRoute() {
           </div>
 
           {error && <div className="notice notice--error">{describeError(error, t)}</div>}
+
+          <DemoVideo />
         </main>
       </div>
 

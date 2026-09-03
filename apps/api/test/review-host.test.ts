@@ -107,6 +107,14 @@ describe('a preview on its own hostname', () => {
     expect(csp).toMatch(/connect-src[^;]*https:\/\/api-livepreview\.liha\.dev/);
     expect(csp).toMatch(/connect-src[^;]*https:\/\/\*\.liha\.review/);
     expect(response.headers.get('x-frame-options')).toBe('DENY');
+
+    /*
+     * The landing page carries a click-to-load YouTube embed and names
+     * `youtube-nocookie` in its own policy. This screen does not have one, so
+     * it does not get the permission — a widening that starts on the landing
+     * page should not quietly arrive here, where uploaded artifacts are framed.
+     */
+    expect(csp).not.toContain('youtube');
   });
 
   it('does not answer for another service on the same domain', async () => {

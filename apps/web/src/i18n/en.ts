@@ -226,6 +226,10 @@ export const en = {
   'home.modeCli': 'From the terminal',
   'home.sample': 'See a sample',
   'home.createHeading': 'Create this preview?',
+  'home.watch': 'See it work',
+  'home.watchCta': 'Watch the demo',
+  'home.watchHint': 'Nothing is sent to YouTube until you press play.',
+  'home.watchOnYouTube': 'Open on YouTube',
 
   'decor.scrawl': 'text too small here',
   'decor.specOk': 'p.3 OK',
