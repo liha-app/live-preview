@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useT } from '../i18n/index.js';
+import { useI18n } from '../i18n/index.js';
 import {
-  DEMO_VIDEO_ID,
   DEMO_VIDEO_LENGTH,
   demoVideoEmbedUrl,
+  demoVideoId,
   demoVideoWatchUrl,
 } from '../lib/demoVideo.js';
 
@@ -16,11 +16,12 @@ import {
  * while it sits unplayed, which is most of the time for most visitors.
  */
 export function DemoVideo() {
-  const t = useT();
+  const { t, locale } = useI18n();
   const [playing, setPlaying] = useState(false);
+  const id = demoVideoId(locale);
 
-  // No id yet means no video. Better an absent card than a broken player.
-  if (!DEMO_VIDEO_ID) return null;
+  // No id for this language means no card. Better absent than broken.
+  if (!id) return null;
 
   return (
     <section className="paper-film" aria-labelledby="paper-film-title">
@@ -31,8 +32,9 @@ export function DemoVideo() {
       <div className="paper-film__frame">
         {playing ? (
           <iframe
+            key={id}
             className="paper-film__player"
-            src={demoVideoEmbedUrl(DEMO_VIDEO_ID)}
+            src={demoVideoEmbedUrl(id)}
             title={t('home.watch')}
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
@@ -62,12 +64,7 @@ export function DemoVideo() {
 
       <p className="paper-film__note">
         {t('home.watchHint')}{' '}
-        <a
-          className="paper-link"
-          href={demoVideoWatchUrl(DEMO_VIDEO_ID)}
-          target="_blank"
-          rel="noreferrer"
-        >
+        <a className="paper-link" href={demoVideoWatchUrl(id)} target="_blank" rel="noreferrer">
           {t('home.watchOnYouTube')}
         </a>
       </p>

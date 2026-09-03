@@ -20,7 +20,11 @@ export function buildHeaders({ apiOrigin, contentDomain }) {
     // Google Fonts serves the handwriting faces the interface is drawn in. Two
     // hostnames, both Google's own, on an otherwise self-only policy.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    `img-src 'self' data: blob: https://*.${contentDomain}`,
+    // `i.ytimg.com` is where the embedded player fetches its own poster frame.
+    // Chrome applies this policy to that fetch, so leaving it out puts a
+    // blocked-image error in the console of every visitor who presses play.
+    // Reached only after a click, like the frame itself.
+    `img-src 'self' data: blob: https://*.${contentDomain} https://i.ytimg.com`,
     "font-src 'self' data: https://fonts.gstatic.com",
     // The app reaches the content origin three ways, and each needs saying:
     // pdf.js fetches the PDF and read_artifact_file fetches source (connect),

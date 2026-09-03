@@ -1,6 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DemoVideo } from './DemoVideo.js';
+import { DEMO_VIDEO_IDS } from '../lib/demoVideo.js';
 import { I18nProvider } from '../i18n/index.js';
 
 /*
@@ -10,12 +12,6 @@ import { I18nProvider } from '../i18n/index.js';
  * and quietly start sending every visitor to YouTube, so the absence is what
  * these tests assert.
  */
-vi.mock('../lib/demoVideo.js', async () => {
-  const real = await vi.importActual<typeof import('../lib/demoVideo.js')>('../lib/demoVideo.js');
-  return { ...real, DEMO_VIDEO_ID: 'testid123' };
-});
-
-const { DemoVideo } = await import('./DemoVideo.js');
 
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
@@ -34,11 +30,16 @@ function render() {
   return host;
 }
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   root = null;
   host = null;
+  vi.restoreAllMocks();
 });
 
 describe('the demo video card', () => {
@@ -59,15 +60,27 @@ describe('the demo video card', () => {
     expect(frame).not.toBeNull();
     expect(new URL(frame!.src).hostname).toBe('www.youtube-nocookie.com');
   });
+
+  /*
+   * The two cuts are separately narrated, so handing a Japanese visitor the
+   * English one is the wrong video, not a formatting detail.
+   */
+  it('offers the cut for the language the page is in', () => {
+    localStorage.setItem('liha.locale', 'ja');
+    const el = render();
+    const link = el.querySelector<HTMLAnchorElement>('.paper-film__note a');
+    expect(link!.href).toContain(DEMO_VIDEO_IDS.ja);
+    expect(link!.href).not.toContain(DEMO_VIDEO_IDS.en);
+  });
 });
 
-describe('with no video published yet', () => {
+describe('with no video published for a language', () => {
   it('renders nothing rather than a broken player', async () => {
     vi.resetModules();
     vi.doMock('../lib/demoVideo.js', async () => {
       const real =
         await vi.importActual<typeof import('../lib/demoVideo.js')>('../lib/demoVideo.js');
-      return { ...real, DEMO_VIDEO_ID: '' };
+      return { ...real, demoVideoId: () => '' };
     });
     const { DemoVideo: Empty } = await import('./DemoVideo.js');
     // `resetModules` gives the re-imported component a fresh copy of the i18n
