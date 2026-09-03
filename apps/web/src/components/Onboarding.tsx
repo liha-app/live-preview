@@ -54,7 +54,8 @@ function StepOne({ t }: { t: Translate }) {
           <i />
           <i />
         </div>
-        <div className="ob-url">{sampleShareUrl()}</div>
+        {/* An address bar with nothing to put in it stays an address bar. */}
+        <div className="ob-url">{sampleShareUrl() ?? <i className="ob-url__blank" />}</div>
       </div>
     </div>
   );

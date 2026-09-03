@@ -629,13 +629,24 @@ async function buildWebApp(config) {
   step('Web app bundle');
 
   const apiOrigin = `https://${config.apiHost}`;
+  /*
+   * The same template the Worker gets. The illustrations on the landing page
+   * draw a share URL, and without this they have to invent one — which is how
+   * a path this service does not serve ended up in the drawing.
+   */
+  const reviewOriginTemplate = `https://${config.servicePrefix ?? ''}{slug}.${config.contentDomain}`;
   if (dryRun) {
-    planned(`VITE_API_URL=${apiOrigin} pnpm --filter liha-web build`);
+    planned(
+      `VITE_API_URL=${apiOrigin} VITE_REVIEW_ORIGIN_TEMPLATE=${reviewOriginTemplate} ` +
+        `pnpm --filter liha-web build`,
+    );
     planned(`write apps/web/dist/_headers for ${apiOrigin} and *.${config.contentDomain}`);
     return;
   }
 
-  await run('pnpm', ['--filter', 'liha-web', 'build'], { env: { VITE_API_URL: apiOrigin } });
+  await run('pnpm', ['--filter', 'liha-web', 'build'], {
+    env: { VITE_API_URL: apiOrigin, VITE_REVIEW_ORIGIN_TEMPLATE: reviewOriginTemplate },
+  });
 
   // Written after the build so the placeholders in public/_headers can never
   // reach a deployment. This is the landing page's policy; the review screen

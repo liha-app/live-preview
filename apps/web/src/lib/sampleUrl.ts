@@ -1,16 +1,32 @@
 /**
- * The share URL the drawings show.
+ * The share URL the illustrations draw.
  *
- * Taken from wherever the app is actually running. The design mock wrote
- * `liha.dev/p/8fa2c1`, and shipping that literally meant a deployment on
- * livepreview.liha.dev advertised a domain that was not its own — the one
- * thing the illustration exists to teach.
+ * Built from this deployment's own review-origin template, handed to the build
+ * by scripts/deploy.mjs the same way the API URL is. Before that it was
+ * invented — `<app host>/p/8fa2c1` — and that shape is not one this service
+ * has ever served: reviews live on a host of their own, not on a path under
+ * the app. A drawing that teaches "this is your link" should not be the one
+ * thing on the page that gets the link wrong.
  *
- * The slug stays short and invented. The picture is teaching "this link never
- * changes", not what a slug looks like, and a real 12-character one overflows
- * the little browser window it sits in.
+ * Returns null when the template is unknown, which is the case for `pnpm dev`
+ * and for any build that did not go through the deploy script. The drawings
+ * then leave the address bar blank rather than guessing again.
  */
-export function sampleShareUrl(): string {
-  const host = typeof window === 'undefined' ? 'example.com' : window.location.host;
-  return `${host}/p/8fa2c1`;
+const TEMPLATE = import.meta.env.VITE_REVIEW_ORIGIN_TEMPLATE as string | undefined;
+
+/*
+ * Short and invented on purpose. The picture is teaching "this link never
+ * changes", not what a slug looks like, and a real twelve-character one
+ * overflows the little browser window it sits in.
+ */
+const SAMPLE_SLUG = '8fa2c1';
+
+export function sampleShareUrl(): string | null {
+  if (!TEMPLATE?.includes('{slug}')) return null;
+  try {
+    // Shown without the scheme: it is an address bar, not a link to copy.
+    return new URL(TEMPLATE.replace('{slug}', SAMPLE_SLUG)).host;
+  } catch {
+    return null;
+  }
 }

@@ -1365,3 +1365,12 @@
     transform: none;
   }
 }
+
+/* Stands in for the address when the deployment has not told us its shape. */
+.ob-url__blank {
+  display: block;
+  width: 62%;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-fill-strong);
+}

@@ -205,7 +205,7 @@ export function PaperDecor({ targetRef }: { targetRef: React.RefObject<HTMLEleme
           >
             {t('decor.password')}
           </div>
-          <div className="decor-path">{sampleShareUrl()}</div>
+          {sampleShareUrl() && <div className="decor-path">{sampleShareUrl()}</div>}
           <div className="decor-pencil" />
         </>
       )}

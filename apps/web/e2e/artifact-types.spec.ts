@@ -87,12 +87,29 @@ test.describe('an image artifact', () => {
 });
 
 test.describe('the drawings on the landing page', () => {
-  test('show this deployment’s own host, not the mock’s', async ({ page }) => {
+  /*
+   * The address bar in the illustrations used to read `<app host>/p/8fa2c1`,
+   * and this test asserted it — which pinned the mistake rather than the
+   * intent. Reviews are served from a host of their own, never from a path
+   * under the app, so a drawing that shows one is teaching the wrong thing.
+   *
+   * The real shape comes from the deployment's own review-origin template,
+   * handed to the build by scripts/deploy.mjs. `pnpm dev` has no such template
+   * — there is no stable review host in dev — so here the bar is blank, and
+   * what is worth asserting is that nothing invented has crept back in.
+   */
+  test('never draw a URL this service does not serve', async ({ page }) => {
     await skipIntro(page);
     await page.goto('/');
+
+    await expect(page.locator('.decor-path')).toHaveCount(0);
+    await expect(page.locator('body')).not.toContainText('/p/8fa2c1');
+
     await page.getByRole('button', { name: 'How it works' }).click();
 
-    const host = new URL(page.url()).host;
-    await expect(page.locator('.ob-url')).toHaveText(`${host}/p/8fa2c1`);
+    const bar = page.locator('.ob-url');
+    await expect(bar).toBeVisible();
+    // Blank here, but never a path: a preview's address has no path component.
+    await expect(bar).not.toContainText('/');
   });
 });
