@@ -1,6 +1,6 @@
 {
   "name": "@liha-cli/mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server for Liha Live Preview: read review feedback and publish new versions from a coding agent.",
   "license": "MIT",
   "type": "module",
