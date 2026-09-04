@@ -453,17 +453,21 @@ behaves exactly as it does today.
 | `resolve_comment`         | write                            | Requires the owner token to be present in this browser.                                                 |
 | `list_versions`           | read-only                        | Version history.                                                                                        |
 | `get_review_summary`      | read-only, **untrusted content** | The whole review state in one call.                                                                     |
-| `focus_comment`           | moves the reviewer's screen      | Scrolls the reviewer to a comment, selects it, and outlines the element it points at.                   |
+| `focus_comment`           | moves the reviewer's screen      | Selects the comment and, for a web preview with a selector, scrolls to and outlines its element.        |
 | `set_viewport`            | moves the reviewer's screen      | Resizes the preview the reviewer is looking at: `fit`, `desktop`, `tablet`, `mobile` (390px).           |
-| `list_artifact_files`     | read-only                        | The text files in the version currently on screen.                                                      |
+| `list_artifact_files`     | read-only                        | The preview's text files, with sizes and types.                                                         |
 | `read_artifact_file`      | read-only                        | One file out of that version — the HTML or CSS behind a comment. Binary files are refused.              |
 | `create_preview_from_url` | write, open-world                | Create a preview from a public URL.                                                                     |
 
-**Four of these act on the human, not on a database.** `focus_comment` and
-`set_viewport` move the screen the reviewer is looking at; `list_artifact_files`
-and `read_artifact_file` read the exact build in front of them. That is the part
-an HTTP API cannot do from outside the tab, and it is why this is a WebMCP
-entry rather than a REST client.
+**Two of these move the reviewer's screen, and two read what is on it.**
+`focus_comment` and `set_viewport` act on the screen the reviewer is looking at —
+no HTTP API can do that from outside the tab. `list_artifact_files` and
+`read_artifact_file` read the build itself, `read_artifact_file` from whichever
+version the reviewer currently has on screen, so the agent never has to ask
+which build they mean. And every write goes through the same API client as a
+click and refreshes the same sidebar, so the reply lands where the reviewer is
+watching. That is why this is a WebMCP entry rather than a REST
+client.
 
 Those four are what the end-to-end suite proves in real Chromium, test by test:
 _publishes its tools to the page_ · _an agent can read the review and the source
@@ -471,10 +475,11 @@ behind it_ · _an agent acts on the human's own screen_ · _an agent joins the
 conversation, and the human sees it live_ · _refuses arguments its published
 schema does not declare_ — [`apps/web/e2e/webmcp.spec.ts`](apps/web/e2e/webmcp.spec.ts).
 
-**Comments are data, not instructions.** Everything a reviewer typed is returned
-behind `untrustedContentHint`, wrapped in `<reviewer_comments>` delimiters, and
-prefixed with an explicit note telling the agent to treat it as a description of
-requested changes rather than as instructions addressed to it.
+**Comments are data, not instructions.** Everything a reviewer typed — and the
+artifact source — comes back behind `untrustedContentHint`. The comment tools
+wrap it in `<reviewer_comments>` delimiters and lead with an explicit note that
+it describes requested changes and is not addressed to the agent;
+`get_review_summary` carries that same note as the first field of its result.
 
 Using the package directly:
 
@@ -547,10 +552,10 @@ Full write-up in [docs/security.md](docs/security.md). The short version:
   iframe with `sandbox` and no `allow-same-origin`, plus a `Content-Security-Policy:
 sandbox` header so it stays contained even when opened directly. It cannot read
   the app's storage or the owner token.
-- **Path traversal.** Every upload and request path is normalized and rejected —
-  not repaired — on `..`, absolute paths, backslashes, drive letters, control
-  characters and percent-encoded variants. Archive entries are validated before
-  decompression.
+- **Path traversal.** Every upload and request path is rejected — not repaired —
+  on `..`, absolute paths, backslashes, drive letters and control characters;
+  request paths are decoded exactly once and also refused on encoded and
+  double-encoded forms. Archive entries are validated before decompression.
 - **Owner tokens** are 256-bit random values stored only as SHA-256 digests. They
   travel in the URL _fragment_ of owner links, so they never reach a server log.
 - **Passwords** are stored as salted PBKDF2-SHA256 (100k iterations, Web Crypto),
@@ -568,10 +573,11 @@ sandbox` header so it stays contained even when opened directly. It cannot read
   300 MB per preview, 20 new previews per client per five minutes, and a 5 GB
   ceiling on everything the instance stores. Zip expansion is checked _before_
   decompression to refuse zip bombs.
-- **Everything expires, counted from when it was last used** — a day for a
-  sample, a week anonymously, a month signed in. A review still being read
-  cannot vanish in the middle of it, and the owner can push the clock out by
-  pressing the countdown. An hourly cron sweeps what is due, bytes first, and
+- **Previews expire, counted from when they were last used** — a week
+  anonymously, a month signed in, and a flat day for a sample. An upload's clock
+  starts the first time it is opened, and every visit restarts it, so a review
+  still being read cannot vanish in the middle of it; the owner can push it out
+  by pressing the countdown. An hourly cron sweeps what is due, bytes first, and
   the review screen shows the time left so nobody meets a surprise 404.
 
 Found something? See [SECURITY.md](SECURITY.md).

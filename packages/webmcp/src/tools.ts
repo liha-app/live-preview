@@ -266,16 +266,32 @@ export function buildTools(host: LihaWebMcpHost): ToolDescriptor[] {
         const point = args.point as { x: number; y: number } | undefined;
         const selector = typeof args.selector === 'string' ? args.selector : undefined;
         const replyTo = typeof args.replyTo === 'string' ? args.replyTo : undefined;
+        const body = String(args.body ?? '');
+        const authorName = (args.authorName as string | undefined) ?? 'AI agent';
+        const target = {
+          annotation: point ? { type: 'pin' as const, point } : null,
+          page: typeof args.page === 'number' ? args.page : null,
+          element: selector ? { selector, tagName: 'UNKNOWN' } : null,
+        };
+        /*
+         * Same arguments, same key: a retried call gets back the comment it
+         * already made instead of leaving a second one. Empty when the page has
+         * no WebCrypto, in which case the comment still posts, unguarded — the
+         * behaviour before this existed. See fingerprint.ts.
+         */
+        const idempotencyKey = await callFingerprint([
+          body,
+          authorName,
+          replyTo ?? '',
+          JSON.stringify(target),
+        ]);
         const comment = await host.addComment({
-          body: String(args.body ?? ''),
-          authorName: (args.authorName as string | undefined) ?? 'AI agent',
+          body,
+          authorName,
           authorKind: 'agent',
           ...(replyTo ? { parentId: replyTo } : {}),
-          target: {
-            annotation: point ? { type: 'pin', point } : null,
-            page: typeof args.page === 'number' ? args.page : null,
-            element: selector ? { selector, tagName: 'UNKNOWN' } : null,
-          },
+          ...(idempotencyKey ? { idempotencyKey } : {}),
+          target,
         });
         report('add_comment', true, `Added a comment: ${comment.body.slice(0, 60)}`);
         return ok({

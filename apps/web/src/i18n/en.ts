@@ -44,7 +44,7 @@ export const en = {
   'me.retention':
     'Previews are deleted after {anonymous} days without being opened. Signing in makes that {signedIn}, and carries this list to your other browsers.',
   'app.tagline':
-    'Share a build, a design or a document at a stable URL. Reviewers mark up what they see, and an agent in the same browser tab reads that feedback as structured context — and the fix lands at the same link.',
+    'Share a build, a design or a document at a stable URL. Reviewers mark up what they see, and an agent in the same browser tab reads that feedback through WebMCP as structured context — and the fix lands at the same link.',
 
   'common.cancel': 'Cancel',
   'common.done': 'Done',

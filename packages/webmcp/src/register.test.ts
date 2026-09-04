@@ -558,6 +558,9 @@ describe('write tools', () => {
         page: null,
         element: { selector: 'button.cta', tagName: 'UNKNOWN' },
       },
+      // Derived from the arguments above, so a retry of this call collapses
+      // into this comment. Exact value pinned in add-comment-key.test.ts.
+      idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/),
     });
     expect(events.at(-1)).toMatchObject({ name: 'add_comment', ok: true });
   });
