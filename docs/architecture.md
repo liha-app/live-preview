@@ -10,7 +10,7 @@ version of the build.
 Liha's job is to capture that context at the moment of the click, keep it
 attached to an immutable version, and hand it to an agent in a structured form.
 Everything else — storage, versioning, auth — exists to make that possible
-without a login system.
+without requiring a login.
 
 ## Components
 
@@ -171,12 +171,19 @@ rejected before touching storage.
    `Referrer-Policy: no-referrer` and a `CSP: sandbox` header.
 6. If it is HTML, inject the bridge.
 
-## Why no login
+## Why ownership does not require a login
 
-An account system is the single biggest source of scope in a tool like this, and
-it is not what the project is about. Instead: a 256-bit owner token, shown once,
-stored hashed. The CLI and MCP server keep it in `~/.config/liha/config.json`;
-the browser keeps it in `localStorage` for the app origin only.
+Ownership is a 256-bit owner token, shown once, stored hashed. The CLI and MCP
+server keep it in `~/.config/liha/config.json`; the browser keeps it in
+`localStorage` for the app origin only. A reviewer needs nothing at all: the
+share link is the credential to comment.
 
-The cost is that tokens cannot be rotated and there is no "my previews" list.
-That is a deliberate trade for an MVP whose point is the feedback loop.
+An account exists and is never required. Every visitor gets an anonymous
+account the first time they act; signing in with Google links that same account
+so what you own and review follows you to other browsers, and lengthens how long
+a preview is kept (a week anonymously, a month signed in). The "my previews"
+list at `/me` works either way. What sign-in does not do is gate anything: no
+tool, no comment, no review screen asks for it.
+
+The cost that remains is that an owner token cannot be rotated. That is a
+deliberate trade for a product whose point is the feedback loop, not identity.

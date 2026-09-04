@@ -11,38 +11,60 @@ _English · [日本語](README.ja.md)_
 - **Demo video:** [Watch on YouTube (2:29)](https://www.youtube.com/watch?v=42ETT6sLz9U)
 - **No account required.**
 
-### Judge quick start
+### Judge quick start — nothing to clone, nothing to sign up for
 
-1. Open the live app in ChatGPT's in-app browser, or Chrome with WebMCP enabled.
-2. Click **See a sample**.
-3. Open the generated review session.
-4. Ask the agent to inspect the unresolved feedback and help fix it.
-5. The page exposes structured WebMCP tools for review state, DOM context,
-   viewport control, artifact files, replies, and resolution.
+1. Open <https://livepreview.liha.dev> in a WebMCP-capable agentic browser:
+   ChatGPT's in-app browser today, or Chrome with the WebMCP origin trial or
+   `chrome://flags/#enable-webmcp-testing`.
+2. Press **See a sample**. It mints a real preview that already carries anchored
+   feedback, and makes you its owner.
+3. In the review that opens, press **Agent tools** in the top bar. It lists the
+   tools this page is publishing to your agent — or says plainly that this
+   browser exposes none, in which case the review still works as a normal page.
+4. Ask the agent, in its own words:
+   - _What review feedback is open on this preview, and what does it point at?_
+   - _Show me the comment about the button, then read the CSS behind it._
+   - _Switch the preview to mobile width and tell me what breaks._
+5. Watch the screen you are already looking at: it scrolls to the comment and
+   outlines the element, the preview narrows to 390px, and the agent's reply
+   lands in the sidebar without a reload.
 
-The key loop:
+**In one sentence:** a human points at the thing that feels wrong in a real
+rendered page, and an agent in the same browser tab receives that exact target —
+selector, DOM snippet, page, viewport, version — as structured context it can act
+on. Nobody translates a screenshot into a prompt.
 
-**Human review → structured WebMCP context → agent fixes source → same preview
-URL → resolve.**
-
-Share a build, a mockup or a document at a stable URL. People mark up what they
-see. An AI agent reads that feedback **with structured context** — the CSS
-selector, the DOM snippet, the page, the viewport — fixes the source, and ships
-a new version to the same link.
-
-The interesting part is not the file sharing. It is that a human pointing at a
-button on screen becomes something an agent can act on without anyone copying
-and pasting anything.
+The interesting part is not the file sharing, and it is not the comments —
+BugHerd and Vercel have recorded selectors for years. It is that the agent is
+**in the room**: the page the reviewer is looking at publishes its review to the
+agent beside them, and the agent's actions land on that same screen.
 
 ```
-liha-preview deploy .          →  https://lp-<slug>.liha.review
+liha-preview deploy .              →  https://lp-<slug>.liha.review    one URL, every version
 
-   reviewer clicks the hero button and writes "make this smaller"
-                    ↓
-   agent: list_comments → get_comment → edits source → update_preview → resolve_comment
-                    ↓
-   same URL, version 2, comment resolved
+  reviewer clicks the hero button, writes "make this smaller"
+     captured at the click: selector · tag · text · HTML snippet · page · viewport · version
+
+  in the reviewer's browser tab      (WebMCP — 13 tools on document.modelContext)
+     get_review_summary → focus_comment        their screen scrolls, the element outlines
+                        → set_viewport mobile  their preview narrows to 390px
+                        → read_artifact_file   the CSS behind the comment, from the version on screen
+                        → add_comment          the reply lands in their sidebar, live
+
+  on the developer's machine         (local MCP / CLI — files under --root only)
+     edit source → build → update_preview      same URL, version 2
+                          → resolve_comment     the reviewer sees the thread close
 ```
+
+**Who does what.** Two agent surfaces, kept apart on purpose:
+
+|                                                     | Runs in                    | Can reach                                                                                                         | Cannot reach                                              |
+| --------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **WebMCP** — 13 tools on `document.modelContext`    | the reviewer's browser tab | the review state, the DOM context behind each comment, the version on screen, the reviewer's viewport and sidebar | the developer's files: a web page never gets a filesystem |
+| **Local MCP / CLI** — 8 tools, confined to `--root` | the developer's machine    | the source tree under `--root`, the build, publishing a new version, replying and resolving                       | the reviewer's screen                                     |
+
+WebMCP connects the agent to the human's browser context. Local MCP connects the
+coding agent to the developer's workspace. The product is the loop between them.
 
 - **MIT licensed**, no sign-up, no billing, no SaaS. Signing in exists and is
   never required: it lengthens how long a preview is kept and gathers what you
@@ -412,7 +434,9 @@ safe to commit.
 ## WebMCP usage
 
 When the browser exposes the WebMCP imperative API, the preview page registers
-its review tools on `document.modelContext`. An agent in the browser can then
+its review tools on `document.modelContext` (falling back to
+`navigator.modelContext` where only the older global exists). An agent in the
+browser can then
 read and act on the review **while the human watches the same screen** — a
 comment an agent adds appears in the sidebar immediately, with no reload.
 
@@ -440,6 +464,12 @@ behaves exactly as it does today.
 and `read_artifact_file` read the exact build in front of them. That is the part
 an HTTP API cannot do from outside the tab, and it is why this is a WebMCP
 entry rather than a REST client.
+
+Those four are what the end-to-end suite proves in real Chromium, test by test:
+_publishes its tools to the page_ · _an agent can read the review and the source
+behind it_ · _an agent acts on the human's own screen_ · _an agent joins the
+conversation, and the human sees it live_ · _refuses arguments its published
+schema does not declare_ — [`apps/web/e2e/webmcp.spec.ts`](apps/web/e2e/webmcp.spec.ts).
 
 **Comments are data, not instructions.** Everything a reviewer typed is returned
 behind `untrustedContentHint`, wrapped in `<reviewer_comments>` delimiters, and
@@ -489,8 +519,9 @@ liha-preview mcp --root .        # or: npx @liha-cli/mcp --root .
 }
 ```
 
-Tools: `get_preview_info`, `list_comments`, `get_comment`, `list_versions`,
-`create_preview`, `update_preview`, `resolve_comment`.
+Eight tools: `get_preview_info`, `list_comments`, `get_comment`,
+`list_versions`, `create_preview`, `update_preview`, `reply_to_comment`,
+`resolve_comment`.
 
 The loop it is designed for:
 
@@ -498,7 +529,8 @@ The loop it is designed for:
 2. `get_comment` — which element, on which page, at which viewport?
 3. edit the source and rebuild (the agent's own tools)
 4. `update_preview` — same share URL, new version
-5. `resolve_comment` — only after the fix is actually published
+5. `resolve_comment` — only after the fix is actually published; or
+   `reply_to_comment` first, when the feedback needs a question answered
 
 **The MCP server only ever touches files under `--root`.** Paths are resolved
 through `realpath` and rejected if they land outside, so `..`, absolute paths and
@@ -552,7 +584,7 @@ Found something? See [SECURITY.md](SECURITY.md).
 pnpm test
 ```
 
-323 tests, no network access required:
+354 tests, no network access required:
 
 | Suite                    | Covers                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -563,10 +595,11 @@ pnpm test
 | `@liha-cli/live-preview` | `upload`, `deploy`, `update`, `comments --json`; stdout/stderr separation and exit codes.                                                         |
 | `liha-web`               | Coordinate projection, the iframe message-origin check, sample expiry, and that every CSS custom property resolves.                               |
 
-End-to-end tests run in real Chromium and cover the parts only a browser can
+86 end-to-end tests run in real Chromium and cover the parts only a browser can
 prove — the sandboxed iframe, the injected bridge, the annotation overlay, the
-commenting flow, theming, and that uploaded script cannot reach the app's
-storage. They include an **accessibility audit** (axe-core, WCAG 2.1 AA) of every
+commenting flow, theming, the WebMCP tools acting on the reviewer's screen, and
+that uploaded script cannot reach the app's storage (_uploaded script cannot
+reach the app origin_, in `review-loop.spec.ts`). They include an **accessibility audit** (axe-core, WCAG 2.1 AA) of every
 screen in both themes, which must report zero violations:
 
 ```bash

@@ -23,7 +23,7 @@ meeting and gets surprised.
 | **Abuse limits**                | 30 MB / 2,000 files per version, 50 versions and 300 MB per preview, 20 new previews and 60 comments per client per five minutes, size checked before zip expansion.                                   |
 | **Retention**                   | Counted from last use, not upload: 24h for a sample (flat), 7 days anonymous, 30 days signed in, extendable by the owner. Swept hourly, R2 objects first, in bounded batches.                          |
 | **Accessibility**               | Zero axe-core WCAG 2.1 AA violations on every screen in both themes, verified in CI. Full keyboard operation, focus trapping in dialogs, reduced-motion support, live-region announcements.            |
-| **Test coverage**               | 323 unit and integration tests plus 85 end-to-end tests in real Chromium. Integration tests run the shipped SQL and migrations.                                                                        |
+| **Test coverage**               | 354 unit and integration tests plus 86 end-to-end tests in real Chromium. Integration tests run the shipped SQL and migrations.                                                                        |
 | **CI**                          | Format, typecheck, test, build and E2E on every pull request.                                                                                                                                          |
 | **Licence**                     | MIT, no third-party licence conflicts.                                                                                                                                                                 |
 
