@@ -135,6 +135,16 @@ export const CreateCommentInputSchema = z.object({
   versionId: z.string().optional(),
   /** Reply to this comment instead of starting a new thread. */
   parentId: z.string().optional(),
+  /**
+   * Collapses a retried call into the comment it already created.
+   *
+   * The tool layers derive this from the call's own content, so an agent that
+   * repeats `add_comment` — a dropped response, a model saying the same thing
+   * twice — gets the first comment back instead of leaving a second one. The
+   * web app sends nothing: a person who types the same sentence twice means
+   * it, and deduplicating that would be a bug, not a feature.
+   */
+  idempotencyKey: z.string().trim().min(1).max(120).optional(),
 });
 export type CreateCommentInput = z.infer<typeof CreateCommentInputSchema>;
 

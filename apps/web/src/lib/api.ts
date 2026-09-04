@@ -262,6 +262,12 @@ export const api = {
       versionId?: string;
       /** Reply into this thread instead of starting a new one. */
       parentId?: string;
+      /**
+       * Set by the tool layer only. A retried tool call carries the key its
+       * first attempt did, and the server returns that comment rather than
+       * making a second one.
+       */
+      idempotencyKey?: string;
     },
   ) {
     return request<{ comment: Comment }>(`/api/previews/${slug}/comments`, {

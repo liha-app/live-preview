@@ -1,6 +1,7 @@
 import { describeTarget, type Comment, type CommentFilter } from '@liha-cli/shared';
 import { filterComments, type LihaWebMcpHost, type ViewportName } from './host.js';
 import type { ToolDescriptor, ToolResult } from './types.js';
+import { callFingerprint } from './fingerprint.js';
 
 /*
  * A note on annotations: WebMCP's `ToolAnnotations` dictionary defines exactly

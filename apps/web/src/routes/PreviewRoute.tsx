@@ -440,6 +440,9 @@ export function PreviewRoute({ slug }: { slug: string }) {
           authorName: input.authorName ?? 'AI agent',
           authorKind: input.authorKind ?? 'agent',
           target: input.target,
+          // Only tool calls carry one, and only when WebCrypto was available to
+          // derive it. Absent, the server behaves exactly as it did before.
+          ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
           // A reply joins an existing thread; the API derives its version from
           // the parent, so versionId is only meaningful for a new thread.
           ...(input.parentId

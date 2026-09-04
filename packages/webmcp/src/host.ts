@@ -17,6 +17,11 @@ export interface AddCommentInput {
    */
   authorKind?: 'human' | 'agent';
   target?: CommentTarget;
+  /**
+   * Derived from this call's own content, so a retried tool call collapses
+   * into the comment it already made instead of leaving a second one.
+   */
+  idempotencyKey?: string;
   /** Reply to this comment instead of starting a new thread. */
   parentId?: string;
 }

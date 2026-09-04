@@ -69,6 +69,8 @@ import {
   findPreviewBySlug,
   findValidReviewSession,
   findVersion,
+  findCommentByIdempotencyKey,
+  type CommentRow,
   insertComment,
   insertPreview,
   insertVersion,
@@ -506,6 +508,8 @@ export function createApp() {
         resolved_by: null,
         // Nobody left these; they are part of the sample.
         account_id: null,
+        // Seeded once, by us, not by a tool call that could be retried.
+        idempotency_key: null,
       });
       createdIds.push(id);
     }
@@ -1189,6 +1193,30 @@ export function createApp() {
       throw notFound('That version does not belong to this preview.');
     }
 
+    /*
+     * A retried tool call must not leave two comments. The key is derived from
+     * the call's own content by the tool layer, so a repeat carries the same
+     * one; the web app sends none, because a person typing the same sentence
+     * twice means it.
+     *
+     * Checked before inserting for the ordinary case, and again after a failed
+     * insert for the case where two copies of the same call raced: the unique
+     * index is what actually decides, and the loser reads back the winner's row.
+     */
+    const returnExisting = async (existing: CommentRow) => {
+      const ctx = await viewContext(c, preview);
+      return c.json({ comment: await commentView(ctx, preview, existing) }, 200, NO_STORE);
+    };
+
+    if (input.idempotencyKey) {
+      const existing = await findCommentByIdempotencyKey(
+        c.env.DB,
+        preview.id,
+        input.idempotencyKey,
+      );
+      if (existing) return returnExisting(existing);
+    }
+
     const row = {
       id: generateId('comment'),
       preview_id: preview.id,
@@ -1203,10 +1231,22 @@ export function createApp() {
       resolved_at: null,
       resolved_by: null,
       account_id: null as string | null,
+      idempotency_key: input.idempotencyKey ?? null,
     };
     const author = await attach(c, preview.id, 'reviewer');
     row.account_id = author?.id ?? null;
-    await insertComment(c.env.DB, row);
+
+    try {
+      await insertComment(c.env.DB, row);
+    } catch (error) {
+      // Only the idempotency index can make this insert a duplicate; anything
+      // else that failed is a real failure and belongs to the caller.
+      if (!input.idempotencyKey) throw error;
+      const winner = await findCommentByIdempotencyKey(c.env.DB, preview.id, input.idempotencyKey);
+      if (!winner) throw error;
+      return returnExisting(winner);
+    }
+
     await recordRateEvent(c.env.DB, 'comment', key);
 
     // Somebody is using this preview, so its clock restarts.

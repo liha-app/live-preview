@@ -50,6 +50,8 @@ export interface CommentRow {
   resolved_by: string | null;
   /** Who left it, when they were signed in to anything — including anonymously. */
   account_id: string | null;
+  /** Present only for tool calls; see migration 0007. */
+  idempotency_key: string | null;
 }
 
 export const nowIso = (): string => new Date().toISOString();
@@ -196,8 +198,8 @@ export async function insertComment(db: Database, row: CommentRow): Promise<void
   await db
     .prepare(
       `INSERT INTO comments (id, preview_id, version_id, parent_id, author_name, author_kind,
-        body, target, status, created_at, resolved_at, resolved_by, account_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?)`,
+        body, target, status, created_at, resolved_at, resolved_by, account_id, idempotency_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
     )
     .bind(
       row.id,
@@ -211,8 +213,22 @@ export async function insertComment(db: Database, row: CommentRow): Promise<void
       row.status,
       row.created_at,
       row.account_id,
+      row.idempotency_key,
     )
     .run();
+}
+
+/**
+ * The comment a previous call with this key already created, if there was one.
+ *
+ * Scoped to the preview, matching the unique index, so a key is only ever
+ * compared against comments on the same preview.
+ */
+export function findCommentByIdempotencyKey(db: Database, previewId: string, key: string) {
+  return db
+    .prepare('SELECT * FROM comments WHERE preview_id = ? AND idempotency_key = ?')
+    .bind(previewId, key)
+    .first<CommentRow>();
 }
 
 /**
