@@ -23,7 +23,11 @@ pnpm build
 pnpm format:check
 ```
 
-All four must pass. There is no CI gate that will catch it for you yet.
+For code, dependencies, or configuration changes, all four must pass. For
+prose-only documentation changes, check the diff, links, and documented
+contracts; run related tests when examples or generated inputs change.
+Required CI checks still apply. Rerun successful checks only after relevant
+changes, failures, or new concerns.
 
 ## How the code is organized
 
