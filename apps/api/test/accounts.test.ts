@@ -147,6 +147,89 @@ describe('what I am involved in', () => {
 });
 
 describe('activity', () => {
+  it('requires current read access rather than past participation or an old owner role', async () => {
+    const server = createTestServer();
+    const owner = browser(server);
+    const reviewer = browser(server);
+    const created = await owner.json<CreatePreviewResult>(
+      '/api/previews',
+      upload('Private review'),
+    );
+    const path = `/api/previews/${created.preview.slug}`;
+    expect((await reviewer.send(`${path}/comments`, comment('Public participation.'))).status).toBe(
+      201,
+    );
+    expect((await owner.send(`${path}/comments`, comment('Visible when authorized.'))).status).toBe(
+      201,
+    );
+
+    const activity = (headers: Record<string, string> = {}) =>
+      reviewer.json<{ activity: { body: string }[] }>('/api/me/activity', { headers });
+    expect((await activity()).activity.map((row) => row.body)).toEqual([
+      'Visible when authorized.',
+    ]);
+    const setPassword = async (password: string | null) => {
+      expect(
+        (
+          await owner.send(path, {
+            method: 'PATCH',
+            headers: { ...ownerHeaders(created.ownerToken), 'content-type': 'application/json' },
+            body: JSON.stringify({ password }),
+          })
+        ).status,
+      ).toBe(200);
+    };
+    const authenticate = async (password: string) =>
+      reviewer.json<{ reviewSession: string }>(`${path}/auth`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+    await setPassword('first-password');
+    expect((await activity()).activity).toEqual([]);
+    const { account } = await reviewer.json<{ account: { id: string } }>('/api/me');
+    await server.env.DB.prepare("UPDATE account_previews SET role = 'owner' WHERE account_id = ?")
+      .bind(account.id)
+      .run();
+    expect((await activity()).activity).toEqual([]);
+    const first = await authenticate('first-password');
+    expect(
+      (await activity({ 'x-liha-review-session': first.reviewSession })).activity,
+    ).toHaveLength(1);
+    expect((await activity(ownerHeaders(created.ownerToken))).activity).toHaveLength(1);
+    expect((await owner.json<{ activity: unknown[] }>('/api/me/activity')).activity).toHaveLength(
+      1,
+    );
+
+    await setPassword('second-password');
+    expect((await activity({ 'x-liha-review-session': first.reviewSession })).activity).toEqual([]);
+    const second = await authenticate('second-password');
+    expect(
+      (await activity({ 'x-liha-review-session': second.reviewSession })).activity,
+    ).toHaveLength(1);
+    expect(
+      (
+        await reviewer.send(
+          `${path}/comments`,
+          comment('Fresh authorized feedback.', {
+            'x-liha-review-session': second.reviewSession,
+          }),
+        )
+      ).status,
+    ).toBe(201);
+
+    await setPassword(null);
+    expect((await activity()).activity).toHaveLength(1);
+    await setPassword('third-password');
+    expect((await activity({ 'x-liha-review-session': second.reviewSession })).activity).toEqual(
+      [],
+    );
+    expect((await owner.json<{ activity: unknown[] }>('/api/me/activity')).activity).toHaveLength(
+      2,
+    );
+  });
+
   it('is what somebody else did, not what I did', async () => {
     const server = createTestServer();
     const mine = browser(server);

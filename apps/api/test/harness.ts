@@ -101,6 +101,43 @@ export interface TestServer {
   json<T = unknown>(path: string, init?: RequestInit): Promise<T>;
 }
 
+/** Deterministically orders an in-memory policy change against one SQL operation. */
+export function beforeNextQuery(
+  server: TestServer,
+  matches: (query: string) => boolean,
+  action: () => Promise<void>,
+): () => void {
+  const original = server.env.DB;
+  let used = false;
+  const wrap = (query: string, statement: PreparedStatement): PreparedStatement => {
+    const before = async () => {
+      if (!used && matches(query)) {
+        used = true;
+        await action();
+      }
+    };
+    return {
+      bind: (...values) => wrap(query, statement.bind(...values)),
+      async first<T>() {
+        await before();
+        return statement.first<T>();
+      },
+      async all<T>() {
+        await before();
+        return statement.all<T>();
+      },
+      async run() {
+        await before();
+        return statement.run();
+      },
+    };
+  };
+  server.env.DB = { prepare: (query) => wrap(query, original.prepare(query)) };
+  return () => {
+    server.env.DB = original;
+  };
+}
+
 export function createTestServer(overrides: Partial<Env> = {}): TestServer {
   const env: Env = {
     DB: createSqliteDatabase(),

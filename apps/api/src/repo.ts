@@ -9,6 +9,8 @@ export interface PreviewRow {
   current_version_id: string | null;
   owner_token_hash: string;
   password_hash: string | null;
+  /** Changes with every password policy update, including clearing it. */
+  access_generation: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -61,8 +63,8 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
     .prepare(
       `INSERT INTO previews (id, slug, title, type, current_version_id, owner_token_hash,
         password_hash, created_at, updated_at, deleted_at, expires_at,
-        account_id, last_used_at, is_sample)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+        account_id, last_used_at, is_sample, access_generation)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
     )
     .bind(
       row.id,
@@ -78,6 +80,7 @@ export async function insertPreview(db: Database, row: PreviewRow): Promise<void
       row.account_id,
       row.last_used_at,
       row.is_sample,
+      row.access_generation,
     )
     .run();
 }
@@ -109,6 +112,7 @@ export async function updatePreviewFields(
     values.push(value);
   }
   if (sets.length === 0) return;
+  if (fields.password_hash !== undefined) sets.push('access_generation = access_generation + 1');
   sets.push('updated_at = ?');
   values.push(nowIso(), id);
   await db
@@ -332,14 +336,23 @@ export async function countComments(
 
 export async function createReviewSession(
   db: Database,
-  row: { id: string; preview_id: string; token_hash: string; expires_at: string },
-): Promise<void> {
+  row: {
+    id: string;
+    preview_id: string;
+    token_hash: string;
+    expires_at: string;
+    access_generation: number;
+  },
+): Promise<boolean> {
   await db
     .prepare(
-      'INSERT INTO review_sessions (id, preview_id, token_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+      `INSERT INTO review_sessions (id, preview_id, token_hash, created_at, expires_at, access_generation)
+       SELECT ?, id, ?, ?, ?, access_generation FROM previews
+       WHERE id = ? AND access_generation = ? AND deleted_at IS NULL`,
     )
-    .bind(row.id, row.preview_id, row.token_hash, nowIso(), row.expires_at)
+    .bind(row.id, row.token_hash, nowIso(), row.expires_at, row.preview_id, row.access_generation)
     .run();
+  return findValidReviewSession(db, row.preview_id, row.token_hash);
 }
 
 export async function findValidReviewSession(
@@ -349,7 +362,9 @@ export async function findValidReviewSession(
 ): Promise<boolean> {
   const row = await db
     .prepare(
-      'SELECT id FROM review_sessions WHERE preview_id = ? AND token_hash = ? AND expires_at > ?',
+      `SELECT rs.id FROM review_sessions rs JOIN previews p ON p.id = rs.preview_id
+       WHERE rs.preview_id = ? AND rs.token_hash = ? AND rs.expires_at > ?
+         AND rs.access_generation = p.access_generation AND p.deleted_at IS NULL`,
     )
     .bind(previewId, tokenHash, nowIso())
     .first<{ id: string }>();
@@ -504,16 +519,42 @@ export async function addPushWatch(
   db: Database,
   subscriptionId: string,
   previewId: string,
-): Promise<void> {
+  accessGeneration: number,
+): Promise<boolean> {
   const now = nowIso();
   await db
     .prepare(
-      `INSERT INTO push_watches (subscription_id, preview_id, created_at, notified_at)
-         VALUES (?, ?, ?, ?)
-       ON CONFLICT (subscription_id, preview_id) DO NOTHING`,
+      `INSERT INTO push_watches (subscription_id, preview_id, created_at, notified_at, access_generation)
+       SELECT ?, id, ?, ?, access_generation FROM previews
+       WHERE id = ? AND access_generation = ? AND deleted_at IS NULL
+       ON CONFLICT (subscription_id, preview_id) DO UPDATE SET
+         access_generation = excluded.access_generation,
+         created_at = CASE WHEN push_watches.access_generation != excluded.access_generation
+           THEN excluded.created_at ELSE push_watches.created_at END,
+         notified_at = CASE WHEN push_watches.access_generation != excluded.access_generation
+           THEN excluded.notified_at ELSE push_watches.notified_at END`,
     )
-    .bind(subscriptionId, previewId, now, now)
+    .bind(subscriptionId, now, now, previewId, accessGeneration)
     .run();
+  return isPushWatchCurrent(db, subscriptionId, previewId, accessGeneration);
+}
+
+export async function isPushWatchCurrent(
+  db: Database,
+  subscriptionId: string,
+  previewId: string,
+  accessGeneration: number,
+): Promise<boolean> {
+  return (
+    (await db
+      .prepare(
+        `SELECT w.preview_id FROM push_watches w JOIN previews p ON p.id = w.preview_id
+     WHERE w.subscription_id = ? AND w.preview_id = ? AND w.access_generation = ?
+       AND w.access_generation = p.access_generation AND p.deleted_at IS NULL`,
+      )
+      .bind(subscriptionId, previewId, accessGeneration)
+      .first()) !== null
+  );
 }
 
 export async function removePushWatch(
@@ -531,16 +572,16 @@ export async function removePushWatch(
 export async function watchersOf(
   db: Database,
   previewId: string,
-  publicOnly = false,
-): Promise<PushSubscriptionRow[]> {
+): Promise<(PushSubscriptionRow & { access_generation: number })[]> {
   const { results } = await db
     .prepare(
-      `SELECT s.* FROM push_subscriptions s
+      `SELECT s.*, w.access_generation FROM push_subscriptions s
          JOIN push_watches w ON w.subscription_id = s.id
-        WHERE w.preview_id = ? ${publicOnly ? 'AND EXISTS (SELECT 1 FROM previews p WHERE p.id = w.preview_id AND p.password_hash IS NULL AND p.deleted_at IS NULL)' : ''}`,
+         JOIN previews p ON p.id = w.preview_id
+        WHERE w.preview_id = ? AND w.access_generation = p.access_generation AND p.deleted_at IS NULL`,
     )
     .bind(previewId)
-    .all<PushSubscriptionRow>();
+    .all<PushSubscriptionRow & { access_generation: number }>();
   return results;
 }
 
@@ -548,16 +589,17 @@ export interface WatchedPreview {
   preview_id: string;
   created_at: string;
   notified_at: string;
+  access_generation: number;
+  title: string;
+  slug: string;
 }
 
-export async function watchesOf(
-  db: Database,
-  subscriptionId: string,
-  publicOnly = false,
-): Promise<WatchedPreview[]> {
+export async function watchesOf(db: Database, subscriptionId: string): Promise<WatchedPreview[]> {
   const { results } = await db
     .prepare(
-      `SELECT preview_id, created_at, notified_at FROM push_watches WHERE subscription_id = ? ${publicOnly ? 'AND EXISTS (SELECT 1 FROM previews p WHERE p.id = push_watches.preview_id AND p.password_hash IS NULL AND p.deleted_at IS NULL)' : ''}`,
+      `SELECT w.preview_id, w.created_at, w.notified_at, w.access_generation, p.title, p.slug
+       FROM push_watches w JOIN previews p ON p.id = w.preview_id
+       WHERE w.subscription_id = ? AND w.access_generation = p.access_generation AND p.deleted_at IS NULL`,
     )
     .bind(subscriptionId)
     .all<WatchedPreview>();
@@ -569,11 +611,17 @@ export async function markWatchNotified(
   subscriptionId: string,
   previewId: string,
   at: string,
-): Promise<void> {
+  accessGeneration: number,
+): Promise<boolean> {
   await db
-    .prepare('UPDATE push_watches SET notified_at = ? WHERE subscription_id = ? AND preview_id = ?')
-    .bind(at, subscriptionId, previewId)
+    .prepare(
+      `UPDATE push_watches SET notified_at = ?
+       WHERE subscription_id = ? AND preview_id = ? AND access_generation = ?
+         AND access_generation = (SELECT access_generation FROM previews WHERE id = ? AND deleted_at IS NULL)`,
+    )
+    .bind(at, subscriptionId, previewId, accessGeneration, previewId)
     .run();
+  return isPushWatchCurrent(db, subscriptionId, previewId, accessGeneration);
 }
 
 export async function deleteWatchesFor(db: Database, previewId: string): Promise<void> {
@@ -586,27 +634,33 @@ export async function deleteWatchesFor(db: Database, previewId: string): Promise
  * Strictly after, so the mark written when a worker was last told cannot cause
  * the same comment to be announced twice.
  */
-export async function listCommentsSince(
+export async function pendingCommentsForWatch(
   db: Database,
+  subscriptionId: string,
   previewId: string,
   since: string,
-  publicOnly = false,
-): Promise<CommentRow[]> {
+  accessGeneration: number,
+): Promise<ActivityRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT c.* FROM comments c JOIN previews p ON p.id = c.preview_id
-         WHERE c.preview_id = ? AND c.created_at > ?
-         ${publicOnly ? 'AND p.password_hash IS NULL AND p.deleted_at IS NULL' : ''}
-         ORDER BY c.created_at`,
+      `SELECT c.*, p.title AS preview_title, p.slug FROM comments c
+       JOIN previews p ON p.id = c.preview_id
+       JOIN push_watches w ON w.preview_id = p.id
+       WHERE w.subscription_id = ? AND w.preview_id = ? AND c.created_at > ?
+         AND w.access_generation = ? AND w.access_generation = p.access_generation
+         AND p.deleted_at IS NULL ORDER BY c.created_at`,
     )
-    .bind(previewId, since)
-    .all<CommentRow>();
+    .bind(subscriptionId, previewId, since, accessGeneration)
+    .all<ActivityRow>();
   return results;
 }
 
 export async function countWatchers(db: Database, previewId: string): Promise<number> {
   const row = await db
-    .prepare('SELECT count(*) AS n FROM push_watches WHERE preview_id = ?')
+    .prepare(
+      `SELECT count(*) AS n FROM push_watches w JOIN previews p ON p.id = w.preview_id
+      WHERE w.preview_id = ? AND w.access_generation = p.access_generation AND p.deleted_at IS NULL`,
+    )
     .bind(previewId)
     .first<{ n: number }>();
   return Number(row?.n ?? 0);
@@ -779,8 +833,8 @@ export interface ActivityRow extends CommentRow {
 export async function activityFor(
   db: Database,
   accountId: string,
+  access: { ownerTokenHash: string | null; reviewSessionHash: string | null },
   limit = 50,
-  restricted?: { ownerTokenHash: string | null },
 ): Promise<ActivityRow[]> {
   const { results } = await db
     .prepare(
@@ -790,14 +844,20 @@ export async function activityFor(
          JOIN previews p ON p.id = c.preview_id
         WHERE ap.account_id = ?
           AND p.deleted_at IS NULL
-          ${restricted ? 'AND (p.password_hash IS NULL OR p.account_id = ? OR p.owner_token_hash = ?)' : ''}
+          AND (p.password_hash IS NULL OR p.account_id = ? OR p.owner_token_hash = ?
+            OR EXISTS (SELECT 1 FROM review_sessions rs WHERE rs.preview_id = p.id
+              AND rs.token_hash = ? AND rs.expires_at > ?
+              AND rs.access_generation = p.access_generation))
           AND (c.account_id IS NULL OR c.account_id != ?)
         ORDER BY c.created_at DESC
         LIMIT ?`,
     )
     .bind(
       accountId,
-      ...(restricted ? [accountId, restricted.ownerTokenHash] : []),
+      accountId,
+      access.ownerTokenHash,
+      access.reviewSessionHash,
+      nowIso(),
       accountId,
       limit,
     )

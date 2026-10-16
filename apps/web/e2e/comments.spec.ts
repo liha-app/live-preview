@@ -405,9 +405,7 @@ test.describe('when the API is unreachable', () => {
  * own sentence.
  */
 test.describe('when something fails, in Japanese', () => {
-  test('announces protected reviewer unavailability in Japanese during compatibility', async ({
-    page,
-  }) => {
+  test('says so in Japanese, and says it out loud', async ({ page }) => {
     const created = await createPreview();
     await fetch(`${API}/api/previews/${created.preview.slug}`, {
       method: 'PATCH',
@@ -425,10 +423,12 @@ test.describe('when something fails, in Japanese', () => {
     });
     await page.goto(`/p/${created.preview.slug}`);
 
-    await expect(page.getByLabel('パスワード')).toHaveCount(0);
-    await expect(page.locator('iframe')).toHaveCount(0);
-    await expect(page.getByRole('alert')).toHaveText(
-      'このデプロイではその機能を提供していません。',
-    );
+    const field = page.getByLabel('パスワード');
+    await field.fill('not-the-password');
+    await page.getByRole('button', { name: '開く' }).click();
+
+    // Not "Incorrect password.", which is what the server says.
+    const alert = page.getByRole('alert');
+    await expect(alert).toHaveText('パスワードが違います。');
   });
 });

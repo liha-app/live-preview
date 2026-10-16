@@ -27,8 +27,8 @@ import {
 import {
   assertNotRateLimited,
   clientKey,
-  isOwner,
   extractOwnerToken,
+  isOwner,
   requireOwner,
   requireReviewAccess,
 } from './auth.js';
@@ -169,17 +169,7 @@ async function after(c: Context<App>, work: Promise<void>): Promise<void> {
   }
 }
 
-/** Build-time compatibility/recovery entry; never selected by request input. */
-export function createApp(compatibility = false) {
-  const checkReviewAccess: typeof requireReviewAccess = async (db, request, preview) => {
-    if (compatibility && preview.password_hash !== null && !(await isOwner(request, preview))) {
-      throw new ApiError(
-        'not_supported',
-        'Protected reviewer access is paused during a safe update.',
-      );
-    }
-    return requireReviewAccess(db, request, preview);
-  };
+export function createApp() {
   const app = new Hono<App>();
 
   app.use('*', async (c, next) => {
@@ -295,16 +285,7 @@ export function createApp(compatibility = false) {
   // ------------------------------------------------------------------- meta
 
   app.get('/api/health', (c) =>
-    c.json(
-      {
-        ok: true,
-        service: 'liha-live-preview',
-        time: nowIso(),
-        ...(compatibility ? { accessMode: 'owner-public-compat' } : {}),
-      },
-      200,
-      NO_STORE,
-    ),
+    c.json({ ok: true, service: 'liha-live-preview', time: nowIso() }, 200, NO_STORE),
   );
 
   // --------------------------------------------------------------- previews
@@ -393,6 +374,7 @@ export function createApp(compatibility = false) {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: password ? await hashPassword(password) : null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -476,6 +458,7 @@ export function createApp(compatibility = false) {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -604,6 +587,7 @@ export function createApp(compatibility = false) {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: input.password ? await hashPassword(input.password) : null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -650,7 +634,7 @@ export function createApp(compatibility = false) {
 
   app.get('/api/previews/:slug', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const ctx = await viewContext(c, preview);
     return c.json(
       { preview: await previewView(ctx, preview), isOwner: await isOwner(c.req.raw, preview) },
@@ -673,9 +657,8 @@ export function createApp(compatibility = false) {
         assertPasswordPolicy(input.password);
         fields.password_hash = await hashPassword(input.password);
       }
-      // Compatibility never accepts reviewer sessions; retain rows for recovery.
-      // Once 0008 is installed, its trigger revokes them atomically.
-      if (!compatibility) await deleteReviewSessions(c.env.DB, preview.id);
+      // The repository increments the access generation in this same update,
+      // so sessions or watches racing the change cannot retain old access.
     }
     await updatePreviewFields(c.env.DB, preview.id, fields);
 
@@ -752,17 +735,12 @@ export function createApp(compatibility = false) {
     if (!caller) return c.json({ activity: [] }, 200, NO_STORE);
 
     const config = c.get('config');
-    const token = extractOwnerToken(c.req.raw);
-    const rows = await activityFor(
-      c.env.DB,
-      caller.id,
-      50,
-      compatibility
-        ? {
-            ownerTokenHash: token ? await hashToken(token) : null,
-          }
-        : undefined,
-    );
+    const ownerToken = extractOwnerToken(c.req.raw);
+    const reviewSession = c.req.header('x-liha-review-session');
+    const rows = await activityFor(c.env.DB, caller.id, {
+      ownerTokenHash: ownerToken ? await hashToken(ownerToken) : null,
+      reviewSessionHash: reviewSession ? await hashToken(reviewSession.trim()) : null,
+    });
     return c.json(
       {
         activity: rows.map((row) => ({
@@ -853,11 +831,6 @@ export function createApp(compatibility = false) {
   // where it is.
 
   app.post('/api/previews/:slug/watch-token', async (c) => {
-    if (compatibility)
-      throw new ApiError(
-        'not_supported',
-        'Notification registration is paused during a safe update.',
-      );
     const preview = await loadPreview(c);
     /*
      * Whoever can read the feedback can ask to be told about it. Being
@@ -865,7 +838,7 @@ export function createApp(compatibility = false) {
      * waiting on a reply, and a password-protected preview is still gated
      * because this is the same check that gates reading it.
      */
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
 
     const key = await clientKey(c.req.raw);
     if (
@@ -894,7 +867,7 @@ export function createApp(compatibility = false) {
 
     const token = await createWatchToken(config.contentSigningKey, {
       previewId: preview.id,
-      accessGeneration: 0,
+      accessGeneration: preview.access_generation,
       // Long enough to allow notifications on the page it opens, short enough
       // that a grant left in a browser history is worth nothing.
       exp: Date.now() + LIMITS.watchTokenLifetimeMs,
@@ -908,11 +881,6 @@ export function createApp(compatibility = false) {
   });
 
   app.post('/api/push/subscribe', async (c) => {
-    if (compatibility)
-      throw new ApiError(
-        'not_supported',
-        'Notification registration is paused during a safe update.',
-      );
     const config = c.get('config');
     if (!vapidKeys(c.env)) {
       throw new ApiError('not_supported', 'This deployment does not send notifications.');
@@ -933,9 +901,14 @@ export function createApp(compatibility = false) {
 
     const preview = await findPreviewById(c.env.DB, grant.previewId);
     if (!preview || preview.deleted_at) throw notFound('That preview no longer exists.');
+    if (grant.accessGeneration !== preview.access_generation) {
+      throw new ApiError('unauthorized', 'This preview requires a new notification link.');
+    }
 
     const subscription = await upsertPushSubscription(c.env.DB, generateId('push'), body.endpoint);
-    await addPushWatch(c.env.DB, subscription.id, preview.id);
+    if (!(await addPushWatch(c.env.DB, subscription.id, preview.id, grant.accessGeneration))) {
+      throw new ApiError('unauthorized', 'This preview requires a new notification link.');
+    }
 
     return c.json(
       { subscriptionId: subscription.id, previewId: preview.id, title: preview.title },
@@ -950,7 +923,7 @@ export function createApp(compatibility = false) {
 
     // Say the same thing for an unknown id as for one with nothing waiting:
     // this endpoint must not become a way to test whether an id exists.
-    const items = await pendingFor(c.env, c.get('config'), body.subscriptionId, compatibility);
+    const items = await pendingFor(c.env, c.get('config'), body.subscriptionId);
     return c.json({ items }, 200, NO_STORE);
   });
 
@@ -960,7 +933,7 @@ export function createApp(compatibility = false) {
 
     // Same empty answer for an unknown id as for one watching nothing: this
     // must not become a way to test whether an id exists.
-    const items = await watchedBy(c.env, c.get('config'), body.subscriptionId, compatibility);
+    const items = await watchedBy(c.env, c.get('config'), body.subscriptionId);
     return c.json({ items }, 200, NO_STORE);
   });
 
@@ -978,14 +951,14 @@ export function createApp(compatibility = false) {
 
   app.get('/api/previews/:slug/share', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const ctx = await viewContext(c, preview);
     return c.json({ share: toShareInfo(await previewView(ctx, preview)) }, 200, NO_STORE);
   });
 
   app.get('/api/previews/:slug/summary', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const ctx = await viewContext(c, preview);
     return c.json(await reviewSummaryView(ctx, preview), 200, NO_STORE);
   });
@@ -994,7 +967,7 @@ export function createApp(compatibility = false) {
 
   app.get('/api/previews/:slug/versions', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const ctx = await viewContext(c, preview);
     return c.json({ versions: await versionsView(ctx, preview) }, 200, NO_STORE);
   });
@@ -1182,7 +1155,7 @@ export function createApp(compatibility = false) {
 
   app.get('/api/previews/:slug/comments', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const filter = CommentFilterSchema.parse(c.req.query('status') ?? 'open');
     const versionId = c.req.query('versionId');
     const rows = await listComments(c.env.DB, preview.id, filter, versionId);
@@ -1199,7 +1172,7 @@ export function createApp(compatibility = false) {
 
   app.post('/api/previews/:slug/comments', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
 
     // Anyone holding the share link can post, so this endpoint is rate limited.
     const key = await clientKey(c.req.raw);
@@ -1301,7 +1274,7 @@ export function createApp(compatibility = false) {
      * which would be their phone buzzing at them for typing.
      */
     if (!(await isOwner(c.req.raw, preview))) {
-      await after(c, notifyWatchers(c.env, c.get('config'), preview.id, compatibility));
+      await after(c, notifyWatchers(c.env, c.get('config'), preview.id));
     }
 
     const ctx = await viewContext(c, preview);
@@ -1310,7 +1283,7 @@ export function createApp(compatibility = false) {
 
   app.get('/api/previews/:slug/comments/:commentId', async (c) => {
     const preview = await loadPreview(c);
-    await checkReviewAccess(c.env.DB, c.req.raw, preview);
+    await requireReviewAccess(c.env.DB, c.req.raw, preview);
     const row = await findComment(c.env.DB, preview.id, c.req.param('commentId'));
     if (!row) throw notFound('Comment not found.');
     const ctx = await viewContext(c, preview);
@@ -1353,12 +1326,6 @@ export function createApp(compatibility = false) {
       return c.json({ reviewSession: null, passwordRequired: false }, 200, NO_STORE);
     }
 
-    if (compatibility)
-      throw new ApiError(
-        'not_supported',
-        'Protected reviewer access is paused during a safe update.',
-      );
-
     const key = await clientKey(c.req.raw);
     await assertNotRateLimited(c.env.DB, preview.id, key);
     const { password } = z.object({ password: z.string().max(512) }).parse(await c.req.json());
@@ -1372,12 +1339,15 @@ export function createApp(compatibility = false) {
     await pruneExpired(c.env.DB, LIMITS.passwordAttemptWindowMs);
     const token = generateReviewToken();
     const expiresAt = new Date(Date.now() + LIMITS.reviewSessionTtlMs).toISOString();
-    await createReviewSession(c.env.DB, {
+    const created = await createReviewSession(c.env.DB, {
       id: generateId('session'),
       preview_id: preview.id,
       token_hash: await hashToken(token),
       expires_at: expiresAt,
+      access_generation: preview.access_generation,
     });
+    if (!created)
+      throw new ApiError('password_required', 'The preview password changed. Try again.');
     return c.json({ reviewSession: token, expiresAt, passwordRequired: true }, 200, NO_STORE);
   });
 
@@ -1643,7 +1613,6 @@ export async function handleRequest(
   request: Request,
   env: Env,
   executionCtx?: DeferredWork,
-  compatibility = false,
 ): Promise<Response> {
   const url = new URL(request.url);
   const config = resolveConfig(env, url);
@@ -1679,7 +1648,7 @@ export async function handleRequest(
     }
   }
 
-  const app = getApp(compatibility);
+  const app = getApp();
   const response = await app.fetch(request, env, executionCtx as never);
   if (response.status === 404 && !url.pathname.startsWith('/api/')) {
     const viaReferer = resolveViaReferer(url.pathname, request.headers.get('referer'));
@@ -1702,12 +1671,8 @@ export async function handleRequest(
   return response;
 }
 
-const cachedApps = new Map<boolean, ReturnType<typeof createApp>>();
-function getApp(compatibility: boolean) {
-  let app = cachedApps.get(compatibility);
-  if (!app) {
-    app = createApp(compatibility);
-    cachedApps.set(compatibility, app);
-  }
-  return app;
+let cachedApp: ReturnType<typeof createApp> | null = null;
+function getApp() {
+  cachedApp ??= createApp();
+  return cachedApp;
 }

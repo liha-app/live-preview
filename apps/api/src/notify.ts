@@ -3,8 +3,8 @@ import type { Env, ResolvedConfig } from './env.js';
 import { sendPush, type VapidKeys } from './push.js';
 import {
   deletePushSubscription,
-  findPreviewById,
-  listCommentsSince,
+  isPushWatchCurrent,
+  pendingCommentsForWatch,
   markWatchNotified,
   watchersOf,
   watchesOf,
@@ -61,13 +61,21 @@ export async function notifyWatchers(
   env: Env,
   config: ResolvedConfig,
   previewId: string,
-  publicOnly = false,
 ): Promise<void> {
   const keys = vapidKeys(env);
   if (!keys) return;
 
   const subject = subjectFor(env, config);
-  for (const subscription of await watchersOf(env.DB, previewId, publicOnly)) {
+  for (const subscription of await watchersOf(env.DB, previewId)) {
+    if (
+      !(await isPushWatchCurrent(
+        env.DB,
+        subscription.id,
+        previewId,
+        subscription.access_generation,
+      ))
+    )
+      continue;
     const outcome = await sendPush(subscription.endpoint, keys, subject);
     if (outcome === 'gone') await deletePushSubscription(env.DB, subscription.id);
   }
@@ -90,26 +98,33 @@ export async function pendingFor(
   env: Env,
   config: ResolvedConfig,
   subscriptionId: string,
-  publicOnly = false,
 ): Promise<PendingItem[]> {
   const items: PendingItem[] = [];
   const now = new Date().toISOString();
 
-  for (const watch of await watchesOf(env.DB, subscriptionId, publicOnly)) {
-    const preview = await findPreviewById(env.DB, watch.preview_id);
-    if (!preview) continue;
-
-    const comments = await listCommentsSince(
+  for (const watch of await watchesOf(env.DB, subscriptionId)) {
+    const comments = await pendingCommentsForWatch(
       env.DB,
+      subscriptionId,
       watch.preview_id,
       watch.notified_at,
-      publicOnly,
+      watch.access_generation,
     );
     if (comments.length === 0) continue;
+    if (
+      !(await markWatchNotified(
+        env.DB,
+        subscriptionId,
+        watch.preview_id,
+        now,
+        watch.access_generation,
+      ))
+    )
+      continue;
 
     const latest = comments[comments.length - 1]!;
     items.push({
-      title: preview.title,
+      title: latest.preview_title,
       body:
         comments.length === 1
           ? `${latest.author_name}: ${latest.body}`
@@ -117,9 +132,8 @@ export async function pendingFor(
       // One notification per preview, replaced rather than stacked: five
       // comments on one page is one thing to go and look at.
       tag: watch.preview_id,
-      url: shareUrl(config, preview.slug),
+      url: shareUrl(config, latest.slug),
     });
-    await markWatchNotified(env.DB, subscriptionId, watch.preview_id, now);
   }
 
   return items;
@@ -143,16 +157,13 @@ export async function watchedBy(
   env: Env,
   config: ResolvedConfig,
   subscriptionId: string,
-  publicOnly = false,
 ): Promise<WatchedItem[]> {
   const items: WatchedItem[] = [];
-  for (const watch of await watchesOf(env.DB, subscriptionId, publicOnly)) {
-    const preview = await findPreviewById(env.DB, watch.preview_id);
-    if (!preview || preview.deleted_at) continue;
+  for (const watch of await watchesOf(env.DB, subscriptionId)) {
     items.push({
-      previewId: preview.id,
-      title: preview.title,
-      url: shareUrl(config, preview.slug),
+      previewId: watch.preview_id,
+      title: watch.title,
+      url: shareUrl(config, watch.slug),
       since: watch.created_at,
     });
   }
