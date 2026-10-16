@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { History, Keyboard, Sparkles, WifiOff } from 'lucide-react';
@@ -74,6 +74,8 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const [tool, setTool] = useState<Tool>('cursor');
   const [viewportId, setViewportId] = useState<ViewportId>('fit');
   const [filter, setFilter] = useState<CommentFilter>('open');
+  const [commentsOpen, setCommentsOpen] = useState(true);
+  const [composerFocusRequest, setComposerFocusRequest] = useState(0);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftTarget>(EMPTY_DRAFT);
   const [draftAnchor, setDraftAnchor] = useState<AnchorPoint | null>(null);
@@ -105,6 +107,31 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const [announcement, setAnnouncement] = useState('');
   const [registration, setRegistration] = useState<RegistrationHandle | null>(null);
   const [pageCount, setPageCount] = useState(1);
+  const pendingCommentPanel = useRef(false);
+
+  const handleDraftChange = useCallback((target: DraftTarget) => {
+    pendingCommentPanel.current = Boolean(target.element || target.annotation);
+    setDraft(target);
+  }, []);
+
+  const handleDraftAnchor = useCallback((anchor: AnchorPoint | null) => {
+    setDraftAnchor(anchor);
+    // Opening during a drag would resize the surface underneath the pointer.
+    // Follow-up scroll/resize anchors must respect an explicit close.
+    if (anchor && pendingCommentPanel.current) {
+      pendingCommentPanel.current = false;
+      setCommentsOpen(true);
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (composerFocusRequest === 0) return;
+    // Query priority explicitly: a pending reply occurs earlier in DOM order.
+    const input =
+      document.querySelector<HTMLTextAreaElement>('.inline-composer .composer__input') ??
+      document.querySelector<HTMLTextAreaElement>('.sidebar > .composer .composer__input');
+    input?.focus();
+  }, [composerFocusRequest]);
 
   useEffect(() => {
     captureOwnerTokenFromHash(slug);
@@ -250,6 +277,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
   });
 
   const clearComposer = useCallback(() => {
+    pendingCommentPanel.current = false;
     setDraft(EMPTY_DRAFT);
     setDraftAnchor(null);
     setDraftBody('');
@@ -379,6 +407,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
   }, [allComments]);
 
   const selectComment = useCallback((id: string | null) => {
+    if (id) setCommentsOpen(true);
     setSelectedCommentId(id);
     const url = new URL(window.location.href);
     if (id) url.searchParams.set('comment', id);
@@ -542,19 +571,21 @@ export function PreviewRoute({ slug }: { slug: string }) {
       ),
       c: (event: KeyboardEvent) => {
         event.preventDefault();
-        document.querySelector<HTMLTextAreaElement>('.sidebar .composer__input')?.focus();
+        setCommentsOpen(true);
+        setComposerFocusRequest((request) => request + 1);
       },
       j: () => moveSelection(1),
       k: () => moveSelection(-1),
       e: () => {
         const thread = threads.find((item) => item.root.id === selectedCommentId);
-        if (thread && isOwner && thread.root.status === 'open')
+        if (commentsOpen && thread && isOwner && thread.root.status === 'open')
           resolveComment.mutate(thread.root.id);
       },
       t: () => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'),
       '?': () => setDialog('shortcuts'),
       Escape: () => {
         if (dialog) setDialog(null);
+        else if (!commentsOpen) return;
         else if (replyingTo) setReplyingTo(null);
         else if (draft.annotation || draft.element) clearComposer();
         else selectComment(null);
@@ -573,6 +604,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
       setTheme,
       dialog,
       replyingTo,
+      commentsOpen,
       draft,
       clearComposer,
       selectComment,
@@ -625,6 +657,14 @@ export function PreviewRoute({ slug }: { slug: string }) {
     );
   }
 
+  if (previewQuery.error instanceof ApiClientError && previewQuery.error.code === 'not_supported') {
+    return (
+      <div className="center-pane">
+        <p role="alert">{describeError(previewQuery.error, t)}</p>
+      </div>
+    );
+  }
+
   if (!preview) {
     return (
       <div className="center-pane">
@@ -649,13 +689,18 @@ export function PreviewRoute({ slug }: { slug: string }) {
   const showInlineComposer = Boolean(draftAnchor && draftLabel);
 
   return (
-    <div className="app">
+    <div className={`app${commentsOpen ? '' : ' app--comments-collapsed'}`}>
       <TopBar
         preview={preview}
         versions={versions}
         activeVersionId={activeVersionId}
         isOwner={isOwner}
         agentActive={registration?.available ?? false}
+        commentsOpen={commentsOpen}
+        onToggleComments={() => {
+          pendingCommentPanel.current = false;
+          setCommentsOpen((open) => !open);
+        }}
         compareWith={compareWith}
         onAgentPanel={() => setDialog('agent')}
         onVersionChange={setPinnedVersionId}
@@ -696,7 +741,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
         </div>
       )}
 
-      <div className="workspace">
+      <div className={`workspace${commentsOpen ? '' : ' workspace--comments-collapsed'}`}>
         <main className="stage">
           <PreviewStage
             preview={preview}
@@ -709,8 +754,8 @@ export function PreviewRoute({ slug }: { slug: string }) {
             page={pageCount}
             onPageCountChange={setPageCount}
             onSelectComment={selectComment}
-            onDraftChange={setDraft}
-            onDraftAnchor={setDraftAnchor}
+            onDraftChange={handleDraftChange}
+            onDraftAnchor={handleDraftAnchor}
           />
           <Dock
             tool={tool}
@@ -722,6 +767,7 @@ export function PreviewRoute({ slug }: { slug: string }) {
         </main>
 
         <CommentSidebar
+          open={commentsOpen}
           threads={threads}
           counts={counts}
           filter={filter}

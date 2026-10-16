@@ -14,7 +14,7 @@ export default {
       }
     }
     // The context is how notification sending stays out of the response's way.
-    return handleRequest(request, env, ctx);
+    return handleRequest(request, env, ctx, true);
   },
 
   /**

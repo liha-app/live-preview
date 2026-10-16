@@ -12,6 +12,7 @@ export interface Thread {
 }
 
 interface Props {
+  open: boolean;
   threads: Thread[];
   counts: { open: number; resolved: number; total: number };
   filter: CommentFilter;
@@ -65,6 +66,10 @@ const FILTERS: { id: CommentFilter; label: MessageKey }[] = [
 export function CommentSidebar(props: Props) {
   const { threads, counts, filter, selectedId, loading } = props;
   const t = useT();
+  // Replace the interpolation slot, never letters in the translated prose ("Click").
+  const [hintBefore, hintAfter] = t('comments.emptyHint', { key: '{shortcut}' }).split(
+    '{shortcut}',
+  );
   const listRef = useRef<HTMLUListElement>(null);
 
   // Keep the keyboard-selected thread in view as the reviewer moves through them.
@@ -76,7 +81,12 @@ export function CommentSidebar(props: Props) {
   }, [selectedId]);
 
   return (
-    <aside className="sidebar" aria-label={t('comments.title')}>
+    <aside
+      id="review-comments"
+      className="sidebar"
+      hidden={!props.open}
+      aria-label={t('comments.title')}
+    >
       <div className="sidebar__head">
         <div className="tabs" role="group" aria-label={t('filter.label')}>
           {FILTERS.map(({ id, label }) => (
@@ -142,9 +152,9 @@ export function CommentSidebar(props: Props) {
                   : t('comments.emptyAll')}
             </p>
             <p className="faint">
-              {t('comments.emptyHint', { key: 'C' })
-                .split('C')
-                .flatMap((part, index) => (index === 0 ? [part] : [<kbd key="k">C</kbd>, part]))}
+              {hintBefore}
+              <kbd>C</kbd>
+              {hintAfter}
             </p>
           </li>
         )}
@@ -180,6 +190,7 @@ export function CommentSidebar(props: Props) {
       */}
       {props.showComposer ? (
         <CommentComposer
+          visible={props.open}
           value={props.draftBody}
           authorName={props.authorName}
           targetLabel={props.draftLabel}

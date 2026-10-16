@@ -80,6 +80,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   process.chdir(originalCwd);
+  vi.unstubAllEnvs();
 });
 
 describe('upload', () => {
@@ -347,10 +348,11 @@ describe('credentials', () => {
     expect(JSON.parse(stdout).error.code).toBe('missing_owner_token');
   });
 
-  it('accepts an owner token from the environment', async () => {
+  it('accepts an owner token bound to its API in the environment', async () => {
     const created = await cliJson('upload', './dist');
     process.env.XDG_CONFIG_HOME = await mkdtemp(join(tmpdir(), 'liha-empty2-'));
     process.env.LIHA_OWNER_TOKEN = created.data.ownerToken as string;
+    vi.stubEnv('LIHA_API_URL', server.url);
 
     const { exitCode } = await cliJson(
       'update',

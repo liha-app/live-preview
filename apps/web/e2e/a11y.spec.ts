@@ -110,7 +110,7 @@ test.describe('accessibility', () => {
     await expect(opener).toBeFocused();
   });
 
-  test('the password gate has no violations', async ({ page }) => {
+  test('the protected reviewer pause has no violations', async ({ page }) => {
     const form = new FormData();
     form.append('password', 'open-sesame');
     form.append('files', new File(['<html><body>x</body></html>'], 'f'));
@@ -122,7 +122,9 @@ test.describe('accessibility', () => {
     }).then((r) => r.json())) as Created;
 
     await page.goto(`/p/${created.preview.slug}`);
-    await expect(page.getByPlaceholder('Password')).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveText('This deployment does not offer that.');
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Password')).toHaveCount(0);
     expect((await scan(page)).violations).toEqual([]);
   });
 });

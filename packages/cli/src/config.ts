@@ -6,6 +6,12 @@
  */
 export {
   DEFAULT_API_URL,
+  CredentialTargetError,
+  assertCredentialApi,
+  apiPathSegment,
+  apiRequestUrl,
+  credentialRequestApiUrl,
+  normalizeApiUrl,
   PROJECT_FILE,
   configDir,
   configPath,

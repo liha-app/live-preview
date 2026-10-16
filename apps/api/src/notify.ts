@@ -61,12 +61,13 @@ export async function notifyWatchers(
   env: Env,
   config: ResolvedConfig,
   previewId: string,
+  publicOnly = false,
 ): Promise<void> {
   const keys = vapidKeys(env);
   if (!keys) return;
 
   const subject = subjectFor(env, config);
-  for (const subscription of await watchersOf(env.DB, previewId)) {
+  for (const subscription of await watchersOf(env.DB, previewId, publicOnly)) {
     const outcome = await sendPush(subscription.endpoint, keys, subject);
     if (outcome === 'gone') await deletePushSubscription(env.DB, subscription.id);
   }
@@ -89,15 +90,21 @@ export async function pendingFor(
   env: Env,
   config: ResolvedConfig,
   subscriptionId: string,
+  publicOnly = false,
 ): Promise<PendingItem[]> {
   const items: PendingItem[] = [];
   const now = new Date().toISOString();
 
-  for (const watch of await watchesOf(env.DB, subscriptionId)) {
+  for (const watch of await watchesOf(env.DB, subscriptionId, publicOnly)) {
     const preview = await findPreviewById(env.DB, watch.preview_id);
     if (!preview) continue;
 
-    const comments = await listCommentsSince(env.DB, watch.preview_id, watch.notified_at);
+    const comments = await listCommentsSince(
+      env.DB,
+      watch.preview_id,
+      watch.notified_at,
+      publicOnly,
+    );
     if (comments.length === 0) continue;
 
     const latest = comments[comments.length - 1]!;
@@ -136,9 +143,10 @@ export async function watchedBy(
   env: Env,
   config: ResolvedConfig,
   subscriptionId: string,
+  publicOnly = false,
 ): Promise<WatchedItem[]> {
   const items: WatchedItem[] = [];
-  for (const watch of await watchesOf(env.DB, subscriptionId)) {
+  for (const watch of await watchesOf(env.DB, subscriptionId, publicOnly)) {
     const preview = await findPreviewById(env.DB, watch.preview_id);
     if (!preview || preview.deleted_at) continue;
     items.push({

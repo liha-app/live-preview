@@ -457,6 +457,17 @@ button.topbar__expiry:not(:disabled):hover {
   border-left: 1px solid var(--line);
 }
 
+/* Keep drafts, selection and list scroll mounted while the artifact has the space. */
+.sidebar[hidden],
+.app--comments-collapsed .inline-composer {
+  display: none;
+}
+
+.workspace--comments-collapsed > .stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 /* ---------------------------------------------------------------- controls */
 
 .btn {
@@ -1253,7 +1264,8 @@ pre.snippet {
  */
 @media (max-width: 620px) {
   .topbar {
-    gap: 4px;
+    /* Keep title space beside the 44px comment toggle. */
+    gap: 2px;
   }
 
   .topbar .btn__label {
@@ -1290,6 +1302,14 @@ pre.snippet {
     max-width: 58px;
     padding-inline: 6px;
   }
+}
+
+/* The icon keeps a touch target even when the rest of the phone bar is compact. */
+.topbar .topbar__comments {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
 }
 
 /* ------------------------------------------------------- agent visibility */
