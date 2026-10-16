@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PasswordPolicyError, hashPassword, verifyPassword } from './password.js';
-import { createContentToken, verifyContentToken } from './signing.js';
+import {
+  createContentToken,
+  createWatchToken,
+  verifyContentToken,
+  verifyWatchToken,
+  type WatchGrant,
+} from './signing.js';
 
 describe('password hashing', () => {
   it('produces a self-describing PBKDF2 record', async () => {
@@ -44,6 +50,38 @@ describe('password hashing', () => {
   it('enforces the length policy', async () => {
     await expect(hashPassword('12345')).rejects.toBeInstanceOf(PasswordPolicyError);
     await expect(hashPassword('x'.repeat(300))).rejects.toBeInstanceOf(PasswordPolicyError);
+  });
+});
+
+describe('signed watch grants', () => {
+  const secret = 'test-signing-secret';
+  const grant = { previewId: 'pv_a', accessGeneration: 3, exp: 2_000_000 };
+
+  it('binds a watch grant to the preview and authorization generation', async () => {
+    const token = await createWatchToken(secret, grant);
+    expect(await verifyWatchToken(secret, token, 1_000_000)).toEqual(grant);
+    expect(await verifyContentToken(secret, token, 1_000_000)).toBeNull();
+  });
+
+  it('rejects old unversioned grants and malformed authorization generations', async () => {
+    for (const accessGeneration of [undefined, null, -1, 0.5, '3', Number.MAX_SAFE_INTEGER + 1]) {
+      const token = await createWatchToken(secret, { ...grant, accessGeneration } as WatchGrant);
+      expect(await verifyWatchToken(secret, token, 1_000_000)).toBeNull();
+    }
+  });
+
+  it('rejects altered signatures, other secrets, expired grants and content grants', async () => {
+    const token = await createWatchToken(secret, grant);
+    expect(await verifyWatchToken(secret, `${token}x`, 1_000_000)).toBeNull();
+    expect(await verifyWatchToken('other-secret', token, 1_000_000)).toBeNull();
+    expect(await verifyWatchToken(secret, token, 3_000_000)).toBeNull();
+    expect(
+      await verifyWatchToken(
+        secret,
+        await createContentToken(secret, { ...grant, versionId: 'vr_a' }),
+        1_000_000,
+      ),
+    ).toBeNull();
   });
 });
 

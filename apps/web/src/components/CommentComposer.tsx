@@ -12,6 +12,7 @@ interface Props {
   authorName: string;
   targetLabel: string | null;
   submitting: boolean;
+  visible?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
   compact?: boolean;
@@ -23,15 +24,15 @@ interface Props {
 }
 
 /** Grows with its content instead of making the writer scroll a 3-line box. */
-function useAutoGrow(value: string, max = 260) {
+function useAutoGrow(value: string, max: number, visible: boolean) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    if (!element || !visible) return;
     element.style.height = 'auto';
     element.style.height = `${Math.min(element.scrollHeight, max)}px`;
     element.style.overflowY = element.scrollHeight > max ? 'auto' : 'hidden';
-  }, [value, max]);
+  }, [value, max, visible]);
   return ref;
 }
 
@@ -40,6 +41,7 @@ export function CommentComposer({
   authorName,
   targetLabel,
   submitting,
+  visible = true,
   placeholder,
   autoFocus = false,
   compact = false,
@@ -50,7 +52,7 @@ export function CommentComposer({
   onCancel,
 }: Props) {
   const t = useT();
-  const textareaRef = useAutoGrow(value);
+  const textareaRef = useAutoGrow(value, 260, visible);
   const [showName, setShowName] = useState(() => authorName.trim().length === 0);
 
   const prompt = placeholder ?? t('composer.placeholder');

@@ -17,6 +17,8 @@ import type { Comment } from '@liha-cli/shared';
 import { LihaApi, ApiError } from './api.js';
 import {
   DEFAULT_API_URL,
+  assertCredentialApi,
+  normalizeApiUrl,
   findCredential,
   readProjectLink,
   rememberPreview,
@@ -89,21 +91,25 @@ export async function createMcpServer(options: McpServerOptions = {}): Promise<M
       );
     }
     const credential = await findCredential(reference);
+    const envApiUrl = process.env.LIHA_API_URL || undefined;
     const apiUrl =
-      options.apiUrl ??
-      credential?.apiUrl ??
-      link?.apiUrl ??
-      process.env.LIHA_API_URL ??
-      DEFAULT_API_URL;
+      options.apiUrl ?? envApiUrl ?? credential?.apiUrl ?? link?.apiUrl ?? DEFAULT_API_URL;
+    const ownerToken = credential?.ownerToken || process.env.LIHA_OWNER_TOKEN || undefined;
+    if (ownerToken) {
+      assertCredentialApi(
+        apiUrl,
+        credential?.ownerToken ? credential.apiUrl : (envApiUrl ?? DEFAULT_API_URL),
+      );
+    }
     const slug = credential?.slug ?? link?.slug ?? reference;
     return {
       slug,
       previewId: credential?.previewId ?? link?.previewId ?? null,
       api: new LihaApi({
-        apiUrl: apiUrl.replace(/\/$/, ''),
-        ownerToken: credential?.ownerToken ?? process.env.LIHA_OWNER_TOKEN,
+        apiUrl: normalizeApiUrl(apiUrl),
+        ownerToken,
       }),
-      hasOwnerToken: Boolean(credential?.ownerToken ?? process.env.LIHA_OWNER_TOKEN),
+      hasOwnerToken: Boolean(ownerToken),
     };
   };
 

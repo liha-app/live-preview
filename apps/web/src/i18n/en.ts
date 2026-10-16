@@ -108,6 +108,9 @@ export const en = {
   'filter.label': 'Filter comments',
 
   'comments.title': 'Review comments',
+  'comments.toggle': 'Comments',
+  'comments.show': 'Show comments',
+  'comments.hide': 'Hide comments',
   'comments.emptyOpen': 'No open comments.',
   'comments.emptyResolved': 'Nothing resolved yet.',
   'comments.emptyAll': 'No comments yet.',

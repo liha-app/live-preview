@@ -111,6 +111,9 @@ export const ja: Messages = {
   'filter.label': 'コメントの絞り込み',
 
   'comments.title': 'レビューコメント',
+  'comments.toggle': 'コメント',
+  'comments.show': 'コメントを表示',
+  'comments.hide': 'コメントを閉じる',
   'comments.emptyOpen': '未解決のコメントはありません。',
   'comments.emptyResolved': '解決済みのコメントはまだありません。',
   'comments.emptyAll': 'コメントはまだありません。',

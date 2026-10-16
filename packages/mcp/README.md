@@ -23,6 +23,12 @@ publish a new version, and resolve what it fixed.
 It reads and writes files only under a project root you name. Nothing else on
 the machine is reachable through it.
 
+Owner credentials in the shared CLI store are bound to their issuing API.
+Project links and server options cannot retarget them. For an environment
+credential on a custom deployment, set both `LIHA_OWNER_TOKEN` and
+`LIHA_API_URL`. Credential requests require HTTPS, except for loopback
+development, and do not follow redirects.
+
 ## Also here
 
 - [`@liha-cli/live-preview`](https://www.npmjs.com/package/@liha-cli/live-preview)

@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LIMITS, type CreatePreviewResult } from '@liha-cli/shared';
 import { generateVapidKeys } from '../src/push.js';
-import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
+import {
+  beforeNextQuery,
+  createTestServer,
+  ownerHeaders,
+  uploadBody,
+  type TestServer,
+} from './harness.js';
+import { notifyWatchers } from '../src/notify.js';
+import { resolveConfig } from '../src/env.js';
 
 /*
  * Notification permission is per origin and every preview has its own, so the
@@ -51,6 +59,181 @@ function captureSends() {
   }) as typeof fetch;
   return { sent, restore: () => (globalThis.fetch = original) };
 }
+
+describe('notification authorization changes', () => {
+  const setPassword = async (
+    server: TestServer,
+    created: CreatePreviewResult,
+    password: string | null,
+  ) => {
+    const response = await server.fetch(`/api/previews/${created.preview.slug}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+      body: JSON.stringify({ password }),
+    });
+    expect(response.status).toBe(200);
+  };
+  const items = (server: TestServer, subscriptionId: string, kind: 'pending' | 'watches') =>
+    server.json<{ items: unknown[] }>(`/api/push/${kind}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ subscriptionId }),
+    });
+  const reviewerGrant = async (
+    server: TestServer,
+    created: CreatePreviewResult,
+    password: string,
+  ) => {
+    const path = `/api/previews/${created.preview.slug}`;
+    const { reviewSession } = await server.json<{ reviewSession: string }>(`${path}/auth`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    return server.json<{ token: string }>(`${path}/watch-token`, {
+      method: 'POST',
+      headers: { 'x-liha-review-session': reviewSession },
+    });
+  };
+
+  it('revokes unused grants and existing watches on set, change and clear without reviving old generations', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+    const original = (await watchToken(server, created)).token;
+    const { subscriptionId } = (await (
+      await subscribe(server, original, 'https://push.test/review')
+    ).json()) as { subscriptionId: string };
+    let previous = original;
+    const capture = captureSends();
+    try {
+      for (const password of ['first-password', 'second-password', null]) {
+        await setPassword(server, created, password);
+        await server.fetch(`/api/previews/${created.preview.slug}/comments`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+          body: JSON.stringify({ authorName: 'Owner', body: 'Feedback after the policy update.' }),
+        });
+        await server.env.DB.prepare(
+          "UPDATE push_watches SET notified_at = '2000-01-01T00:00:00.000Z'",
+        ).run();
+        expect((await subscribe(server, previous, 'https://push.test/unused')).status).toBe(401);
+        expect((await subscribe(server, original, 'https://push.test/unused')).status).toBe(401);
+        expect((await items(server, subscriptionId, 'watches')).items).toEqual([]);
+        expect((await items(server, subscriptionId, 'pending')).items).toEqual([]);
+        await notifyWatchers(
+          server.env,
+          resolveConfig(server.env, new URL('http://api.test')),
+          created.preview.id,
+        );
+        expect(capture.sent).toEqual([]);
+
+        previous =
+          password === null
+            ? (
+                await server.json<{ token: string }>(
+                  `/api/previews/${created.preview.slug}/watch-token`,
+                  { method: 'POST' },
+                )
+              ).token
+            : (await reviewerGrant(server, created, password)).token;
+        expect((await subscribe(server, previous, 'https://push.test/review')).status).toBe(200);
+        expect((await items(server, subscriptionId, 'watches')).items).toHaveLength(1);
+        expect((await items(server, subscriptionId, 'pending')).items).toEqual([]);
+      }
+      // The real owner can obtain and spend a new grant after policy updates.
+      expect(
+        (
+          await subscribe(
+            server,
+            (await watchToken(server, created)).token,
+            'https://push.test/owner',
+          )
+        ).status,
+      ).toBe(200);
+    } finally {
+      capture.restore();
+    }
+  });
+
+  it('does not insert a watch when the password changes between checking and recording its grant', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+    const grant = await watchToken(server, created);
+    const restore = beforeNextQuery(
+      server,
+      (query) => query.includes('INSERT INTO push_watches'),
+      () => setPassword(server, created, 'new-password'),
+    );
+    try {
+      expect((await subscribe(server, grant.token, 'https://push.test/local')).status).toBe(401);
+      expect(await server.env.DB.prepare('SELECT count(*) AS n FROM push_watches').first()).toEqual(
+        { n: 0 },
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it('rechecks pending data and push fan-out after a concurrently changed password', async () => {
+    const server = await serverWithPush();
+    const created = await newPreview(server);
+    const { subscriptionId } = (await (
+      await subscribe(server, (await watchToken(server, created)).token, 'https://push.test/local')
+    ).json()) as { subscriptionId: string };
+    await server.fetch(`/api/previews/${created.preview.slug}/comments`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...ownerHeaders(created.ownerToken) },
+      body: JSON.stringify({ authorName: 'Owner', body: 'Local regression fixture.' }),
+    });
+    await server.env.DB.prepare(
+      "UPDATE push_watches SET notified_at = '2000-01-01T00:00:00.000Z'",
+    ).run();
+    let restore = beforeNextQuery(
+      server,
+      (query) => query.includes('SELECT c.*, p.title AS preview_title'),
+      () => setPassword(server, created, 'first-password'),
+    );
+    try {
+      expect((await items(server, subscriptionId, 'pending')).items).toEqual([]);
+    } finally {
+      restore();
+    }
+
+    await subscribe(server, (await watchToken(server, created)).token, 'https://push.test/local');
+    await server.env.DB.prepare(
+      "UPDATE push_watches SET notified_at = '2000-01-01T00:00:00.000Z'",
+    ).run();
+    restore = beforeNextQuery(
+      server,
+      (query) => query.includes('UPDATE push_watches SET notified_at = ?'),
+      () => setPassword(server, created, 'second-password'),
+    );
+    try {
+      expect((await items(server, subscriptionId, 'pending')).items).toEqual([]);
+    } finally {
+      restore();
+    }
+
+    await subscribe(server, (await watchToken(server, created)).token, 'https://push.test/local');
+    restore = beforeNextQuery(
+      server,
+      (query) => query.includes('SELECT w.preview_id FROM push_watches'),
+      () => setPassword(server, created, 'third-password'),
+    );
+    const capture = captureSends();
+    try {
+      await notifyWatchers(
+        server.env,
+        resolveConfig(server.env, new URL('http://api.test')),
+        created.preview.id,
+      );
+      expect(capture.sent).toEqual([]);
+    } finally {
+      restore();
+      capture.restore();
+    }
+  });
+});
 
 describe('asking to be notified', () => {
   /*
@@ -271,6 +454,11 @@ describe('being notified', () => {
       'https://push.test/abc',
     );
     const { subscriptionId } = (await response.json()) as { subscriptionId: string };
+    // Keep the notification watermark strictly before this test's comment,
+    // even when SQLite completes both requests within one millisecond.
+    await server.env.DB.prepare(
+      "UPDATE push_watches SET notified_at = '2000-01-01T00:00:00.000Z'",
+    ).run();
 
     const pending = () =>
       server.json<{ items: { title: string; body: string; url: string }[] }>('/api/push/pending', {

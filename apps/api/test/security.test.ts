@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
+import { readFileSync, readdirSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import type { Comment, CreatePreviewResult, Preview } from '@liha-cli/shared';
 import { LIMITS } from '@liha-cli/shared';
-import { createTestServer, ownerHeaders, uploadBody, type TestServer } from './harness.js';
+import {
+  beforeNextQuery,
+  createTestServer,
+  ownerHeaders,
+  uploadBody,
+  type TestServer,
+} from './harness.js';
 
 const PAGE = {
   path: 'index.html',
@@ -76,6 +84,122 @@ describe('owner token', () => {
 });
 
 describe('password protection', () => {
+  it('migrates only public legacy watches and requires protected access to be renewed', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      const migrations = new URL('../migrations/', import.meta.url);
+      for (const file of readdirSync(migrations)
+        .filter((file) => file.endsWith('.sql') && file < '0008')
+        .sort()) {
+        db.exec(readFileSync(new URL(file, migrations), 'utf8'));
+      }
+      db.exec(`
+        INSERT INTO previews (id, slug, title, type, owner_token_hash, password_hash, created_at, updated_at)
+        VALUES ('public', 'public', 'Public', 'html', 'synthetic-hash', NULL, '2026-01-01', '2026-01-01'),
+               ('protected', 'protected', 'Protected', 'html', 'synthetic-hash', 'synthetic-password-record', '2026-01-01', '2026-01-01');
+        INSERT INTO push_subscriptions VALUES ('subscription', 'https://push.test/local', '2026-01-01', '2026-01-01');
+        INSERT INTO push_watches VALUES ('subscription', 'public', '2026-01-01', '2026-01-01'),
+                                        ('subscription', 'protected', '2026-01-01', '2026-01-01');
+        INSERT INTO review_sessions VALUES ('session', 'protected', 'synthetic-session-hash', '2026-01-01', '2027-01-01');
+      `);
+      db.exec(readFileSync(new URL('0008_access_generation.sql', migrations), 'utf8'));
+      expect(
+        db
+          .prepare('SELECT preview_id, access_generation FROM push_watches ORDER BY preview_id')
+          .all()
+          .map((row) => ({ ...row })),
+      ).toEqual([
+        { preview_id: 'protected', access_generation: -1 },
+        { preview_id: 'public', access_generation: 0 },
+      ]);
+      expect({ ...db.prepare('SELECT access_generation FROM review_sessions').get() }).toEqual({
+        access_generation: -1,
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  it('revokes legacy password writes atomically and does not double-increment modern writes', () => {
+    const db = new DatabaseSync(':memory:');
+    try {
+      const migrations = new URL('../migrations/', import.meta.url);
+      for (const file of readdirSync(migrations)
+        .filter((file) => file.endsWith('.sql'))
+        .sort()) {
+        db.exec(readFileSync(new URL(file, migrations), 'utf8'));
+      }
+      db.exec(`INSERT INTO previews (id, slug, title, type, owner_token_hash, created_at, updated_at)
+        VALUES ('fixture', 'fixture', 'Fixture', 'html', 'synthetic-hash', '2026-01-01', '2026-01-01')`);
+      const generation = () =>
+        db.prepare('SELECT access_generation FROM previews').get()!.access_generation;
+      db.exec("UPDATE previews SET password_hash = 'first' WHERE id = 'fixture'");
+      expect(generation()).toBe(1);
+      db.exec(
+        "UPDATE previews SET password_hash = 'second', access_generation = access_generation + 1 WHERE id = 'fixture'",
+      );
+      expect(generation()).toBe(2);
+      db.exec("UPDATE previews SET password_hash = NULL WHERE id = 'fixture'");
+      expect(generation()).toBe(3);
+      db.exec("UPDATE previews SET password_hash = NULL WHERE id = 'fixture'");
+      expect(generation()).toBe(4);
+      db.exec(`CREATE TRIGGER refuse_generation BEFORE UPDATE OF access_generation ON previews
+        BEGIN SELECT RAISE(ABORT, 'synthetic write failure'); END;`);
+      expect(() =>
+        db.exec("UPDATE previews SET password_hash = 'not-committed' WHERE id = 'fixture'"),
+      ).toThrow();
+      expect(
+        db.prepare('SELECT password_hash, access_generation FROM previews').get(),
+      ).toMatchObject({ password_hash: null, access_generation: 4 });
+    } finally {
+      db.close();
+    }
+  });
+
+  it('does not issue an old-password session across a policy change', async () => {
+    const server = createTestServer();
+    const created = await create(server, { password: 'first-password' });
+    const path = `/api/previews/${created.preview.slug}`;
+    const restore = beforeNextQuery(
+      server,
+      (query) => query.includes('INSERT INTO review_sessions'),
+      async () => {
+        const response = await server.fetch(path, {
+          method: 'PATCH',
+          headers: { ...ownerHeaders(created.ownerToken), 'content-type': 'application/json' },
+          body: JSON.stringify({ password: 'second-password' }),
+        });
+        expect(response.status).toBe(200);
+      },
+    );
+    try {
+      const response = await server.fetch(`${path}/auth`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: 'first-password' }),
+      });
+      expect(response.status).toBe(401);
+      expect(
+        await server.env.DB.prepare('SELECT count(*) AS n FROM review_sessions').first(),
+      ).toEqual({ n: 0 });
+    } finally {
+      restore();
+    }
+
+    const fresh = await server.json<{ reviewSession: string }>(`${path}/auth`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: 'second-password' }),
+    });
+    expect(
+      (await server.fetch(path, { headers: { 'x-liha-review-session': fresh.reviewSession } }))
+        .status,
+    ).toBe(200);
+    expect((await server.fetch(path, { headers: ownerHeaders(created.ownerToken) })).status).toBe(
+      200,
+    );
+  });
+
   it('requires a password, issues a session, and rate limits guessing', async () => {
     const server = createTestServer();
     const created = await create(server, { password: 'open-sesame' });

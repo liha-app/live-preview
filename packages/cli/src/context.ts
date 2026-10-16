@@ -3,6 +3,9 @@ import { flagBool, flagString, type ParsedArgs } from './args.js';
 import { LihaClient } from './client.js';
 import {
   DEFAULT_API_URL,
+  CredentialTargetError,
+  assertCredentialApi,
+  normalizeApiUrl,
   findCredential,
   readGlobalConfig,
   readProjectLink,
@@ -57,8 +60,8 @@ export async function resolveTarget(args: ParsedArgs): Promise<ResolvedTarget> {
     previewId = credential?.previewId ?? (explicit.startsWith('pv_') ? explicit : null);
   } else if (link) {
     credential = await findCredential(link.previewId);
-    slug = link.slug;
-    previewId = link.previewId;
+    slug = credential?.slug ?? link.slug;
+    previewId = credential?.previewId ?? link.previewId;
   } else {
     const config = await readGlobalConfig();
     const entries = Object.values(config.previews);
@@ -77,17 +80,36 @@ export async function resolveTarget(args: ParsedArgs): Promise<ResolvedTarget> {
     );
   }
 
-  const ownerToken =
-    flagString(args, 'token') ?? process.env.LIHA_OWNER_TOKEN ?? credential?.ownerToken;
+  const flagToken = flagString(args, 'token');
+  const envToken = process.env.LIHA_OWNER_TOKEN || undefined;
+  const envApiUrl = process.env.LIHA_API_URL || undefined;
+  const ownerToken = flagToken ?? envToken ?? credential?.ownerToken;
+  const config = await readGlobalConfig();
+  // A project link can choose a preview, but cannot authorise a credential's destination.
+  const credentialApiUrl = flagToken
+    ? (flagString(args, 'api') ?? envApiUrl ?? config.apiUrl ?? DEFAULT_API_URL)
+    : envToken
+      ? (envApiUrl ?? config.apiUrl ?? DEFAULT_API_URL)
+      : credential?.apiUrl;
+  let normalizedApiUrl: string;
+  try {
+    normalizedApiUrl = normalizeApiUrl(apiUrl);
+    if (ownerToken) assertCredentialApi(normalizedApiUrl, credentialApiUrl);
+  } catch (error) {
+    if (error instanceof CredentialTargetError) {
+      throw new CliError(error.message, EXIT.auth, error.code);
+    }
+    throw error;
+  }
 
   return {
     slug,
     previewId,
     ownerToken,
-    apiUrl,
+    apiUrl: normalizedApiUrl,
     link,
     credential,
-    client: new LihaClient({ apiUrl, ownerToken }),
+    client: new LihaClient({ apiUrl: normalizedApiUrl, ownerToken }),
   };
 }
 

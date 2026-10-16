@@ -8,6 +8,7 @@ import type {
   Version,
 } from '@liha-cli/shared';
 import type { Workspace, WorkspaceFile } from './workspace.js';
+import { apiPathSegment, apiRequestUrl, credentialRequestApiUrl } from './credentials.js';
 
 /**
  * Node's `Buffer` is a view onto a pooled ArrayBuffer, so it is re-wrapped as a
@@ -35,7 +36,14 @@ export interface ApiOptions {
 }
 
 export class LihaApi {
-  constructor(private readonly options: ApiOptions) {}
+  private readonly options: ApiOptions;
+
+  constructor(options: ApiOptions) {
+    this.options = {
+      ...options,
+      apiUrl: credentialRequestApiUrl(options.apiUrl, Boolean(options.ownerToken)),
+    };
+  }
 
   get apiUrl(): string {
     return this.options.apiUrl;
@@ -53,7 +61,8 @@ export class LihaApi {
     if (this.options.ownerToken) headers['x-liha-owner-token'] = this.options.ownerToken;
     if (init.json !== undefined) headers['content-type'] = 'application/json';
 
-    const response = await fetch(`${this.options.apiUrl}${path}`, {
+    const response = await fetch(apiRequestUrl(this.options.apiUrl, path), {
+      redirect: 'error',
       method: init.method ?? 'GET',
       headers,
       body: init.json !== undefined ? JSON.stringify(init.json) : init.body,
@@ -110,33 +119,37 @@ export class LihaApi {
     files: WorkspaceFile[],
     label?: string,
   ): Promise<{ preview: Preview; version: Version }> {
-    return this.request(`/api/previews/${slug}/versions`, {
+    return this.request(`/api/previews/${apiPathSegment(slug)}/versions`, {
       method: 'POST',
       body: await this.form(workspace, files, { label, source: 'mcp' }),
     });
   }
 
   getSummary(slug: string) {
-    return this.request<ReviewSummary>(`/api/previews/${slug}/summary`);
+    return this.request<ReviewSummary>(`/api/previews/${apiPathSegment(slug)}/summary`);
   }
 
   getPreview(slug: string) {
-    return this.request<{ preview: Preview; isOwner: boolean }>(`/api/previews/${slug}`);
+    return this.request<{ preview: Preview; isOwner: boolean }>(
+      `/api/previews/${apiPathSegment(slug)}`,
+    );
   }
 
   listVersions(slug: string) {
-    return this.request<{ versions: Version[] }>(`/api/previews/${slug}/versions`);
+    return this.request<{ versions: Version[] }>(`/api/previews/${apiPathSegment(slug)}/versions`);
   }
 
   listComments(slug: string, status: CommentFilter) {
     return this.request<{
       comments: Comment[];
       counts: { open: number; resolved: number; total: number };
-    }>(`/api/previews/${slug}/comments?status=${status}`);
+    }>(`/api/previews/${apiPathSegment(slug)}/comments?status=${status}`);
   }
 
   getComment(slug: string, commentId: string) {
-    return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments/${commentId}`);
+    return this.request<{ comment: Comment }>(
+      `/api/previews/${apiPathSegment(slug)}/comments/${apiPathSegment(commentId)}`,
+    );
   }
 
   addComment(
@@ -148,7 +161,7 @@ export class LihaApi {
       authorKind?: 'human' | 'agent';
     },
   ) {
-    return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments`, {
+    return this.request<{ comment: Comment }>(`/api/previews/${apiPathSegment(slug)}/comments`, {
       method: 'POST',
       json: input,
     });
@@ -156,7 +169,7 @@ export class LihaApi {
 
   resolveComment(slug: string, commentId: string) {
     return this.request<{ comment: Comment }>(
-      `/api/previews/${slug}/comments/${commentId}/resolve`,
+      `/api/previews/${apiPathSegment(slug)}/comments/${apiPathSegment(commentId)}/resolve`,
       { method: 'POST', json: { resolvedBy: 'coding agent (MCP)' } },
     );
   }

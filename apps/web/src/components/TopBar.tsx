@@ -4,6 +4,8 @@ import {
   Camera,
   Clock,
   Lock,
+  PanelRightClose,
+  PanelRightOpen,
   Settings2,
   Share2,
   Sparkles,
@@ -22,6 +24,8 @@ interface Props {
   activeVersionId: string | null;
   isOwner: boolean;
   agentActive: boolean;
+  commentsOpen: boolean;
+  onToggleComments(): void;
   /** The version the compare button flips to, if there is one to flip to. */
   compareWith: Version | null;
   /** True while the expiry is being pushed out. */
@@ -41,6 +45,8 @@ export function TopBar({
   activeVersionId,
   isOwner,
   agentActive,
+  commentsOpen,
+  onToggleComments,
   compareWith,
   extending,
   onExtend,
@@ -111,6 +117,21 @@ export function TopBar({
           {remainingLabel}
         </button>
       )}
+      <button
+        type="button"
+        className="btn btn--icon btn--quiet topbar__comments"
+        onClick={onToggleComments}
+        aria-label={t(commentsOpen ? 'comments.hide' : 'comments.show')}
+        title={t(commentsOpen ? 'comments.hide' : 'comments.show')}
+        aria-controls="review-comments"
+        aria-expanded={commentsOpen}
+      >
+        {commentsOpen ? (
+          <PanelRightClose size={16} strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <PanelRightOpen size={16} strokeWidth={1.75} aria-hidden="true" />
+        )}
+      </button>
       {/*
         Always offered, not only when WebMCP is present: someone whose browser
         lacks it needs to be told that, not left wondering.

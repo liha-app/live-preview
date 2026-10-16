@@ -27,6 +27,7 @@ import {
 import {
   assertNotRateLimited,
   clientKey,
+  extractOwnerToken,
   isOwner,
   requireOwner,
   requireReviewAccess,
@@ -373,6 +374,7 @@ export function createApp() {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: password ? await hashPassword(password) : null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -456,6 +458,7 @@ export function createApp() {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -584,6 +587,7 @@ export function createApp() {
       current_version_id: versionId,
       owner_token_hash: await hashToken(ownerToken),
       password_hash: input.password ? await hashPassword(input.password) : null,
+      access_generation: 0,
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -653,8 +657,8 @@ export function createApp() {
         assertPasswordPolicy(input.password);
         fields.password_hash = await hashPassword(input.password);
       }
-      // Changing or clearing the password invalidates every existing reviewer session.
-      await deleteReviewSessions(c.env.DB, preview.id);
+      // The repository increments the access generation in this same update,
+      // so sessions or watches racing the change cannot retain old access.
     }
     await updatePreviewFields(c.env.DB, preview.id, fields);
 
@@ -731,7 +735,12 @@ export function createApp() {
     if (!caller) return c.json({ activity: [] }, 200, NO_STORE);
 
     const config = c.get('config');
-    const rows = await activityFor(c.env.DB, caller.id);
+    const ownerToken = extractOwnerToken(c.req.raw);
+    const reviewSession = c.req.header('x-liha-review-session');
+    const rows = await activityFor(c.env.DB, caller.id, {
+      ownerTokenHash: ownerToken ? await hashToken(ownerToken) : null,
+      reviewSessionHash: reviewSession ? await hashToken(reviewSession.trim()) : null,
+    });
     return c.json(
       {
         activity: rows.map((row) => ({
@@ -858,6 +867,7 @@ export function createApp() {
 
     const token = await createWatchToken(config.contentSigningKey, {
       previewId: preview.id,
+      accessGeneration: preview.access_generation,
       // Long enough to allow notifications on the page it opens, short enough
       // that a grant left in a browser history is worth nothing.
       exp: Date.now() + LIMITS.watchTokenLifetimeMs,
@@ -891,9 +901,14 @@ export function createApp() {
 
     const preview = await findPreviewById(c.env.DB, grant.previewId);
     if (!preview || preview.deleted_at) throw notFound('That preview no longer exists.');
+    if (grant.accessGeneration !== preview.access_generation) {
+      throw new ApiError('unauthorized', 'This preview requires a new notification link.');
+    }
 
     const subscription = await upsertPushSubscription(c.env.DB, generateId('push'), body.endpoint);
-    await addPushWatch(c.env.DB, subscription.id, preview.id);
+    if (!(await addPushWatch(c.env.DB, subscription.id, preview.id, grant.accessGeneration))) {
+      throw new ApiError('unauthorized', 'This preview requires a new notification link.');
+    }
 
     return c.json(
       { subscriptionId: subscription.id, previewId: preview.id, title: preview.title },
@@ -1324,12 +1339,15 @@ export function createApp() {
     await pruneExpired(c.env.DB, LIMITS.passwordAttemptWindowMs);
     const token = generateReviewToken();
     const expiresAt = new Date(Date.now() + LIMITS.reviewSessionTtlMs).toISOString();
-    await createReviewSession(c.env.DB, {
+    const created = await createReviewSession(c.env.DB, {
       id: generateId('session'),
       preview_id: preview.id,
       token_hash: await hashToken(token),
       expires_at: expiresAt,
+      access_generation: preview.access_generation,
     });
+    if (!created)
+      throw new ApiError('password_required', 'The preview password changed. Try again.');
     return c.json({ reviewSession: token, expiresAt, passwordRequired: true }, 200, NO_STORE);
   });
 
