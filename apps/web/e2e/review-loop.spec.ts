@@ -9,6 +9,11 @@ test.beforeEach(({ page }) => skipAccountPrompt(page));
 
 const API = 'http://localhost:8787';
 
+test.beforeAll(async () => {
+  const health = await fetch(`${API}/api/health`).then((response) => response.json());
+  expect(health.accessMode).toBe('owner-public-compat');
+});
+
 const SITE = {
   'index.html':
     '<!doctype html><html><head><meta charset="utf-8"><title>Acme</title>' +
@@ -270,7 +275,9 @@ test.describe('the review loop in a real browser', () => {
     await expect(page.locator('.thread').first()).toContainText('Fix the spacing.');
   });
 
-  test('asks for the password before showing anything', async ({ page }) => {
+  test('pauses protected reviewers while keeping owner access during compatibility', async ({
+    page,
+  }) => {
     const form = new FormData();
     form.append('title', 'Secret');
     form.append('password', 'open-sesame');
@@ -282,20 +289,27 @@ test.describe('the review loop in a real browser', () => {
       body: form,
     }).then((r) => r.json())) as Created;
 
+    const denied = page.waitForResponse(`${API}/api/previews/${created.preview.slug}`);
     await page.goto(`/p/${created.preview.slug}`);
-    await expect(page.getByText('This preview is password protected.')).toBeVisible();
+    expect((await denied).status()).toBe(501);
+    await expect(page.getByRole('alert')).toHaveText('This deployment does not offer that.');
     await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.getByPlaceholder('Password')).toHaveCount(0);
+    const auth = await fetch(`${API}/api/previews/${created.preview.slug}/auth`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: 'open-sesame' }),
+    });
+    expect(auth.status).toBe(501);
 
-    await page.getByPlaceholder('Password').fill('wrong');
-    await page.getByRole('button', { name: 'Unlock' }).click();
-    // The reader's language, not the API's. See apiMessage.ts.
-    await expect(page.getByRole('alert')).toHaveText('That password is not right.');
-
-    await page.getByPlaceholder('Password').fill('open-sesame');
-    await page.getByRole('button', { name: 'Unlock' }).click();
-    await expect(page.frameLocator('iframe[title="Preview content"]').locator('h1')).toHaveText(
-      'Secret plans',
-    );
+    // A separate owner page has its own query cache and captures the owner link
+    // on initial navigation, instead of reusing the denied reviewer route.
+    const ownerPage = await page.context().newPage();
+    await openAsOwner(ownerPage, created);
+    await expect(
+      ownerPage.frameLocator('iframe[title="Preview content"]').locator('h1'),
+    ).toHaveText('Secret plans');
+    await ownerPage.close();
   });
 
   test('uploaded script cannot reach the app origin', async ({ page }) => {
@@ -442,83 +456,37 @@ test.describe('while you are working somewhere else', () => {
  * What happens on that page needs a permission prompt, which headless Chromium
  * will not grant. This covers everything up to the handover.
  */
-test.describe('setting up notifications', () => {
-  test('sends the owner off with a grant, not with their token', async ({ page }) => {
-    const created = await createPreview(SITE, 'Acme');
-    await openAsOwner(page, created);
-
-    /*
-     * The handover is captured rather than followed: the page it opens spends
-     * the grant and strips it from its own URL immediately, so by the time a
-     * popup can be inspected the thing under test is gone.
-     */
-    await page.evaluate(() => {
-      (window as unknown as { opened: string[] }).opened = [];
-      window.open = ((url: string, target: string, features: string) => {
-        (window as unknown as { opened: string[] }).opened.push(`${url} ${target} ${features}`);
-        return null;
-      }) as typeof window.open;
+test.describe('notification registration during compatibility', () => {
+  for (const role of ['owner', 'reviewer'] as const) {
+    test(`pauses ${role} registration without opening a window or leaking credentials`, async ({
+      page,
+    }) => {
+      const created = await createPreview(SITE, 'Acme');
+      if (role === 'owner') await openAsOwner(page, created);
+      else await page.goto(`/p/${created.preview.slug}`);
+      await expect(page.locator('iframe[title="Preview content"]')).toBeVisible();
+      if (role === 'reviewer')
+        await expect(page.getByRole('button', { name: 'Update' })).toHaveCount(0);
+      await page.evaluate(() => {
+        (window as unknown as { opened: string[] }).opened = [];
+        window.open = ((url: string) => {
+          (window as unknown as { opened: string[] }).opened.push(String(url));
+          return null;
+        }) as typeof window.open;
+      });
+      const denied = page.waitForResponse(
+        `${API}/api/previews/${created.preview.slug}/watch-token`,
+      );
+      await page.getByRole('button', { name: /notify me about new comments/i }).click();
+      expect((await denied).status()).toBe(501);
+      await expect(page.getByRole('alert')).toHaveText('Could not start setting up notifications.');
+      expect(await page.evaluate(() => (window as unknown as { opened: string[] }).opened)).toEqual(
+        [],
+      );
+      expect(page.url()).not.toContain(created.ownerToken);
+      expect(page.url()).not.toContain('liha_ot_');
     });
-
-    await page.getByRole('button', { name: /notify me about new comments/i }).click();
-
-    // The screen trades the owner token for the grant first, so the handover
-    // happens a round trip after the click.
-    await expect
-      .poll(() => page.evaluate(() => (window as unknown as { opened: string[] }).opened.length))
-      .toBe(1);
-
-    const opened = await page.evaluate(
-      () => (window as unknown as { opened: string[] }).opened[0] ?? '',
-    );
-    const [href, target, features] = opened.split(' ');
-    expect(target).toBe('_blank');
-    // No opener, so the notification origin cannot reach back into the review.
-    expect(features).toBe('noopener');
-
-    const url = new URL(href!);
-    expect(url.origin).toBe('http://notification.localhost:8787');
-
-    const grant = new URLSearchParams(url.hash.slice(1));
-    // Its own prefix: a content grant can never be spent as this one.
-    expect(grant.get('t')).toMatch(/^w1\./);
-    expect(grant.get('title')).toBe('Acme');
-    expect(grant.get('back')).toContain(created.preview.slug);
-
-    // The owner token stays on the review origin. The whole URL, not just the
-    // query string, which is the easy half to get right.
-    expect(href).not.toContain(created.ownerToken);
-    expect(href).not.toContain('liha_ot_');
-  });
-
-  /*
-   * Being told is not an owner's privilege — it is the reviewers who are waiting
-   * on a reply. Whoever can read the feedback can ask to be told about it.
-   */
-  test('is offered to a reviewer, not just the owner', async ({ page }) => {
-    const created = await createPreview(SITE, 'Acme');
-    await page.goto(`/p/${created.preview.slug}`);
-    await expect(page.locator('iframe[title="Preview content"]')).toBeVisible();
-    // Not an owner: there is no owner-only control on this screen at all.
-    await expect(page.getByRole('button', { name: 'Update' })).toHaveCount(0);
-
-    await page.evaluate(() => {
-      (window as unknown as { opened: string[] }).opened = [];
-      window.open = ((url: string) => {
-        (window as unknown as { opened: string[] }).opened.push(String(url));
-        return null;
-      }) as typeof window.open;
-    });
-    await page.getByRole('button', { name: /notify me about new comments/i }).click();
-
-    await expect
-      .poll(() => page.evaluate(() => (window as unknown as { opened: string[] }).opened.length))
-      .toBe(1);
-    const href = await page.evaluate(
-      () => (window as unknown as { opened: string[] }).opened[0] ?? '',
-    );
-    expect(new URLSearchParams(new URL(href).hash.slice(1)).get('t')).toMatch(/^w1\./);
-  });
+  }
 });
 
 /*

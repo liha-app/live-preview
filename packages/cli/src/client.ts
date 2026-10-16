@@ -10,6 +10,12 @@ import type {
   Version,
 } from '@liha-cli/shared';
 import { CliError, EXIT } from './output.js';
+import {
+  CredentialTargetError,
+  apiPathSegment,
+  apiRequestUrl,
+  credentialRequestApiUrl,
+} from './config.js';
 
 export interface ClientOptions {
   apiUrl: string;
@@ -46,7 +52,23 @@ function asBlobPart(bytes: Buffer): Uint8Array<ArrayBuffer> {
 }
 
 export class LihaClient {
-  constructor(private readonly options: ClientOptions) {}
+  private readonly options: ClientOptions;
+
+  constructor(options: ClientOptions) {
+    try {
+      this.options = {
+        ...options,
+        apiUrl: credentialRequestApiUrl(
+          options.apiUrl,
+          Boolean(options.ownerToken || options.reviewSession),
+        ),
+      };
+    } catch (error) {
+      if (error instanceof CredentialTargetError)
+        throw new CliError(error.message, EXIT.auth, error.code);
+      throw error;
+    }
+  }
 
   get apiUrl(): string {
     return this.options.apiUrl;
@@ -65,7 +87,8 @@ export class LihaClient {
   ): Promise<T> {
     let response: Response;
     try {
-      response = await fetch(`${this.options.apiUrl}${path}`, {
+      response = await fetch(apiRequestUrl(this.options.apiUrl, path), {
+        redirect: 'error',
         method: init.method ?? 'GET',
         headers: this.headers(
           init.json !== undefined ? { 'content-type': 'application/json' } : {},
@@ -133,31 +156,33 @@ export class LihaClient {
     files: LocalFile[],
     label?: string,
   ): Promise<{ preview: Preview; version: Version }> {
-    return this.request(`/api/previews/${slug}/versions`, {
+    return this.request(`/api/previews/${apiPathSegment(slug)}/versions`, {
       method: 'POST',
       body: await this.buildForm(files, { label, source: 'cli' }),
     });
   }
 
   getPreview(slug: string) {
-    return this.request<{ preview: Preview; isOwner: boolean }>(`/api/previews/${slug}`);
+    return this.request<{ preview: Preview; isOwner: boolean }>(
+      `/api/previews/${apiPathSegment(slug)}`,
+    );
   }
 
   getSummary(slug: string) {
-    return this.request<ReviewSummary>(`/api/previews/${slug}/summary`);
+    return this.request<ReviewSummary>(`/api/previews/${apiPathSegment(slug)}/summary`);
   }
 
   getShare(slug: string) {
-    return this.request<{ share: ShareInfo }>(`/api/previews/${slug}/share`);
+    return this.request<{ share: ShareInfo }>(`/api/previews/${apiPathSegment(slug)}/share`);
   }
 
   listVersions(slug: string) {
-    return this.request<{ versions: Version[] }>(`/api/previews/${slug}/versions`);
+    return this.request<{ versions: Version[] }>(`/api/previews/${apiPathSegment(slug)}/versions`);
   }
 
   setCurrentVersion(slug: string, versionId: string) {
     return this.request<{ preview: Preview; version: Version }>(
-      `/api/previews/${slug}/current-version`,
+      `/api/previews/${apiPathSegment(slug)}/current-version`,
       { method: 'POST', json: { versionId } },
     );
   }
@@ -166,15 +191,17 @@ export class LihaClient {
     return this.request<{
       comments: Comment[];
       counts: { open: number; resolved: number; total: number };
-    }>(`/api/previews/${slug}/comments?status=${status}`);
+    }>(`/api/previews/${apiPathSegment(slug)}/comments?status=${status}`);
   }
 
   getComment(slug: string, commentId: string) {
-    return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments/${commentId}`);
+    return this.request<{ comment: Comment }>(
+      `/api/previews/${apiPathSegment(slug)}/comments/${apiPathSegment(commentId)}`,
+    );
   }
 
   addComment(slug: string, input: { body: string; authorName?: string; parentId?: string }) {
-    return this.request<{ comment: Comment }>(`/api/previews/${slug}/comments`, {
+    return this.request<{ comment: Comment }>(`/api/previews/${apiPathSegment(slug)}/comments`, {
       method: 'POST',
       json: input,
     });
@@ -182,26 +209,31 @@ export class LihaClient {
 
   resolveComment(slug: string, commentId: string, resolvedBy?: string) {
     return this.request<{ comment: Comment }>(
-      `/api/previews/${slug}/comments/${commentId}/resolve`,
+      `/api/previews/${apiPathSegment(slug)}/comments/${apiPathSegment(commentId)}/resolve`,
       { method: 'POST', json: { resolvedBy } },
     );
   }
 
   deletePreview(slug: string) {
-    return this.request<{ deleted: boolean }>(`/api/previews/${slug}`, { method: 'DELETE' });
+    return this.request<{ deleted: boolean }>(`/api/previews/${apiPathSegment(slug)}`, {
+      method: 'DELETE',
+    });
   }
 
   updatePreview(slug: string, input: { title?: string; password?: string | null }) {
-    return this.request<{ preview: Preview }>(`/api/previews/${slug}`, {
+    return this.request<{ preview: Preview }>(`/api/previews/${apiPathSegment(slug)}`, {
       method: 'PATCH',
       json: input,
     });
   }
 
   authenticate(slug: string, password: string) {
-    return this.request<{ reviewSession: string | null }>(`/api/previews/${slug}/auth`, {
-      method: 'POST',
-      json: { password },
-    });
+    return this.request<{ reviewSession: string | null }>(
+      `/api/previews/${apiPathSegment(slug)}/auth`,
+      {
+        method: 'POST',
+        json: { password },
+      },
+    );
   }
 }

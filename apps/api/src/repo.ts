@@ -528,12 +528,16 @@ export async function removePushWatch(
 }
 
 /** Every subscription watching this preview. */
-export async function watchersOf(db: Database, previewId: string): Promise<PushSubscriptionRow[]> {
+export async function watchersOf(
+  db: Database,
+  previewId: string,
+  publicOnly = false,
+): Promise<PushSubscriptionRow[]> {
   const { results } = await db
     .prepare(
       `SELECT s.* FROM push_subscriptions s
          JOIN push_watches w ON w.subscription_id = s.id
-        WHERE w.preview_id = ?`,
+        WHERE w.preview_id = ? ${publicOnly ? 'AND EXISTS (SELECT 1 FROM previews p WHERE p.id = w.preview_id AND p.password_hash IS NULL AND p.deleted_at IS NULL)' : ''}`,
     )
     .bind(previewId)
     .all<PushSubscriptionRow>();
@@ -546,10 +550,14 @@ export interface WatchedPreview {
   notified_at: string;
 }
 
-export async function watchesOf(db: Database, subscriptionId: string): Promise<WatchedPreview[]> {
+export async function watchesOf(
+  db: Database,
+  subscriptionId: string,
+  publicOnly = false,
+): Promise<WatchedPreview[]> {
   const { results } = await db
     .prepare(
-      'SELECT preview_id, created_at, notified_at FROM push_watches WHERE subscription_id = ?',
+      `SELECT preview_id, created_at, notified_at FROM push_watches WHERE subscription_id = ? ${publicOnly ? 'AND EXISTS (SELECT 1 FROM previews p WHERE p.id = push_watches.preview_id AND p.password_hash IS NULL AND p.deleted_at IS NULL)' : ''}`,
     )
     .bind(subscriptionId)
     .all<WatchedPreview>();
@@ -582,12 +590,14 @@ export async function listCommentsSince(
   db: Database,
   previewId: string,
   since: string,
+  publicOnly = false,
 ): Promise<CommentRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT * FROM comments
-         WHERE preview_id = ? AND created_at > ?
-         ORDER BY created_at`,
+      `SELECT c.* FROM comments c JOIN previews p ON p.id = c.preview_id
+         WHERE c.preview_id = ? AND c.created_at > ?
+         ${publicOnly ? 'AND p.password_hash IS NULL AND p.deleted_at IS NULL' : ''}
+         ORDER BY c.created_at`,
     )
     .bind(previewId, since)
     .all<CommentRow>();
@@ -770,6 +780,7 @@ export async function activityFor(
   db: Database,
   accountId: string,
   limit = 50,
+  restricted?: { ownerTokenHash: string | null },
 ): Promise<ActivityRow[]> {
   const { results } = await db
     .prepare(
@@ -779,11 +790,17 @@ export async function activityFor(
          JOIN previews p ON p.id = c.preview_id
         WHERE ap.account_id = ?
           AND p.deleted_at IS NULL
+          ${restricted ? 'AND (p.password_hash IS NULL OR p.account_id = ? OR p.owner_token_hash = ?)' : ''}
           AND (c.account_id IS NULL OR c.account_id != ?)
         ORDER BY c.created_at DESC
         LIMIT ?`,
     )
-    .bind(accountId, accountId, limit)
+    .bind(
+      accountId,
+      ...(restricted ? [accountId, restricted.ownerTokenHash] : []),
+      accountId,
+      limit,
+    )
     .all<ActivityRow>();
   return results;
 }

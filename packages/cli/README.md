@@ -37,6 +37,12 @@ liha-preview comments --json | jq -r '.comments[] | "\(.target.selector): \(.bod
 LIHA_API_URL=https://api.example.com liha-preview deploy ./dist
 ```
 
+Stored owner credentials stay bound to the API that issued them. Changing
+`.liha.json` or `--api` cannot move a stored credential to another API. When
+supplying `LIHA_OWNER_TOKEN` for a custom deployment, also set `LIHA_API_URL`
+to that deployment; `--api` alone does not retarget an environment token.
+Credential requests require HTTPS, with HTTP allowed for loopback development.
+
 The whole thing is MIT and runs on Cloudflare Workers, D1 and R2 —
 [the repository](https://github.com/liha-app/live-preview) deploys it to your
 own account in one command.

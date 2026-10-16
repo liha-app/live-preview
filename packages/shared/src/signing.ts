@@ -72,6 +72,8 @@ export async function verifyContentToken(
  */
 export interface WatchGrant {
   previewId: string;
+  /** The preview's authorization policy when this grant was issued. */
+  accessGeneration: number;
   /** Expiry, epoch milliseconds. */
   exp: number;
 }
@@ -96,8 +98,10 @@ export async function verifyWatchToken(
   if (!timingSafeEqualStrings(expected, parts[2]!)) return null;
   try {
     const grant = JSON.parse(utf8.decode(base64UrlToBytes(parts[1]!))) as WatchGrant;
-    if (typeof grant.exp !== 'number' || grant.exp < now) return null;
+    if (typeof grant.exp !== 'number' || !Number.isFinite(grant.exp) || grant.exp < now)
+      return null;
     if (typeof grant.previewId !== 'string') return null;
+    if (!Number.isSafeInteger(grant.accessGeneration) || grant.accessGeneration < 0) return null;
     return grant;
   } catch {
     return null;

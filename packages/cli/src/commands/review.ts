@@ -3,7 +3,7 @@ import { flagString, type ParsedArgs } from '../args.js';
 import { assertUploadable, collectFiles, totalBytes } from '../files.js';
 import { CliError, EXIT, table, type ExitCode, type Reporter } from '../output.js';
 import { commentFilter, requireOwnerToken, resolveTarget } from '../context.js';
-import { writeProjectLink, forgetPreview, rememberPreview, findCredential } from '../config.js';
+import { writeProjectLink, forgetPreview, rememberPreview } from '../config.js';
 
 export async function updateCommand(args: ParsedArgs, reporter: Reporter): Promise<ExitCode> {
   const path = args.positionals[0];
@@ -310,7 +310,7 @@ export async function linkCommand(args: ParsedArgs, reporter: Reporter): Promise
   });
   const { preview } = await target.client.getPreview(target.slug);
 
-  const token = flagString(args, 'token') ?? (await findCredential(idOrSlug))?.ownerToken;
+  const token = target.ownerToken;
   if (token) {
     await rememberPreview({
       previewId: preview.id,
